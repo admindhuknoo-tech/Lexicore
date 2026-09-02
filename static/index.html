@@ -1,0 +1,187 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LexiCore — Lawyer Operating System</title>
+<style>
+:root{--nav:#0e1b2b;--nav2:#172a40;--gold:#caa95b;--bg:#f4f6f9;--card:#fff;--text:#182231;--muted:#667386;--line:#e5e9ef;--green:#16825d;--red:#b64040;--amber:#a36d11;--r:16px}*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit}.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.side{background:linear-gradient(180deg,var(--nav),#09121e);color:#fff;padding:24px 16px;position:sticky;top:0;height:100vh}.brand{display:flex;gap:12px;align-items:center;padding:0 8px 26px}.mark{width:42px;height:42px;border-radius:12px;background:var(--gold);display:grid;place-items:center;color:#0e1b2b;font-weight:900}.brand b{font-size:20px}.brand small{display:block;color:#9fb0c5;margin-top:2px}.nav button{width:100%;border:0;background:transparent;color:#bdc8d5;text-align:left;padding:12px;border-radius:10px;margin:4px 0;cursor:pointer}.nav button.active,.nav button:hover{background:var(--nav2);color:#fff}.num{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#203a57;margin-right:9px;font-size:12px}.nav .active .num{background:var(--gold);color:#0e1b2b}.side-foot{position:absolute;bottom:20px;left:24px;color:#71869d;font-size:12px}.main{padding:28px 34px;max-width:1500px;width:100%}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:22px}.top h1{font-size:26px;margin:0}.top p{margin:6px 0 0;color:var(--muted)}.status{background:#e9f7f1;color:var(--green);padding:8px 12px;border-radius:999px;font-size:13px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}.metric{background:var(--card);border:1px solid var(--line);padding:15px;border-radius:var(--r)}.metric b{font-size:22px;display:block}.metric small{color:var(--muted)}.panel{display:none}.panel.active{display:block}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:0 5px 20px rgba(23,40,60,.04)}.card h2,.card h3{margin:0 0 14px}.hint{font-size:13px;color:var(--muted);margin:-7px 0 15px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#465568}.field input,.field select,.field textarea{width:100%;border:1px solid #d7dde5;border-radius:10px;padding:10px 11px;background:#fff}.field textarea{min-height:110px;resize:vertical}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:var(--nav2);color:#fff}.gold{background:var(--gold);color:#17202c}.soft{background:#edf1f6;color:#33445a}.danger{background:#faeaea;color:#9b3030}.actions{display:flex;gap:9px;flex-wrap:wrap}.preview{white-space:pre-wrap;background:#fbfcfd;border:1px solid var(--line);border-radius:12px;padding:18px;min-height:330px;max-height:600px;overflow:auto;line-height:1.6}.result{margin-top:14px;padding:14px;border-radius:12px;background:#f8fafc;border:1px solid var(--line)}.risk{padding:10px;border-left:4px solid var(--amber);margin:8px 0;background:#fff}.risk.HIGH{border-color:var(--red)}.risk.LOW{border-color:var(--green)}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f7}.history{display:grid;gap:8px;margin-top:12px}.item{padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}.item small{color:var(--muted)}.upload{border:2px dashed #cbd5e0;padding:25px;text-align:center;border-radius:12px;background:#fafbfd}.toast{position:fixed;right:24px;bottom:24px;background:#15263a;color:#fff;padding:12px 16px;border-radius:10px;display:none;z-index:9}.toast.show{display:block}.disclaimer{font-size:12px;color:#7a8797;padding:12px 0}.mobile{display:none}.source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.source-item{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;min-width:0}.source-item a{color:#173f68;text-decoration:none;overflow-wrap:anywhere}.source-item a:hover{text-decoration:underline}.source-ok{color:var(--green);font-weight:800}.source-bad{color:var(--red);font-weight:800}.source-warn{color:var(--amber);font-weight:800}.verify-row{display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border:1px solid #d7e4ef;border-radius:10px;background:#f7fbff;margin:12px 0}.verify-row input{margin-top:3px}.official-box{margin-top:18px}.official-box h3{margin-bottom:7px}@media(max-width:720px){.source-grid{grid-template-columns:minmax(0,1fr)}}
+html,body{max-width:100%;overflow-x:hidden}
+.shell,.main,.panel,.card,.metric,.grid2,.row{min-width:0}
+@media(max-width:1000px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:relative;height:auto;padding:16px 12px}
+  .brand{padding:0 6px 14px}
+  .side-foot{display:none}
+  .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;overflow:visible;width:100%}
+  .nav button{width:100%;min-width:0;margin:0;padding:10px 11px;white-space:normal;line-height:1.25}
+  .main{padding:20px 16px;max-width:100%;overflow:hidden}
+  .top{gap:12px}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .grid2,.row{grid-template-columns:minmax(0,1fr)}
+  .preview{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+  input,select,textarea{min-width:0;max-width:100%}
+}
+@media(max-width:720px){
+  .cards{grid-template-columns:minmax(0,1fr)}
+  .top{align-items:flex-start;flex-direction:column}
+  .status{max-width:100%}
+}
+@media(max-width:520px){
+  .nav{grid-template-columns:minmax(0,1fr)}
+  .brand b{font-size:18px}
+  .main{padding:16px 12px}
+  .card{padding:16px}
+  .actions .btn{flex:1 1 145px}
+}
+</style></head><body><div class="shell"><aside class="side"><div class="brand"><div class="mark">Lx</div><div><b>LexiCore</b><small>Lawyer Operating System</small></div></div><nav class="nav">
+<button class="active" data-panel="draft"><span class="num">1</span>Legal Drafting</button><button data-panel="review"><span class="num">2</span>Contract Review</button><button data-panel="research"><span class="num">3</span>Legal Research</button><button data-panel="risk"><span class="num">4</span>Compliance & Risk</button><button data-panel="case"><span class="num">5</span>Case Analysis</button><button data-panel="client"><span class="num">6</span>Client Documents</button></nav><div class="side-foot">LexiCore • Legal Research Sources</div></aside>
+<main class="main"><div class="top"><div><h1 id="pageTitle">Legal Drafting</h1><p id="pageSub">Susun dan kelola draft dokumen hukum.</p></div><div class="status" id="serverStatus">● checking API</div></div>
+<div class="cards"><div class="metric"><b id="mDraft">0</b><small>Draft</small></div><div class="metric"><b id="mReview">0</b><small>Contract Review</small></div><div class="metric"><b id="mResearch">0</b><small>Research Notes</small></div><div class="metric"><b id="mRisk">0</b><small>Risk Assessment</small></div><div class="metric"><b id="mCase">0</b><small>Case Analysis</small></div><div class="metric"><b id="mClient">0</b><small>Client Documents</small></div></div>
+<section class="panel active" id="draft"><div class="grid2"><div class="card"><h2>Draft Builder</h2><p class="hint">Template awal tetap wajib diverifikasi lawyer sebelum digunakan.</p><div class="field"><label>Jenis dokumen</label><select id="docType"><option>Perjanjian Kerjasama</option><option>Non-Disclosure Agreement</option><option>Perjanjian Kerja</option><option>Surat Kuasa</option><option>Somasi</option><option>Gugatan Perdata</option><option>Legal Opinion</option></select></div><div class="row"><div class="field"><label>Pihak / Klien</label><input id="party1" placeholder="Nama pihak pertama"></div><div class="field"><label>Pihak lainnya</label><input id="party2" placeholder="Nama pihak kedua"></div></div><div class="row"><div class="field"><label>Tanggal efektif</label><input id="effectiveDate" type="date"></div><div class="field"><label>Durasi (bulan)</label><input id="duration" type="number" min="1" value="12"></div></div><div class="field"><label>Instruksi klausul khusus</label><textarea id="prompt" placeholder="Contoh: buat klausul terminasi yang seimbang dengan cure period 30 hari"></textarea></div><div class="actions"><button class="btn primary" onclick="generateDraft()">Generate Draft</button><button class="btn soft" onclick="saveDraft()">Simpan salinan</button><button class="btn gold" onclick="exportDocx()">Export DOCX</button><button class="btn soft" onclick="printDraft()">Print / PDF</button></div></div><div class="card"><h2>Document Preview</h2><div class="preview" id="draftPreview">Draft akan muncul di sini.</div></div></div><div class="card" style="margin-top:18px"><h3>Draft Terbaru</h3><div class="history" id="draftHistory"></div></div></section>
+<section class="panel" id="review"><div class="grid2"><div class="card"><h2>Contract Review & Analysis</h2><p class="hint">Ekstraksi PDF/DOCX, identifikasi pihak/tanggal, risk clause detection dan rekomendasi.</p><div class="upload"><input type="file" id="contractFile" accept=".pdf,.docx"><p>PDF atau DOCX • maksimum 50 MB</p></div><br><button class="btn primary" onclick="reviewContract()">Analisis Kontrak</button></div><div class="card"><h2>Review Result</h2><div id="reviewResult" class="preview">Belum ada analisis.</div></div></div><div class="card" style="margin-top:18px"><h3>Riwayat Review</h3><div id="reviewHistory" class="history"></div></div></section>
+<section class="panel" id="research"><div class="grid2"><div class="card"><h2>Legal Research & Case Summaries</h2><p class="hint">Pilih jenis sumber hukum secara spesifik, lalu masukkan teks sumber yang telah Anda peroleh. LexiCore membedakan putusan, peraturan perundang-undangan, regulasi yudisial, dan sumber sekunder.</p><div class="row"><div class="field"><label>Judul</label><input id="rTitle" placeholder="Putusan / isu hukum"></div><div class="field"><label>Yurisdiksi</label><input id="rJur" value="Indonesia"></div></div><div class="row"><div class="field"><label>Sitasi / nomor</label><input id="rCitation" placeholder="Contoh: UU No. 13 Tahun 2003 / Putusan No. ..."></div><div class="field"><label>Tipe sumber</label><select id="rType" onchange="applyCoreSourcePreset()">
+<optgroup label="Hierarki Peraturan Perundang-undangan">
+<option value="uud1945">UUD Negara Republik Indonesia Tahun 1945</option>
+<option value="tap_mpr">Ketetapan MPR (TAP MPR)</option>
+<option value="uu">Undang-Undang (UU)</option>
+<option value="kuhp_2023">↳ KUHP Nasional — UU No. 1 Tahun 2023 (sebagaimana disesuaikan/diubah UU No. 1 Tahun 2026)</option>
+<option value="penyesuaian_pidana_2026">↳ UU No. 1 Tahun 2026 tentang Penyesuaian Pidana</option>
+<option value="kuhperdata_bw">↳ Kitab Undang-Undang Hukum Perdata (KUHPerdata / Burgerlijk Wetboek)</option>
+<option value="perppu">Peraturan Pemerintah Pengganti Undang-Undang (Perppu)</option>
+<option value="pp">Peraturan Pemerintah (PP)</option>
+<option value="perpres">Peraturan Presiden (Perpres)</option>
+<option value="perda_prov">Peraturan Daerah Provinsi</option>
+<option value="perda_kab_kota">Peraturan Daerah Kabupaten/Kota</option>
+</optgroup>
+<optgroup label="Peraturan berdasarkan kewenangan / Pasal 8">
+<option value="per_mpr">Peraturan MPR</option>
+<option value="per_dpr">Peraturan DPR</option>
+<option value="per_dpd">Peraturan DPD</option>
+<option value="per_bpk">Peraturan BPK</option>
+<option value="per_bi">Peraturan Bank Indonesia</option>
+<option value="per_menteri">Peraturan Menteri</option>
+<option value="per_lembaga">Peraturan Badan / Lembaga / Komisi</option>
+<option value="per_gubernur">Peraturan Gubernur</option>
+<option value="per_bupati">Peraturan Bupati</option>
+<option value="per_walikota">Peraturan Wali Kota</option>
+<option value="per_desa">Peraturan Desa / yang setingkat</option>
+</optgroup>
+<optgroup label="Instansi Yudikatif">
+<option value="putusan_ma">Putusan Mahkamah Agung</option>
+<option value="putusan_mk">Putusan Mahkamah Konstitusi</option>
+<option value="putusan_pengadilan">Putusan Pengadilan</option>
+<option value="perma">Peraturan Mahkamah Agung (PERMA)</option>
+<option value="sema">Surat Edaran Mahkamah Agung (SEMA)</option>
+<option value="per_mk">Peraturan Mahkamah Konstitusi (PMK)</option>
+<option value="per_ky">Peraturan Komisi Yudisial</option>
+<option value="reg_yudisial_lain">Regulasi / Pedoman Instansi Yudikatif Lainnya</option>
+</optgroup>
+<optgroup label="Sumber Sekunder">
+<option value="legal_opinion">Legal Opinion / Pendapat Hukum</option>
+<option value="doctrine">Doktrin / Buku / Jurnal</option>
+<option value="memo">Memo / Literatur</option>
+</optgroup>
+</select></div></div><div id="sourceStatusHint" class="hint" style="margin:-2px 0 12px"></div><div class="field"><label>Teks sumber</label><textarea id="rText" style="min-height:240px" placeholder="Tempel bagian relevan dari UUD, UU, Perppu, PP, Perpres, Perda, PERMA, SEMA, putusan, atau sumber hukum lainnya..."></textarea></div><button class="btn primary" onclick="summarizeResearch()">Buat Research Summary</button></div><div class="card"><h2>Research Note</h2><div id="researchResult" class="preview">Belum ada research note.</div></div></div><div class="card" style="margin-top:18px"><h3>Research Library</h3><div id="researchHistory" class="history"></div></div></section>
+<section class="panel" id="risk"><div class="grid2"><div class="card"><h2>Compliance & Risk Assessment</h2><p class="hint">Screening awal berbasis kontrol. Bukan pengganti legal due diligence spesifik industri.</p><div class="row"><div class="field"><label>Entitas / klien</label><input id="riskEntity"></div><div class="field"><label>Kategori</label><select id="riskCategory"><option>General Corporate</option><option>Technology & Data</option><option>Employment</option><option>Commercial</option><option>Financial / AML</option></select></div></div><div id="questions"></div><button class="btn primary" onclick="assessRisk()">Hitung Risk Profile</button></div><div class="card"><h2>Risk Profile</h2><div id="riskResult" class="preview">Belum ada assessment.</div></div></div><div class="card" style="margin-top:18px"><h3>Riwayat Assessment</h3><div id="riskHistory" class="history"></div></div></section>
+<section class="panel" id="case"><div class="grid2"><div class="card"><h2>Case Analysis</h2><p class="hint">Masukkan kronologi/narasi dan/atau dokumen PDF/DOCX. LexiCore membaca narasi/dokumen secara menyeluruh: fakta material, fakta memberatkan & meringankan, unsur pasal, mens rea, kerugian aktual, kausalitas, tanggung jawab personal, tempus hukum, gap bukti, lalu memverifikasi sumber hukum resmi sebelum professional review.</p><div class="field"><label>Judul perkara / analisis</label><input id="caseTitle" placeholder="Contoh: Analisis dugaan wanprestasi dan PMH"></div><div class="field"><label>Narasi / kronologi</label><textarea id="caseNarrative" style="min-height:220px" placeholder="Tuliskan pihak, waktu, tempat, hubungan hukum, kronologi, tindakan masing-masing pihak, kerugian/akibat, bukti yang sudah ada, dan tujuan klien..."></textarea></div><div class="upload"><input type="file" id="caseFile" accept=".pdf,.docx"><p>PDF/DOCX • maksimum 50 MB • jika dokumen dipilih, narasi tidak wajib</p></div><label class="verify-row"><input type="checkbox" id="caseVerifyOnline" checked><span><b>Verifikasi sumber hukum resmi secara online</b><br><small>Default aktif. LexiCore menelusuri JDIH dan repository resmi instansi/yudisial yang relevan. JDIHN hanya dipakai sebagai directory/discovery dan tidak dihitung sebagai sumber hukum primer. Hasil tetap berstatus <b>Professional Verification: Pending</b>.</small></span></label><div class="actions"><button class="btn primary" onclick="analyzeCase()">Analisis + Verifikasi Sumber</button><button class="btn soft" onclick="checkOfficialSources()">Cek Koneksi JDIH</button></div><div class="result"><b>Prinsip kepastian hukum positif</b><br><small>LexiCore tidak memberi label “terkonfirmasi” jika sumber resmi gagal dijangkau. Bunyi pasal, status berlaku, perubahan/pencabutan, ketentuan peralihan, lex specialis/lex posterior, putusan MK/MA, PERMA/SEMA, dan aturan sektoral tetap wajib ditelaah lawyer.</small></div></div><div class="card"><h2>Legal Case Analysis</h2><div id="caseResult" class="preview">Belum ada analisis perkara.</div><div class="official-box"><h3>Official JDIH Verification</h3><div id="officialSourcesResult" class="result">Belum dilakukan pengecekan sumber resmi.</div></div></div></div><div class="card" style="margin-top:18px"><h3>Riwayat Case Analysis</h3><div id="caseHistory" class="history"></div></div></section>
+<section class="panel" id="client"><div class="grid2"><div class="card"><h2>Client Communication & Legal Documents</h2><p class="hint">Buat pembaruan perkara, permintaan dokumen, atau draft pemberitahuan hukum.</p><div class="row"><div class="field"><label>Nama klien</label><input id="cName"></div><div class="field"><label>Email (opsional)</label><input id="cEmail" type="email"></div></div><div class="field"><label>Jenis komunikasi</label><select id="cType"><option value="client_update">Pembaruan Perkara</option><option value="document_request">Permintaan Dokumen</option><option value="legal_notice">Pemberitahuan Hukum</option></select></div><div class="field"><label>Perkara / matter</label><input id="cMatter"></div><div class="field"><label>Langkah berikutnya</label><textarea id="cNext"></textarea></div><div class="actions"><button class="btn primary" onclick="generateClient()">Generate</button><button class="btn gold" onclick="saveClient()">Simpan Dokumen</button></div></div><div class="card"><h2>Client Document</h2><div class="field"><label>Subject</label><input id="cSubject"></div><div class="field"><label>Isi</label><textarea id="cMessage" style="min-height:300px"></textarea></div></div></div><div class="card" style="margin-top:18px"><h3>Riwayat Komunikasi</h3><div id="clientHistory" class="history"></div></div></section>
+<div class="disclaimer">LexiCore adalah lawyer-assistance workspace. Output otomatis harus diverifikasi oleh profesional hukum terhadap fakta, bukti, yurisdiksi, hukum terbaru, privilege/confidentiality, dan kepentingan klien.</div></main></div><div class="toast" id="toast"></div>
+<script>
+const API='/api'; let currentDraftId=null; const titles={draft:['Legal Drafting','Susun dan kelola draft dokumen hukum.'],review:['Contract Review & Analysis','Identifikasi klausul, risiko, pihak dan tanggal penting.'],research:['Legal Research & Case Summaries','Bangun research note dari sumber hukum yang Anda masukkan.'],risk:['Compliance & Risk Assessment','Screening kontrol dan prioritas remediasi.'],case:['Case Analysis','Analisis kronologi atau dokumen perkara terhadap isu, sumber hukum, bukti, risiko, dan strategi.'],client:['Client Communication & Legal Documents','Kelola komunikasi dan dokumen klien.']};
+function toast(m){let t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+async function json(url,opt){let r=await fetch(url,opt);let d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'Request gagal');return d}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.panel).classList.add('active');document.getElementById('pageTitle').textContent=titles[b.dataset.panel][0];document.getElementById('pageSub').textContent=titles[b.dataset.panel][1]});
+document.getElementById('effectiveDate').value=new Date().toISOString().slice(0,10);
+async function generateDraft(){try{let d=await json(API+'/generate/draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_type:docType.value,party1:party1.value,party2:party2.value,effective_date:effectiveDate.value,duration:duration.value,prompt:prompt.value})});currentDraftId=d.draft_id;draftPreview.textContent=d.content;toast('Draft berhasil dibuat');loadAll()}catch(e){toast(e.message)}}
+async function saveDraft(){let content=draftPreview.textContent;if(content.length<50)return toast('Belum ada draft untuk disimpan');try{let d=await json(API+'/drafts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:docType.value+' — '+(party1.value||'Draft'),doc_type:docType.value,party1:party1.value,party2:party2.value,effective_date:effectiveDate.value,duration:+duration.value,content,word_count:content.split(/\s+/).length,clause_count:(content.match(/PASAL \d+/g)||[]).length,status:'saved'})});currentDraftId=d.draft_id;toast('Salinan draft disimpan');loadAll()}catch(e){toast(e.message)}}
+function exportDocx(){if(!currentDraftId)return toast('Generate atau simpan draft terlebih dahulu');window.location=API+'/drafts/'+currentDraftId+'/export/docx'}
+function escapeHtml(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]))}
+function printDraft(){
+  const content=(draftPreview.textContent||'').trim();
+  if(!content || content==='Draft akan muncul di sini.') return toast('Generate draft terlebih dahulu');
+  const title=(docType.value||'Dokumen Hukum').trim();
+  const client=(party1.value||'').trim();
+  const other=(party2.value||'').trim();
+  const date=(effectiveDate.value||'').trim();
+  const meta=[client&&`Klien/Pihak: ${client}`,other&&`Pihak lainnya: ${other}`,date&&`Tanggal efektif: ${date}`].filter(Boolean);
+  const w=window.open('','_blank','width=900,height=700');
+  if(!w) return toast('Popup diblokir browser. Izinkan popup untuk Print / PDF.');
+  w.document.open();
+  w.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+    @page{size:A4;margin:22mm 20mm 22mm 22mm}
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff;color:#111}
+    body{font-family:"Times New Roman",Times,serif;font-size:12pt;line-height:1.55}
+    .sheet{width:100%;margin:0 auto}
+    .print-head{border-bottom:1px solid #b8b8b8;padding-bottom:8mm;margin-bottom:9mm}
+    .brand{font-family:Arial,sans-serif;font-size:9pt;letter-spacing:.08em;text-transform:uppercase;color:#56606b;margin-bottom:3mm}
+    h1{font-size:15pt;text-align:center;margin:0 0 3mm;text-transform:uppercase;letter-spacing:.02em}
+    .meta{font-family:Arial,sans-serif;font-size:8.5pt;color:#555;text-align:center;line-height:1.45}
+    .doc{white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;text-align:justify;font-size:12pt;line-height:1.6}
+    .verify{margin-top:12mm;padding-top:5mm;border-top:1px solid #ddd;font-family:Arial,sans-serif;font-size:8pt;color:#777}
+    @media print{.sheet{width:auto}.verify{break-inside:avoid}}
+  </style></head><body><main class="sheet"><header class="print-head"><div class="brand">LexiCore • Lawyer Operating System</div><h1>${escapeHtml(title)}</h1>${meta.length?`<div class="meta">${meta.map(escapeHtml).join(' &nbsp;•&nbsp; ')}</div>`:''}</header><section class="doc">${escapeHtml(content)}</section><footer class="verify">Dokumen kerja LexiCore — wajib diverifikasi lawyer sebelum digunakan atau ditandatangani.</footer></main><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));<\/script></body></html>`);
+  w.document.close();
+  w.focus();
+}
+async function reviewContract(){let f=contractFile.files[0];if(!f)return toast('Pilih file kontrak');let fd=new FormData();fd.append('file',f);reviewResult.textContent='Menganalisis...';try{let d=await json(API+'/review',{method:'POST',body:fd}),x=d.data;let out=`FILE: ${x.filename}\nRISK SCORE: ${x.risk_score}\nPIHAK: ${(x.parties||[]).join(', ')||'-'}\nTANGGAL EFEKTIF: ${x.effective_date||'-'}\n\n${x.summary||''}\n\nRISIKO (${(x.risks||[]).length})\n`;(x.risks||[]).forEach((r,i)=>out+=`\n${i+1}. [${r.risk_level}] ${r.category}\n${r.clause_text}\nRekomendasi: ${r.recommendation}\n`);reviewResult.textContent=out;toast('Review selesai');loadAll()}catch(e){reviewResult.textContent=e.message;toast(e.message)}}
+const coreSourcePresets={
+  kuhp_2023:{title:'Kitab Undang-Undang Hukum Pidana (KUHP Nasional)',citation:'UU No. 1 Tahun 2023 sebagaimana disesuaikan/diubah dengan UU No. 1 Tahun 2026',hint:'KUHP Nasional berlaku sejak 2 Januari 2026. Untuk riset pasal, verifikasi pula perubahan/penyesuaian dalam UU No. 1 Tahun 2026 dan putusan pengujian yang relevan.'},
+  penyesuaian_pidana_2026:{title:'Penyesuaian Pidana',citation:'UU No. 1 Tahun 2026 tentang Penyesuaian Pidana',hint:'Instrumen penyesuaian pidana yang berlaku sejak 2 Januari 2026 dan berkaitan langsung dengan implementasi KUHP Nasional.'},
+  kuhperdata_bw:{title:'Kitab Undang-Undang Hukum Perdata (KUHPerdata / Burgerlijk Wetboek)',citation:'Burgerlijk Wetboek voor Indonesie (Staatsblad 1847:23)',hint:'Gunakan dengan pemeriksaan status pasal secara spesifik karena sebagian materi KUHPerdata telah dicabut, diubah, atau digantikan oleh undang-undang sektoral.'}
+};
+function applyCoreSourcePreset(){const p=coreSourcePresets[rType.value];if(!p){sourceStatusHint.textContent='';return;}if(!rTitle.value.trim())rTitle.value=p.title;if(!rCitation.value.trim())rCitation.value=p.citation;sourceStatusHint.textContent=p.hint;}
+
+async function summarizeResearch(){try{let d=await json(API+'/research/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:rTitle.value,jurisdiction:rJur.value,citation:rCitation.value,source_type:rType.value,source_text:rText.value})}),x=d.data;researchResult.textContent=`TIPE SUMBER\n${x.source_label||x.source_type}\n\n${x.issue_label||'ISSUE'}\n${x.issue}\n\n${x.result_label||'HASIL / NORMA'}\n${x.holding}\n\n${x.reasoning_label||'ANALISIS / REASONING'}\n${x.reasoning}\n\nKEYWORDS\n${x.keywords.join(', ')}`;toast('Research note tersimpan');loadAll()}catch(e){toast(e.message)}}
+const qs=[['license','Perizinan / legalitas utama tersedia dan masih berlaku?'],['privacy','Kontrol perlindungan data dan privasi terdokumentasi?'],['contracts','Kontrak material direview dan dikelola masa berlakunya?'],['employment','Dokumen ketenagakerjaan dan kebijakan internal memadai?'],['tax','Kewajiban pajak dan dokumentasi pendukung terkelola?'],['aml','KYC / AML diterapkan jika relevan terhadap model bisnis?']];questions.innerHTML=qs.map(q=>`<div class="field"><label>${q[1]}</label><select data-risk="${q[0]}"><option value="yes">Ya</option><option value="partial">Sebagian</option><option value="no">Tidak</option></select></div>`).join('');
+async function assessRisk(){let answers={};document.querySelectorAll('[data-risk]').forEach(x=>answers[x.dataset.risk]=x.value);try{let d=await json(API+'/compliance/assess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'Compliance Assessment',entity:riskEntity.value,category:riskCategory.value,answers})}),x=d.data;riskResult.textContent=`RISK LEVEL: ${x.risk_level}\nSCORE: ${x.score}/100\n\nTEMUAN\n${x.findings.length?x.findings.map((f,i)=>`${i+1}. ${f}`).join('\n'):'Tidak ada gap utama dari screening ini.'}\n\nREKOMENDASI\n${x.recommendations.length?x.recommendations.map((f,i)=>`${i+1}. ${f}`).join('\n'):'Pertahankan dokumentasi dan lakukan review berkala.'}`;toast('Assessment tersimpan');loadAll()}catch(e){toast(e.message)}}
+function lines(title,arr,fmt){arr=arr||[];return `\n${title}\n${arr.length?arr.map((x,i)=>`${i+1}. ${fmt?fmt(x):x}`).join('\n'):'-'}`}
+function sourceStatusClass(ok){return ok?'source-ok':'source-bad'}
+function renderOfficialVerification(v){
+  if(!v || !Object.keys(v).length){officialSourcesResult.innerHTML='Verifikasi online tidak dijalankan.';return}
+  const sm=v.summary||{};
+  let html=`<div><b>Status:</b> <span class="${v.status==='FULL_OFFICIAL_SOURCE_ACCESS'?'source-ok':v.status==='PARTIAL_OFFICIAL_SOURCE_ACCESS'?'source-warn':'source-bad'}">${escapeHtml(v.status||'-')}</span><br><small>Checked: ${escapeHtml(v.checked_at||'-')} • Sumber otoritatif: ${sm.authoritative_sources_reached||0}/${sm.authoritative_sources_total||0} • Professional Verification: <b>${escapeHtml(v.professional_verification||'PENDING')}</b> • Hasil ditemukan: ${sm.results_found||0}</small></div>`;
+  if(v.source_health?.length){
+    html+=`<div class="source-grid">`+v.source_health.map(s=>`<div class="source-item"><span class="${sourceStatusClass(s.reachable)}">${s.reachable?'● ONLINE':'● UNREACHABLE'}</span><br><b>${escapeHtml(s.name)}</b><br><small>${escapeHtml(s.role||'')} ${s.http_status?'• HTTP '+s.http_status:''}</small><br><a href="${escapeHtml(s.base_url)}" target="_blank" rel="noopener">Buka sumber resmi ↗</a></div>`).join('')+`</div>`;
+  }
+  const hits=[];
+  (v.searches||[]).forEach(bundle=>(bundle.sources||[]).forEach(src=>(src.results||[]).forEach(r=>hits.push({...r,source_name:src.source_name,query:bundle.query}))));
+  if(hits.length){
+    html+=`<div style="margin-top:12px"><b>Dokumen/hasil resmi yang terdeteksi</b></div><div class="history">`+hits.slice(0,18).map(r=>`<div class="item"><b>${escapeHtml(r.title||'Dokumen hukum')}</b><br><small>${escapeHtml(r.source_name||'')} • query: ${escapeHtml(r.query||'')}</small><br><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">Buka dokumen/sumber ↗</a></div>`).join('')+`</div>`;
+  } else html+=`<div class="result"><small>Tidak ada link dokumen yang dapat diekstrak otomatis dari respons situs. Gunakan tautan pencarian/sumber resmi di atas; beberapa JDIH merender hasil melalui JavaScript atau mengubah endpoint.</small></div>`;
+  html+=`<div class="result"><small>${escapeHtml(v.disclaimer||'')}</small></div>`;
+  officialSourcesResult.innerHTML=html;
+}
+async function checkOfficialSources(){
+  officialSourcesResult.innerHTML='Mengecek konektivitas sumber resmi...';
+  try{const d=await json(API+'/legal-sources/health');officialSourcesResult.innerHTML=`<b>${d.reachable}/${d.count} sumber otoritatif terjangkau</b><br><small>JDIHN/directory tidak dihitung sebagai sumber primer.</small><div class="source-grid">`+d.data.map(s=>`<div class="source-item"><span class="${sourceStatusClass(s.reachable)}">${s.reachable?'● REACHABLE':'● '+escapeHtml(s.connectivity_status||'UNREACHABLE')}</span><br><b>${escapeHtml(s.name)}</b><br><small>${s.authoritative?'Sumber otoritatif':'Directory/discovery only'} • ${s.http_status?'HTTP '+s.http_status:escapeHtml(s.connectivity_status||'Tidak dapat dihubungi')}</small><br><a href="${escapeHtml(s.base_url)}" target="_blank" rel="noopener">Buka portal ↗</a></div>`).join('')+`</div>`}catch(e){officialSourcesResult.innerHTML=`<span class="source-bad">Pengecekan gagal:</span> ${escapeHtml(e.message)}`}
+}
+async function analyzeCase(){
+  const narrative=(caseNarrative.value||'').trim(), f=caseFile.files[0];
+  if(!f && narrative.length<120)return toast('Tanpa dokumen, narasi minimal 120 karakter diperlukan. Jika PDF/DOCX sudah dipilih, narasi boleh dikosongkan.');
+  let fd=new FormData();fd.append('title',(caseTitle.value||'Case Analysis').trim());fd.append('narrative',narrative);fd.append('verify_online',caseVerifyOnline.checked?'true':'false');if(f)fd.append('file',f);
+  caseResult.textContent='Menganalisis fakta dan isu hukum...';officialSourcesResult.innerHTML=caseVerifyOnline.checked?'Menelusuri sumber resmi online. Proses dapat memerlukan beberapa detik...':'Verifikasi online dinonaktifkan untuk analisis ini.';
+  try{let d=await json(API+'/case-analysis',{method:'POST',body:fd}),x=d.data;
+    let out=`DEEP CASE ANALYSIS\n${x.title}\n\nMETODE\n${x.analytical_method||'CASE_ANALYSIS'}\n\nSTATUS HUKUM POSITIF\n${x.legal_status||'BELUM TERVERIFIKASI'}\n\nKESIMPULAN ANALITIS AWAL\n${x.legal_analysis}`;
+    out+=lines('FAKTA MATERIAL DARI DOKUMEN',x.facts);
+    out+=lines('FAKTA YANG BERPOTENSI MEMBERATKAN',x.incriminating_facts);
+    out+=lines('FAKTA YANG BERPOTENSI MERINGANKAN / MEMBUKA RUANG PEMBELAAN',x.mitigating_facts);
+    out+=lines('ISU HUKUM UTAMA',x.legal_issues);
+    out+=lines('SUMBER HUKUM YANG HARUS DIPERIKSA',x.applicable_law,y=>`${y.domain}: ${y.source}\n   Status: ${y.status}`);
+    out+=lines('MATRIKS UNSUR PIDANA / NORMA',x.element_matrix,y=>`${y.element} [${y.status}]\n   Dukungan konstruksi lawan/jaksa: ${y.prosecution_support}\n   Fokus pembelaan/pengujian: ${y.defense_focus}`);
+    out+=lines('POSISI / ARGUMEN YANG MENDUKUNG',x.arguments_for);
+    out+=lines('COUNTER-ANALYSIS / RISIKO PENUNTUTAN',x.arguments_against);
+    out+=lines('EVIDENTIARY GAPS — DATA YANG BELUM ADA',x.evidentiary_gaps);
+    out+=lines('BUKTI / DOKUMEN YANG HARUS DIKUMPULKAN',x.evidence_needed);
+    out+=lines('RISIKO ANALISIS',x.risks);
+    out+=lines('LANGKAH HUKUM / STRATEGI PRIORITAS',x.recommendations);
+    out+=lines('NORMA YANG TERDETEKSI DALAM DOKUMEN',x.provision_refs);
+    out+=lines('NILAI UANG TERDETEKSI',x.money_values);
+    out+=lines('TANGGAL / TEMPUS TERDETEKSI',x.date_values);
+    out+=`\n\nCAKUPAN & VERIFIKASI\n${x.coverage_note}`;
+    caseResult.textContent=out;renderOfficialVerification(x.official_verification);toast('Case Analysis tersimpan');loadAll();
+  }catch(e){caseResult.textContent=e.message;toast(e.message)}
+}
+
+async function generateClient(){try{let d=await json(API+'/communication/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_name:cName.value,document_type:cType.value,matter:cMatter.value,next_step:cNext.value})});cSubject.value=d.data.subject;cMessage.value=d.data.message;toast('Dokumen klien dibuat')}catch(e){toast(e.message)}}
+async function saveClient(){try{await json(API+'/communications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_name:cName.value,client_email:cEmail.value,subject:cSubject.value,message:cMessage.value,document_type:cType.value,status:'draft'})});toast('Dokumen klien disimpan');loadAll()}catch(e){toast(e.message)}}
+function items(arr,fmt){return arr.length?arr.map(fmt).join(''):'<div class="item"><small>Belum ada data.</small></div>'}
+async function loadAll(){try{let [d,a,r,k,ca,c]=await Promise.all([json(API+'/drafts?limit=8'),json(API+'/analyses?limit=8'),json(API+'/research?limit=8'),json(API+'/compliance?limit=8'),json(API+'/case-analysis?limit=8'),json(API+'/communications?limit=8')]);mDraft.textContent=d.count;mReview.textContent=a.count;mResearch.textContent=r.data.length;mRisk.textContent=k.data.length;mCase.textContent=ca.data.length;mClient.textContent=c.data.length;draftHistory.innerHTML=items(d.data,x=>`<div class="item"><b>${x.title}</b><br><small>${x.doc_type} • ${x.created_at}</small></div>`);reviewHistory.innerHTML=items(a.data,x=>`<div class="item"><b>${x.filename}</b> <span class="badge">${x.risk_score||'LOW'}</span><br><small>${x.word_count} kata • ${(x.risks||[]).length} risiko</small></div>`);researchHistory.innerHTML=items(r.data,x=>`<div class="item"><b>${x.title}</b><br><small>${x.citation||x.jurisdiction} • ${(x.keywords||[]).join(', ')}</small></div>`);riskHistory.innerHTML=items(k.data,x=>`<div class="item"><b>${x.entity||x.title}</b> <span class="badge">${x.risk_level}</span><br><small>Score ${x.score}/100 • ${x.category}</small></div>`);caseHistory.innerHTML=items(ca.data,x=>`<div class="item"><b>${x.title}</b><br><small>${x.input_type||'narrative'}${x.filename?' • '+x.filename:''} • ${x.created_at}</small></div>`);clientHistory.innerHTML=items(c.data,x=>`<div class="item"><b>${x.subject||'Client document'}</b><br><small>${x.client_name||'-'} • ${x.document_type}</small></div>`)}catch(e){console.error(e)}}
+json(API+'/health').then(x=>{serverStatus.textContent='● API online • v'+x.version}).catch(()=>{serverStatus.textContent='● API offline';serverStatus.style.color='#b64040'});loadAll();
+</script></body></html>
