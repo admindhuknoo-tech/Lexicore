@@ -1,0 +1,1 @@
+"""LexiCore Flask route blueprints."""

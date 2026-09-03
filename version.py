@@ -1,0 +1,6 @@
+"""Single source of truth for LexiCore product/release metadata."""
+LEXICORE_VERSION = "1.3.5.4"
+PRODUCT_NAME = "LexiCore"
+INITIATIVE = "ELF"
+FIRM_NAME = "Erfan's Law Firm"
+PRODUCT_LABEL = f"{PRODUCT_NAME} v{LEXICORE_VERSION}"

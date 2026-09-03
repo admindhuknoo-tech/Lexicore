@@ -72,18 +72,28 @@ class DocumentExtractor:
 class EntityExtractor:
     @staticmethod
     def extract_parties(text: str) -> List[str]:
-        """Cari nama pihak berdasarkan pola 'PIHAK PERTAMA', 'PIHAK KEDUA', dll"""
+        """Cari nama pihak berdasarkan pola 'PIHAK PERTAMA', 'PIHAK KEDUA', dll.
+
+        Bug fix (v1.3.2 patch): the previous pattern made the ':'/'-' separator
+        optional and used finditer() to collect every match. Indonesian contracts
+        refer back to "Pihak Pertama"/"Pihak Kedua" dozens of times after the
+        defining clause (e.g. "Pihak Pertama dapat mengakhiri perjanjian ini
+        secara sepihak..."), so every one of those later sentences also matched
+        and got truncated into a garbage "party name". The separator is now
+        mandatory and only the first (defining) occurrence of each label is used,
+        which is where Indonesian contracts actually name the parties.
+        """
         parties = []
         patterns = [
-            r'PIHAK PERTAMA\s*[:\-]?\s*([^\n,]+)',
-            r'PIHAK KEDUA\s*[:\-]?\s*([^\n,]+)',
-            r'PHAK PERTAMA\s*[:\-]?\s*([^\n,]+)',
-            r'PHAK KEDUA\s*[:\-]?\s*([^\n,]+)'
+            r'PIHAK PERTAMA\s*[:\-]\s*([^\n,\.]+)',
+            r'PIHAK KEDUA\s*[:\-]\s*([^\n,\.]+)',
+            r'PHAK PERTAMA\s*[:\-]\s*([^\n,\.]+)',
+            r'PHAK KEDUA\s*[:\-]\s*([^\n,\.]+)'
         ]
-        
+
         for pattern in patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
+            match = re.search(pattern, text, re.IGNORECASE)  # only the defining occurrence
+            if match:
                 name = match.group(1).strip()[:50]  # Batasi panjang
                 if name and len(name) > 3:
                     parties.append(name)
@@ -147,9 +157,14 @@ class RiskDetector:
         },
         {
             "keywords": ["terminasi sepihak", "unilateral termination", "putus kontrak sepihak"],
-            "category": "Terminasi",
+            "patterns": [
+                r"(?:pihak\s+(?:pertama|kedua)|salah\s+satu\s+pihak|perusahaan|pemberi\s+kerja|vendor|klien).{0,90}(?:dapat|berhak|boleh).{0,80}(?:mengakhiri|memutus|menghentikan|membatalkan).{0,100}(?:sepihak|tanpa\s+(?:persetujuan|pemberitahuan|alasan)|sewaktu-waktu)",
+                r"(?:mengakhiri|memutus|menghentikan|membatalkan).{0,100}(?:tanpa\s+(?:persetujuan|pemberitahuan|alasan)|secara\s+sepihak|sewaktu-waktu)",
+                r"(?:tanpa\s+pemberitahuan|tanpa\s+persetujuan).{0,90}(?:mengakhiri|memutus|menghentikan|membatalkan)"
+            ],
+            "category": "Terminasi Sepihak",
             "risk_level": "HIGH",
-            "recommendation": "Berisiko tinggi! Pastikan terminasi sepihak hanya untuk pelanggaran material dan beri kesempatan perbaikan (cure period) 14-30 hari."
+            "recommendation": "Uji dasar terminasi, pelanggaran material, kewajiban pemberitahuan, kesempatan perbaikan (cure period), hak yang setara bagi para pihak, serta konsekuensi pembayaran/kompensasi."
         },
         {
             "keywords": ["rahasia", "confidential", "kerahasiaan", "NDA"],
@@ -188,9 +203,10 @@ class RiskDetector:
             
             for rule in RiskDetector.RISK_RULES:
                 # Cek apakah ada keyword dalam line
-                keyword_found = any(kw.lower() in line_lower for kw in rule["keywords"])
+                keyword_found = any(kw.lower() in line_lower for kw in rule.get("keywords", []))
+                pattern_found = any(re.search(pat, line_lower, re.IGNORECASE) for pat in rule.get("patterns", []))
                 
-                if keyword_found:
+                if keyword_found or pattern_found:
                     # Cegah duplikasi untuk line yang sama
                     if not any(r.clause_text.strip() == line.strip() for r in detected_risks):
                         risk = RiskClause(

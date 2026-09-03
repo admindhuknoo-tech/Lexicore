@@ -17,7 +17,9 @@ from urllib.error import URLError, HTTPError
 import re
 import ssl
 
-UA = "LexiCore/1.2.1 (+local legal research client; official JDIH verification)"
+from version import LEXICORE_VERSION
+
+UA = f"LexiCore/{LEXICORE_VERSION} (+case-scoped official legal retrieval)"
 DEFAULT_TIMEOUT = 5
 MAX_BODY = 1_500_000
 
@@ -70,6 +72,17 @@ OFFICIAL_SOURCES = [
         "source_kind": "jdih", "authoritative": True, "search_template": None, "official": True,
     },
     {
+        "id": "ojk", "name": "JDIH / Regulasi Otoritas Jasa Keuangan",
+        "base_url": "https://jdih.ojk.go.id/", "role": "financial_services_regulation",
+        "source_kind": "jdih", "authoritative": True, "search_template": None, "official": True,
+    },
+    {
+        "id": "kemnaker", "name": "JDIH Kementerian Ketenagakerjaan",
+        "base_url": "https://jdih.kemnaker.go.id/", "role": "employment_regulation",
+        "source_kind": "jdih", "authoritative": True,
+        "search_template": "https://jdih.kemnaker.go.id/peraturan?semuajudul={q}", "official": True,
+    },
+    {
         "id": "kemendagri", "name": "JDIH Kementerian Dalam Negeri",
         "base_url": "https://jdih.kemendagri.go.id/", "role": "regional_government_regulations",
         "source_kind": "jdih", "authoritative": True, "search_template": None, "official": True,
@@ -80,7 +93,7 @@ OFFICIAL_SOURCES = [
 ALLOWED_OFFICIAL_HOST_SUFFIXES = (
     "jdihn.go.id", "peraturan.bpk.go.id", "bpk.go.id", "mahkamahagung.go.id",
     "mkri.id", "setneg.go.id", "dpr.go.id", "kemenkum.go.id", "kemendagri.go.id",
-    "bphn.go.id", "djpp.kemenkum.go.id", "go.id",
+    "bphn.go.id", "djpp.kemenkum.go.id", "ojk.go.id", "kemnaker.go.id", "go.id",
 )
 
 class AnchorParser(HTMLParser):

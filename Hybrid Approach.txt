@@ -1,0 +1,21 @@
+def analyze_case_hybrid(title: str, text: str) -> Dict:
+    try:
+        # Coba AI dulu
+        return ai_engine.analyze_case(title, text)
+    except Exception as e:
+        logger.warning(f"AI fallback to regex: {e}")
+        # Fallback ke regex-based analysis yang sudah ada
+        from contract_review import RiskDetector
+        risks, score = RiskDetector.analyze(text)
+        return {
+            "facts": ["AI unavailable, using rule-based analysis"],
+            "legal_issues": [{"issue": r.category, "analysis": r.recommendation} for r in risks[:3]],
+            "applicable_law": [],
+            "arguments_for": [],
+            "arguments_against": [],
+            "hypothesis": {"best_case": {"scenario": "N/A", "likelihood": 0.0, "conditions": []}, 
+                          "worst_case": {"scenario": "N/A", "likelihood": 0.0, "conditions": []}},
+            "recommendations": [r.recommendation for r in risks[:2]],
+            "risk_assessment": {"overall_risk": score, "key_risks": [r.category for r in risks[:3]], "mitigations": []},
+            "_fallback": True
+        }

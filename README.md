@@ -1,17 +1,16 @@
-# LEXICORE Patch v1.2.3 — Document Input Validation Fix
+# LexiCore Patch v1.3.5.3
 
-Perbaikan incremental dari v1.2.2.
+BAP Benchmark & Full-Document Pipeline Corrective.
 
-## Perubahan
-- Case Analysis menerima PDF/DOCX tanpa kewajiban mengisi narasi.
-- Batas minimal 120 karakter hanya berlaku untuk mode **narasi tanpa dokumen**.
-- Jika dokumen diunggah tetapi tidak memiliki teks yang dapat diekstrak, LexiCore memberi pesan khusus, bukan meminta narasi 120 karakter.
-- UI menjelaskan bahwa narasi tidak wajib bila PDF/DOCX sudah dipilih.
-- Tidak ada perubahan database, Official JDIH Federation, atau Deep Case Analysis logic.
+Overlay ke baseline v1.3.5.2. Patch hanya berisi file yang berubah; tidak membawa `lexicore.db`.
 
-## File berubah
-- `app.py`
-- `static/index.html`
+Setelah overlay:
 
-## Instalasi
-Replace dua file sesuai path project, restart `py app.py`, lalu hard refresh browser (`Ctrl+F5`).
+```bat
+release_check.bat
+py app.py
+```
+
+Target `/api/health`: version `1.3.5.3`, schema_version tetap `3`.
+
+Kemudian ulangi benchmark BAP 36 halaman dan export PDF/DOCX. Freeze hanya jika release gate PASS dan benchmark substansial sesuai.

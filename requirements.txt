@@ -3,3 +3,7 @@ flask-cors==4.0.0
 PyPDF2==3.0.1
 python-docx==1.1.0
 Werkzeug==2.3.7
+reportlab>=4.2.0
+
+# Dev-only, for running test_smoke.py — not needed to run the app itself:
+pytest>=8.0.0

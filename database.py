@@ -1,10 +1,78 @@
-"""LexiCore database layer (SQLite)."""
-import sqlite3
+"""LexiCore database layer (SQLite) with versioned, idempotent migrations."""
+from __future__ import annotations
+
 import json
+import os
+import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional
 
-DB_PATH = "lexicore.db"
+from services.backup_service import create_database_backup, ensure_daily_backup, prune_backups
+
+DB_PATH = os.environ.get("LEXICORE_DB_PATH", "lexicore.db")
+SCHEMA_VERSION = 3
+
+# Every table column expected by the current application lives here.  When a
+# future release adds a column, add it to this map.  Startup validation will
+# detect the missing column, create a backup, and add it idempotently.
+EXPECTED_COLUMNS = {
+    "drafts": [
+        ("id", "INTEGER"), ("title", "TEXT"), ("doc_type", "TEXT"), ("party1", "TEXT"),
+        ("party2", "TEXT"), ("effective_date", "TEXT"), ("duration", "INTEGER"),
+        ("content", "TEXT"), ("word_count", "INTEGER"), ("clause_count", "INTEGER"),
+        ("status", "TEXT DEFAULT 'draft'"), ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "contract_analyses": [
+        ("id", "INTEGER"), ("filename", "TEXT"), ("file_path", "TEXT"), ("total_pages", "INTEGER"),
+        ("word_count", "INTEGER"), ("parties", "TEXT"), ("effective_date", "TEXT"),
+        ("termination_date", "TEXT"), ("risks", "TEXT"), ("summary", "TEXT"),
+        ("risk_score", "TEXT"), ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "legal_research": [
+        ("id", "INTEGER"), ("title", "TEXT"), ("jurisdiction", "TEXT"), ("citation", "TEXT"),
+        ("source_type", "TEXT"), ("source_text", "TEXT"), ("issue", "TEXT"), ("holding", "TEXT"),
+        ("reasoning", "TEXT"), ("keywords", "TEXT"), ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "risk_assessments": [
+        ("id", "INTEGER"), ("title", "TEXT"), ("entity", "TEXT"), ("category", "TEXT"),
+        ("answers", "TEXT"), ("score", "INTEGER"), ("risk_level", "TEXT"), ("findings", "TEXT"),
+        ("recommendations", "TEXT"), ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "client_communications": [
+        ("id", "INTEGER"), ("draft_id", "INTEGER"), ("client_name", "TEXT"), ("client_email", "TEXT"),
+        ("subject", "TEXT"), ("message", "TEXT"), ("document_type", "TEXT"),
+        ("status", "TEXT DEFAULT 'draft'"), ("sent_at", "TIMESTAMP"),
+        ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "case_analyses": [
+        ("id", "INTEGER"), ("title", "TEXT"), ("input_type", "TEXT"), ("filename", "TEXT"),
+        ("source_text", "TEXT"), ("facts", "TEXT"), ("legal_issues", "TEXT"),
+        ("applicable_law", "TEXT"), ("legal_analysis", "TEXT"), ("arguments_for", "TEXT"),
+        ("arguments_against", "TEXT"), ("evidence_needed", "TEXT"), ("risks", "TEXT"),
+        ("recommendations", "TEXT"), ("coverage_note", "TEXT"),
+        ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "legal_source_verifications": [
+        ("id", "INTEGER"), ("case_analysis_id", "INTEGER"), ("status", "TEXT"), ("checked_at", "TEXT"),
+        ("query_bundle", "TEXT"), ("source_health", "TEXT"), ("results_count", "INTEGER DEFAULT 0"),
+        ("professional_status", "TEXT DEFAULT 'PENDING'"), ("professional_notes", "TEXT"),
+        ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "audit_log": [
+        ("id", "INTEGER"), ("action", "TEXT"), ("entity_type", "TEXT"), ("entity_id", "INTEGER"),
+        ("details", "TEXT"), ("user", "TEXT DEFAULT 'system'"),
+        ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "case_regulatory_snapshots": [
+        ("id", "INTEGER"), ("case_analysis_id", "INTEGER"), ("mode", "TEXT"),
+        ("domains", "TEXT"), ("queries", "TEXT"), ("official_results", "TEXT"),
+        ("local_seed_count", "INTEGER DEFAULT 0"), ("official_results_count", "INTEGER DEFAULT 0"),
+        ("source_ids", "TEXT"), ("content_hash", "TEXT"), ("fetched_at", "TEXT"),
+        ("professional_status", "TEXT DEFAULT 'PENDING'"),
+        ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+}
 
 
 def get_db_connection():
@@ -13,49 +81,151 @@ def get_db_connection():
     return conn
 
 
-def init_database():
-    conn = get_db_connection()
+def _create_tables(conn):
     cur = conn.cursor()
-    cur.execute('''CREATE TABLE IF NOT EXISTS drafts (
+    cur.execute("""CREATE TABLE IF NOT EXISTS drafts (
         id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, doc_type TEXT NOT NULL,
         party1 TEXT, party2 TEXT, effective_date TEXT, duration INTEGER, content TEXT NOT NULL,
         word_count INTEGER, clause_count INTEGER, status TEXT DEFAULT 'draft',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS contract_analyses (
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS contract_analyses (
         id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT NOT NULL, file_path TEXT,
         total_pages INTEGER, word_count INTEGER, parties TEXT, effective_date TEXT,
         termination_date TEXT, risks TEXT, summary TEXT, risk_score TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS legal_research (
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS legal_research (
         id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, jurisdiction TEXT,
         citation TEXT, source_type TEXT, source_text TEXT, issue TEXT, holding TEXT,
-        reasoning TEXT, keywords TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS risk_assessments (
+        reasoning TEXT, keywords TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS risk_assessments (
         id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, entity TEXT,
         category TEXT, answers TEXT, score INTEGER, risk_level TEXT, findings TEXT,
-        recommendations TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS client_communications (
+        recommendations TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS client_communications (
         id INTEGER PRIMARY KEY AUTOINCREMENT, draft_id INTEGER, client_name TEXT,
         client_email TEXT, subject TEXT, message TEXT, document_type TEXT,
         status TEXT DEFAULT 'draft', sent_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (draft_id) REFERENCES drafts(id))''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS case_analyses (
+        FOREIGN KEY (draft_id) REFERENCES drafts(id))""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS case_analyses (
         id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, input_type TEXT, filename TEXT,
         source_text TEXT NOT NULL, facts TEXT, legal_issues TEXT, applicable_law TEXT,
         legal_analysis TEXT, arguments_for TEXT, arguments_against TEXT, evidence_needed TEXT,
         risks TEXT, recommendations TEXT, coverage_note TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS legal_source_verifications (
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS legal_source_verifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT, case_analysis_id INTEGER, status TEXT, checked_at TEXT,
         query_bundle TEXT, source_health TEXT, results_count INTEGER DEFAULT 0,
         professional_status TEXT DEFAULT 'PENDING', professional_notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (case_analysis_id) REFERENCES case_analyses(id))''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS audit_log (
+        FOREIGN KEY (case_analysis_id) REFERENCES case_analyses(id))""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, entity_type TEXT,
         entity_id INTEGER, details TEXT, user TEXT DEFAULT 'system',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit(); conn.close()
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS case_regulatory_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, case_analysis_id INTEGER NOT NULL, mode TEXT,
+        domains TEXT, queries TEXT, official_results TEXT, local_seed_count INTEGER DEFAULT 0,
+        official_results_count INTEGER DEFAULT 0, source_ids TEXT, content_hash TEXT, fetched_at TEXT,
+        professional_status TEXT DEFAULT 'PENDING', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (case_analysis_id) REFERENCES case_analyses(id))""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_case_regulatory_snapshots_case ON case_regulatory_snapshots(case_analysis_id)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS schema_meta (
+        key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    conn.commit()
+
+
+def _existing_columns(conn, table: str) -> set[str]:
+    cur = conn.execute(f"PRAGMA table_info({table})")
+    return {row[1] for row in cur.fetchall()}
+
+
+def schema_drift(conn) -> Dict[str, List[str]]:
+    drift: Dict[str, List[str]] = {}
+    for table, expected in EXPECTED_COLUMNS.items():
+        row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+        if not row:
+            drift[table] = [name for name, _ in expected]
+            continue
+        existing = _existing_columns(conn, table)
+        missing = [name for name, _ in expected if name not in existing]
+        if missing:
+            drift[table] = missing
+    return drift
+
+
+def _schema_version(conn) -> int:
+    try:
+        row = conn.execute("SELECT value FROM schema_meta WHERE key='schema_version'").fetchone()
+        return int(row[0]) if row else 0
+    except Exception:
+        return 0
+
+
+def _set_schema_version(conn, version: int):
+    conn.execute("""INSERT INTO schema_meta(key,value,updated_at) VALUES('schema_version',?,CURRENT_TIMESTAMP)
+                    ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP""", (str(version),))
+
+
+def _migrate_schema(conn):
+    """Heal additive schema drift. Safe to re-run on every startup."""
+    conn.execute("""CREATE TABLE IF NOT EXISTS schema_meta (
+        key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    changed = []
+    for table, expected in EXPECTED_COLUMNS.items():
+        row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+        if not row:
+            continue
+        existing = _existing_columns(conn, table)
+        for column, decl in expected:
+            if column == "id" or column in existing:
+                continue
+            # SQLite ALTER TABLE rejects non-constant defaults such as
+            # CURRENT_TIMESTAMP on some versions. Add a migration-safe shape,
+            # then backfill existing rows; CREATE TABLE still keeps the default
+            # for newly created databases.
+            alter_decl = decl
+            needs_timestamp_backfill = "CURRENT_TIMESTAMP" in decl.upper()
+            if needs_timestamp_backfill:
+                alter_decl = decl.upper().replace(" DEFAULT CURRENT_TIMESTAMP", "")
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {alter_decl}")
+            if needs_timestamp_backfill:
+                conn.execute(f"UPDATE {table} SET {column}=CURRENT_TIMESTAMP WHERE {column} IS NULL")
+            changed.append(f"{table}.{column}")
+    _set_schema_version(conn, SCHEMA_VERSION)
+    conn.commit()
+    return changed
+
+
+def validate_schema(conn) -> Dict[str, List[str]]:
+    drift = schema_drift(conn)
+    if drift:
+        raise RuntimeError(f"LexiCore database schema drift remains after migration: {drift}")
+    return drift
+
+
+def init_database():
+    # First create missing tables. Then inspect the shape of existing tables.
+    conn = get_db_connection()
+    _create_tables(conn)
+    drift = schema_drift(conn)
+    current_version = _schema_version(conn)
+    conn.close()
+
+    # A restore point is created before any ALTER TABLE operation.  Test DBs
+    # can opt out via LEXICORE_DISABLE_AUTO_BACKUP=1.
+    if (drift or current_version < SCHEMA_VERSION) and os.environ.get("LEXICORE_DISABLE_AUTO_BACKUP") != "1":
+        create_database_backup(DB_PATH, reason=f"pre_migration_v{current_version}_to_v{SCHEMA_VERSION}")
+
+    conn = get_db_connection()
+    _create_tables(conn)
+    changed = _migrate_schema(conn)
+    validate_schema(conn)
+    conn.close()
+    if os.environ.get("LEXICORE_DISABLE_AUTO_BACKUP") != "1":
+        if os.environ.get("LEXICORE_AUTO_BACKUP_DAILY", "1") != "0":
+            ensure_daily_backup(DB_PATH)
+        prune_backups(DB_PATH, keep=int(os.environ.get("LEXICORE_BACKUP_KEEP", "30")))
+    return {"schema_version": SCHEMA_VERSION, "migrated_columns": changed}
 
 
 class DraftManager:
@@ -203,6 +373,45 @@ class CommunicationManager:
     @staticmethod
     def all(limit:int=50)->List[Dict]:
         conn=get_db_connection(); rows=conn.execute('SELECT * FROM client_communications ORDER BY created_at DESC LIMIT ?',(limit,)).fetchall(); conn.close(); return [dict(r) for r in rows]
+
+
+class CaseRegulatorySnapshotManager:
+    """Persist compact metadata-only regulatory retrieval snapshots per case."""
+
+    @staticmethod
+    def save(case_analysis_id: int, payload: Dict) -> int:
+        conn = get_db_connection(); cur = conn.cursor()
+        sql = ("INSERT INTO case_regulatory_snapshots "
+               "(case_analysis_id,mode,domains,queries,official_results,local_seed_count,official_results_count,source_ids,content_hash,fetched_at,professional_status) "
+               "VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        cur.execute(sql, (
+            case_analysis_id, payload.get('mode',''),
+            json.dumps(payload.get('domains',[]),ensure_ascii=False),
+            json.dumps(payload.get('queries',[]),ensure_ascii=False),
+            json.dumps(payload.get('official_results',[]),ensure_ascii=False),
+            int(payload.get('local_seed_count',0) or 0), int(payload.get('official_results_count',0) or 0),
+            json.dumps(payload.get('official_source_ids',[]),ensure_ascii=False),
+            payload.get('content_hash',''), payload.get('fetched_at',''), payload.get('professional_verification','PENDING')
+        ))
+        i = cur.lastrowid; conn.commit(); conn.close()
+        AuditLogger.log_action('case_regulatory_snapshot','case_analysis',case_analysis_id,
+            f"mode={payload.get('mode')} | official={payload.get('official_results_count',0)} | seed={payload.get('local_seed_count',0)}")
+        return i
+
+    @staticmethod
+    def latest(case_analysis_id: int) -> Optional[Dict]:
+        conn=get_db_connection()
+        row=conn.execute('SELECT * FROM case_regulatory_snapshots WHERE case_analysis_id=? ORDER BY id DESC LIMIT 1',(case_analysis_id,)).fetchone()
+        conn.close()
+        if not row:
+            return None
+        d=dict(row)
+        for key in ('domains','queries','official_results','source_ids'):
+            try:
+                d[key]=json.loads(d.get(key) or '[]')
+            except Exception:
+                d[key]=[]
+        return d
 
 
 class AuditLogger:
