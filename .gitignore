@@ -9,10 +9,3 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
-.env  .pytest_cache/  __pycache__/  *.pyc  backups/ 
-.env  .pytest_cache/  __pycache__/  *.pyc  backups/ 
-.env 
-.pytest_cache/ 
-__pycache__/ 
-*.pyc 
-backups/ 

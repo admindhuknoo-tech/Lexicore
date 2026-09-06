@@ -1986,3 +1986,38 @@ def test_rc17_export_uses_lawyer_facing_language_for_new_guards():
     assert 'PLEADED_FACT' not in txt
     assert 'Keterkaitan topik ditemukan' in txt
     assert any(t=='Kandidat Dasar Hukum yang Perlu Diverifikasi' for t,_ in sections)
+
+
+def test_case_readiness_does_not_rise_from_identity_or_status_only():
+    from services.case_working_paper import build_case_working_paper
+    base={
+      'case_readiness':{'components':{'evidence_map':{'percentage':0},'legal_analysis':{'percentage':38}}},
+      'evidentiary_gaps':[
+        'Laporan hasil perhitungan kerugian',
+        'Bukti aliran dana',
+        'Status pembayaran kredit',
+        'Status agunan',
+        'SOP kredit',
+      ],
+      'arguments_for':['Fakta pendukung sementara'],
+      'arguments_against':[],
+      'source_ledger':[], 'legal_issues':[], 'applicable_law':[],
+      'case_regulatory_snapshot':{'official_results':[]}
+    }
+    p0=build_case_working_paper(base)['working_paper_percentage']
+    with_status=dict(base)
+    with_status['case_regulatory_snapshot']={'official_results':[
+      {'positive_law_verification':{
+        'legal_status':'IN_FORCE',
+        'identity_confirmed':True,
+        'case_nexus_status':'CASE_NEXUS_UNCERTAIN',
+        'tempus_status':'TEMPUS_UNVERIFIED',
+        'tempus_applicable':False,
+        'final_status':'POTENTIALLY_APPLICABLE',
+        'provision_verification':{'status':'PROVISION_VERIFIED','verified_count':2},
+      }}
+    ]}
+    p1=build_case_working_paper(with_status)['working_paper_percentage']
+    assert p1['percentage'] == p0['percentage']
+    assert any(x['variable']=='Dasar hukum positif belum terverifikasi memadai' for x in p1['variables_decreasing'])
+    assert not any(x['variable']=='Dasar hukum resmi yang telah lolos verifikasi' for x in p1['variables_increasing'])

@@ -14,7 +14,7 @@ from contract_review import ContractReviewEngine
 from database import (init_database, DraftManager, AnalysisManager, ResearchManager,
                       RiskAssessmentManager, CommunicationManager, AuditLogger, RegulatoryCorpusManager,
                       get_db_connection, SCHEMA_VERSION)
-from legal_sources import source_health, federated_search, public_source_registry
+from legal_sources import source_health, federated_search, public_source_registry, public_secondary_source_registry, supplementary_search_many
 from ai_engine import status as ai_status
 from regulatory_db import get_all_regulations, search_regulations, retrieve_for_case
 from norm_conflict import analyze_conflicts
@@ -1360,7 +1360,9 @@ def dashboard_metrics():
 @app.route('/api/legal-sources')
 def legal_sources_registry():
     data=public_source_registry()
-    return jsonify(success=True,data=data,count=len(data))
+    secondary=public_secondary_source_registry()
+    return jsonify(success=True,data=data,count=len(data),secondary_research=secondary,secondary_count=len(secondary),
+                   note='Secondary research providers such as Hukumonline are discovery/corroboration only and never replace official-source verification.')
 
 @app.route('/api/legal-sources/health')
 def legal_sources_health():
@@ -1370,7 +1372,13 @@ def legal_sources_health():
 def legal_sources_search():
     q=(request.args.get('q') or '').strip()
     if len(q)<3: return jsonify(success=False,error='Query minimal 3 karakter'),400
-    return jsonify(success=True,query=q,data=federated_search(q))
+    official=federated_search(q)
+    secondary=[]
+    if (request.args.get('secondary') or '').strip().lower() in ('1','true','yes','on'):
+        sec_map=supplementary_search_many([q],per_source_limit=6,max_workers=2,time_budget_seconds=10.0)
+        secondary=sec_map.get(q,[])
+    return jsonify(success=True,query=q,data=official,secondary_research=secondary,
+                   secondary_disclaimer='Hukumonline/secondary results are research aids only; legal status and applicability require official sources.')
 
 app.register_blueprint(create_case_analysis_blueprint(
     allowed_file=allowed_file,

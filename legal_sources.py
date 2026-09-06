@@ -26,6 +26,11 @@ except Exception:
     PdfReader = None
 
 try:
+    import pymupdf
+except Exception:
+    pymupdf = None
+
+try:
     import certifi
 except Exception:  # optional at import time; requirements installs it for production
     certifi = None
@@ -58,6 +63,45 @@ def _cache_get(bucket: str, key, ttl: int):
 def _cache_put(bucket: str, key, value):
     with _CACHE_LOCK:
         _CACHE.setdefault(bucket,{})[key]=(time.monotonic(), dict(value) if isinstance(value,dict) else value)
+
+
+
+def _canonical_identity_matches_from_text(text: str | None) -> list[tuple[int,str]]:
+    """Return explicit instrument identities ordered by their position in text.
+
+    The first identity is treated as the document's own primary identity.
+    Referenced/amended instruments later in the body are retained as diagnostics
+    only and must never satisfy exact full-text identity alignment.
+    """
+    value=re.sub(r"\s+", " ", str(text or "")).strip()
+    patterns=(
+        ('UU', r"(?:UNDANG[ -]?UNDANG|UU)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
+        ('PP', r"(?:PERATURAN\s+PEMERINTAH|PP)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
+        ('PERPRES', r"(?:PERATURAN\s+PRESIDEN|PERPRES)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
+        ('PERMA', r"(?:PERATURAN\s+MAHKAMAH\s+AGUNG|PERMA)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
+        ('SEMA', r"(?:SURAT\s+EDARAN\s+MAHKAMAH\s+AGUNG|SEMA)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
+        ('POJK', r"(?:PERATURAN\s+OTORITAS\s+JASA\s+KEUANGAN|POJK)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+)(?:/POJK\.[0-9]+)?(?:/|\s+TAHUN\s+)(20\d{2})"),
+        ('SEOJK', r"(?:SURAT\s+EDARAN\s+OTORITAS\s+JASA\s+KEUANGAN|SEOJK)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+)(?:/SEOJK\.[0-9]+)?(?:/|\s+TAHUN\s+)(20\d{2})"),
+    )
+    matches=[]
+    for kind,pat in patterns:
+        for m in re.finditer(pat,value,re.I):
+            matches.append((m.start(),f"{kind}:{m.group(1)}:{m.group(2)}"))
+    matches.sort(key=lambda x:x[0])
+    out=[]; seen=set()
+    for pos,key in matches:
+        if key not in seen:
+            seen.add(key); out.append((pos,key))
+    return out
+
+
+def _canonical_identity_keys_from_text(text: str | None) -> list[str]:
+    return [key for _,key in _canonical_identity_matches_from_text(text)]
+
+
+def _canonical_identity_key_from_text(text: str | None) -> str | None:
+    matches=_canonical_identity_matches_from_text(text)
+    return matches[0][1] if matches else None
 
 DEFAULT_TIMEOUT = 5
 MAX_BODY = 1_500_000
@@ -149,6 +193,23 @@ OFFICIAL_SOURCES = [
 ]
 
 
+# Secondary legal-research providers are discovery/corroboration aids only.
+# They are deliberately excluded from OFFICIAL_SOURCES so they can never
+# satisfy the authoritative-source, legal-status, tempus, or applicability gates.
+SECONDARY_RESEARCH_SOURCES = [
+    {
+        "id": "hukumonline", "name": "Hukumonline — Pusat Data / Legal Research",
+        "base_url": "https://www.hukumonline.com/pusatdata/",
+        "role": "secondary_legal_research", "source_kind": "secondary_legal_research",
+        "authoritative": False, "official": False,
+        "search_template": "https://search.hukumonline.com/search/regulations/?q={q}",
+        "reference_url": "https://www.hukumonline.com/pusatdata/",
+    },
+]
+
+ALLOWED_SECONDARY_HOST_SUFFIXES = ("hukumonline.com",)
+
+
 ALLOWED_OFFICIAL_HOST_SUFFIXES = (
     "jdihn.go.id", "peraturan.bpk.go.id", "bpk.go.id", "mahkamahagung.go.id",
     "mkri.id", "setneg.go.id", "dpr.go.id", "kemenkum.go.id", "kemendagri.go.id",
@@ -184,6 +245,41 @@ def _official_url(url: str) -> bool:
         return host.endswith(ALLOWED_OFFICIAL_HOST_SUFFIXES)
     except Exception:
         return False
+
+
+def _secondary_url(url: str) -> bool:
+    try:
+        host=(urlparse(url).hostname or "").lower()
+        return host.endswith(ALLOWED_SECONDARY_HOST_SUFFIXES)
+    except Exception:
+        return False
+
+
+def _extract_secondary_results(html: bytes, base_url: str, query: str, limit: int=8):
+    """Extract Hukumonline discovery links without treating them as primary law."""
+    try:
+        raw=html.decode("utf-8","ignore")
+    except Exception:
+        return []
+    parser=AnchorParser()
+    try:
+        parser.feed(raw)
+    except Exception:
+        return []
+    out=[]; seen=set()
+    for href,text in parser.links:
+        url=urljoin(base_url,href)
+        if not url.startswith("http") or not _secondary_url(url) or url in seen:
+            continue
+        path=urlparse(url).path.lower()
+        score=_text_score(text,query)
+        useful=any(k in path for k in ("pusatdata","klinik","berita","analisis","putusan","peraturan","search"))
+        if score <= 0 and not useful:
+            continue
+        seen.add(url)
+        out.append({"title":(text[:300] or url),"url":url,"score":score,"secondary_only":True})
+    out.sort(key=lambda x:(x["score"],len(x["title"])),reverse=True)
+    return out[:limit]
 
 
 def _text_score(text: str, query: str) -> int:
@@ -294,6 +390,72 @@ def search_source(source: dict, query: str, limit: int=8):
 
 
 
+def search_secondary_source(source: dict, query: str, limit: int=6):
+    """Search a non-authoritative legal-research provider.
+
+    A successful result is discovery/corroboration only. It is never passed to
+    the positive-law verifier and cannot raise VERIFIED_APPLICABLE.
+    """
+    tpl=source.get("search_template")
+    search_url=tpl.format(q=quote_plus(query)) if tpl else source.get("base_url")
+    try:
+        status,final_url,content_type,body=_request(search_url,timeout=DEFAULT_TIMEOUT)
+        items=_extract_secondary_results(body,final_url,query,limit) if "html" in (content_type or "").lower() else []
+        return {"source_id":source.get("id"),"source_name":source.get("name"),"role":source.get("role"),
+                "source_kind":source.get("source_kind"),"authoritative":False,"reachable":200 <= status < 400,
+                "connectivity_status":_connectivity_status(http_status=status),"http_status":status,
+                "search_url":search_url,"final_url":final_url,"reference_url":source.get("reference_url"),
+                "results":items,"error":None}
+    except HTTPError as e:
+        return {"source_id":source.get("id"),"source_name":source.get("name"),"role":source.get("role"),
+                "source_kind":source.get("source_kind"),"authoritative":False,"reachable":False,
+                "connectivity_status":_connectivity_status(e,http_status=e.code),"http_status":e.code,
+                "search_url":search_url,"final_url":search_url,"reference_url":source.get("reference_url"),
+                "results":[],"error":str(e)[:240]}
+    except Exception as e:
+        return {"source_id":source.get("id"),"source_name":source.get("name"),"role":source.get("role"),
+                "source_kind":source.get("source_kind"),"authoritative":False,"reachable":False,
+                "connectivity_status":_connectivity_status(e),"http_status":getattr(e,"code",None),
+                "search_url":search_url,"final_url":search_url,"reference_url":source.get("reference_url"),
+                "results":[],"error":str(e)[:240]}
+
+
+def supplementary_search_many(queries, source_ids=("hukumonline",), per_source_limit: int=5,
+                              max_workers: int=3, time_budget_seconds: float | None=12.0):
+    """Bounded secondary research lookup; isolated from official verification."""
+    queries=[re.sub(r"\s+"," ",(q or "")).strip() for q in (queries or [])]
+    queries=list(dict.fromkeys(q for q in queries if q))
+    sources=[s for s in SECONDARY_RESEARCH_SOURCES if s.get("id") in set(source_ids or ())]
+    output={q:[] for q in queries}
+    if not queries or not sources:
+        return output
+    ex=ThreadPoolExecutor(max_workers=max(1,min(max_workers,len(queries)*len(sources))), thread_name_prefix="lexicore-secondary")
+    futures={}
+    try:
+        for q in queries:
+            for src in sources:
+                futures[ex.submit(search_secondary_source,src,q,per_source_limit)]=(q,src)
+        done,pending=wait(set(futures),timeout=time_budget_seconds) if time_budget_seconds else (set(futures),set())
+        for fut in done:
+            q,src=futures[fut]
+            try: output[q].append(fut.result())
+            except Exception as exc:
+                output[q].append({"source_id":src.get("id"),"source_name":src.get("name"),"authoritative":False,
+                                  "reachable":False,"results":[],"error":str(exc)[:240]})
+        for fut in pending:
+            q,src=futures[fut]; fut.cancel()
+            output[q].append({"source_id":src.get("id"),"source_name":src.get("name"),"authoritative":False,
+                              "reachable":False,"results":[],"error":"SEARCH_TIME_BUDGET_EXCEEDED",
+                              "connectivity_status":"TIME_BUDGET_EXCEEDED","reference_url":src.get("reference_url")})
+    finally:
+        ex.shutdown(wait=False,cancel_futures=True)
+    return output
+
+
+def public_secondary_source_registry():
+    return [{k:v for k,v in s.items() if k != "search_template"} | {"supports_direct_search":bool(s.get("search_template"))} for s in SECONDARY_RESEARCH_SOURCES]
+
+
 def fetch_official_document(url: str, timeout: int=DEFAULT_TIMEOUT) -> dict:
     """Fetch one document/detail URL without weakening TLS verification.
 
@@ -332,7 +494,13 @@ def fetch_official_document(url: str, timeout: int=DEFAULT_TIMEOUT) -> dict:
 
 
 class FullTextLinkParser(HTMLParser):
-    """Collect likely full-text/attachment links without interpreting legal meaning."""
+    """Collect likely full-text/attachment links without interpreting legal meaning.
+
+    Official repositories expose files in several harmless transport shapes:
+    normal anchors, iframe/embed/object viewers, form actions and download
+    buttons with data-href/data-url attributes.  Capture those deterministically
+    and leave host/authenticity enforcement to resolve_official_fulltext().
+    """
     def __init__(self):
         super().__init__(); self.links=[]; self._href=None; self._text=[]
     def handle_starttag(self, tag, attrs):
@@ -342,6 +510,14 @@ class FullTextLinkParser(HTMLParser):
         elif t in {"iframe","embed","object"}:
             href=a.get("src") or a.get("data")
             if href: self.links.append((href, a.get("title") or a.get("type") or t))
+        elif t == "form":
+            href=a.get("action")
+            if href: self.links.append((href, a.get("title") or "form"))
+        elif t in {"button","input","div","span"}:
+            href=a.get("data-href") or a.get("data-url") or a.get("data-download")
+            if href:
+                label=a.get("title") or a.get("aria-label") or a.get("value") or t
+                self.links.append((href,label))
     def handle_data(self, data):
         if self._href is not None: self._text.append(data)
     def handle_endtag(self, tag):
@@ -351,26 +527,57 @@ class FullTextLinkParser(HTMLParser):
 
 
 def _extract_pdf_text(body: bytes, max_pages: int=400, max_chars: int=2_500_000) -> str:
-    if not body or PdfReader is None:
+    """Extract text from an official PDF with two local deterministic parsers.
+
+    pypdf remains the primary path. PyMuPDF is a bounded fallback because some
+    valid government PDFs use object/xref layouts that pypdf cannot recover
+    cleanly. No OCR or network service is invoked here.
+    """
+    if not body:
         return ""
-    # Avoid expensive parser recovery and noisy "EOF marker not found" messages
-    # for truncated/non-PDF responses returned by some official attachment URLs.
     head=bytes(body[:8])
-    tail=bytes(body[-4096:])
+    # Keep the truncated-response guard, but allow a larger legal tail because
+    # incremental/signature updates can place %%EOF farther from the last 4 KB.
+    tail=bytes(body[-65536:])
     if not head.startswith(b"%PDF-") or b"%%EOF" not in tail:
         return ""
-    try:
-        reader=PdfReader(BytesIO(body), strict=False)
-        parts=[]; total=0
-        for page in list(reader.pages)[:max_pages]:
-            try: text=page.extract_text() or ""
-            except Exception: text=""
+
+    def _clean(parts):
+        return re.sub(r"\s+", " ", " ".join(p for p in parts if p))[:max_chars].strip()
+
+    if PdfReader is not None:
+        try:
+            reader=PdfReader(BytesIO(body), strict=False)
+            parts=[]; total=0
+            for page in list(reader.pages)[:max_pages]:
+                try: text=page.extract_text() or ""
+                except Exception: text=""
+                if text:
+                    parts.append(text); total += len(text)
+                    if total >= max_chars: break
+            text=_clean(parts)
             if text:
-                parts.append(text); total += len(text)
-                if total >= max_chars: break
-        return re.sub(r"\s+", " ", " ".join(parts))[:max_chars].strip()
-    except Exception:
-        return ""
+                return text
+        except Exception:
+            pass
+
+    if pymupdf is not None:
+        try:
+            doc=pymupdf.open(stream=body, filetype="pdf")
+            parts=[]; total=0
+            try:
+                for page_no in range(min(len(doc), max_pages)):
+                    try: text=doc[page_no].get_text("text") or ""
+                    except Exception: text=""
+                    if text:
+                        parts.append(text); total += len(text)
+                        if total >= max_chars: break
+            finally:
+                doc.close()
+            return _clean(parts)
+        except Exception:
+            return ""
+    return ""
 
 
 def _fulltext_link_score(url: str, label: str, requested_provisions=()) -> int:
@@ -384,7 +591,8 @@ def _fulltext_link_score(url: str, label: str, requested_provisions=()) -> int:
 
 
 def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_content_type: str,
-                              requested_provisions=(), timeout: int=DEFAULT_TIMEOUT, max_candidates: int=3) -> dict:
+                              requested_provisions=(), timeout: int=DEFAULT_TIMEOUT, max_candidates: int=3,
+                              expected_identity_key: str | None = None) -> dict:
     """Resolve the actual official legal text behind a detail/metadata page.
 
     Fail-closed: only official-host URLs are followed. The function does not infer
@@ -393,17 +601,27 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
     """
     ctype=(detail_content_type or "").lower()
     requested=[str(x) for x in (requested_provisions or []) if x]
-    cache_key=(str(detail_url or ""), tuple(requested), len(detail_body or b""), str(detail_content_type or ""))
+    cache_key=(str(detail_url or ""), tuple(requested), len(detail_body or b""), str(detail_content_type or ""), str(expected_identity_key or ""))
     cached=_cache_get("fulltext",cache_key,FULLTEXT_CACHE_TTL)
     if cached is not None:
         cached["cache_hit"]=True
         return cached
-    if "pdf" in ctype or str(detail_url or "").lower().split("?",1)[0].endswith(".pdf"):
+    body_is_pdf=bytes(detail_body or b"").lstrip().startswith(b"%PDF-")
+    if "pdf" in ctype or str(detail_url or "").lower().split("?",1)[0].endswith(".pdf") or body_is_pdf:
         text=_extract_pdf_text(detail_body)
+        identity_keys=_canonical_identity_keys_from_text(text) if text else []
+        actual_key=(identity_keys[0] if identity_keys else None)
+        aligned=bool(expected_identity_key and actual_key == expected_identity_key)
+        usable=bool(text) and (aligned if expected_identity_key else True)
         out={
-            "resolved": bool(text), "source_url": detail_url, "content_type": detail_content_type,
-            "text": text, "resolver_status": "DIRECT_PDF_TEXT" if text else "DIRECT_PDF_TEXT_UNAVAILABLE",
+            "resolved": usable, "source_url": detail_url, "content_type": detail_content_type,
+            "text": text if usable else "",
+            "resolver_status": ("DIRECT_PDF_TEXT" if usable else ("EXPECTED_IDENTITY_NOT_FOUND" if text and expected_identity_key else "DIRECT_PDF_TEXT_UNAVAILABLE")),
             "attempted_urls": [detail_url], "cache_hit": False,
+            "expected_identity_key": expected_identity_key, "resolved_identity_key": actual_key,
+            "identity_candidates": identity_keys[:12],
+            "identity_aligned": aligned,
+            "mismatched_text_available": bool(text and expected_identity_key and not aligned),
         }
         _cache_put("fulltext",cache_key,out)
         return out
@@ -427,18 +645,25 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
         candidates.append((score,url,label))
     candidates.sort(key=lambda x:x[0], reverse=True)
     attempted=[detail_url]
-    best={"score":-1,"text":"","url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_ONLY"}
+    best={"score":-1,"text":"","url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_ONLY","identity_key":None}
     # Include detail-page text as fallback/provenance, but prefer attachments.
     detail_text=re.sub(r"\s+"," ",re.sub(r"<[^>]+>"," ",raw)).strip()
     if detail_text:
         prov_hits=sum(1 for ref in requested if re.search(r"\b"+re.escape(ref)+r"\b", detail_text, re.I))
-        best={"score":prov_hits*50,"text":detail_text,"url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_TEXT"}
+        detail_identities=_canonical_identity_keys_from_text(detail_text)
+        detail_identity=(detail_identities[0] if detail_identities else None)
+        identity_bonus=10000000 if expected_identity_key and detail_identity == expected_identity_key else 0
+        # With an expected identity, mismatched detail text is diagnostics only;
+        # it must never win merely because common Pasal numbers are present.
+        if not expected_identity_key or identity_bonus:
+            best={"score":identity_bonus+prov_hits*50,"text":detail_text,"url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_TEXT","identity_key":detail_identity,"identity_candidates":detail_identities}
     for _,url,_label in candidates[:max_candidates]:
         attempted.append(url)
         fetched=fetch_official_document(url,timeout=timeout)
         if not (fetched.get("reachable") and fetched.get("official_host")): continue
         ct=(fetched.get("content_type") or "").lower(); body=fetched.get("body") or b""
-        if "pdf" in ct or url.lower().split("?",1)[0].endswith(".pdf"):
+        body_is_pdf=bytes(body or b"").lstrip().startswith(b"%PDF-")
+        if "pdf" in ct or url.lower().split("?",1)[0].endswith(".pdf") or body_is_pdf:
             text=_extract_pdf_text(body); status="ATTACHMENT_PDF_TEXT"
         elif "html" in ct:
             try:
@@ -450,16 +675,33 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
             text=""; status="ATTACHMENT_UNSUPPORTED"
         if not text: continue
         prov_hits=sum(1 for ref in requested if re.search(r"\b"+re.escape(ref)+r"\b", text, re.I))
-        # Prefer a candidate containing the requested provision; otherwise prefer longer legal text.
-        score=prov_hits*100000 + min(len(text),90000)
+        # Prefer the attachment whose own official text matches the requested
+        # instrument identity.  Provision-number hits alone are not enough: Pasal
+        # 3/Pasal 18 can exist in unrelated instruments.
+        identity_candidates=_canonical_identity_keys_from_text(text)
+        actual_identity=(identity_candidates[0] if identity_candidates else None)
+        identity_bonus=10000000 if expected_identity_key and actual_identity == expected_identity_key else 0
+        # If an expected identity exists, unrelated official instruments are not
+        # eligible fulltext resolutions even when they contain Pasal 3/18.
+        if expected_identity_key and not identity_bonus:
+            continue
+        score=identity_bonus + prov_hits*100000 + min(len(text),90000)
         if score > best["score"]:
-            best={"score":score,"text":text,"url":fetched.get("final_url") or url,"content_type":fetched.get("content_type") or "","status":status}
+            best={"score":score,"text":text,"url":fetched.get("final_url") or url,"content_type":fetched.get("content_type") or "","status":status,"identity_key":actual_identity,"identity_candidates":identity_candidates}
     out={
         "resolved": bool(best.get("text")), "source_url": best.get("url") or detail_url,
         "content_type": best.get("content_type") or detail_content_type, "text": best.get("text") or "",
         "resolver_status": best.get("status") or "FULLTEXT_NOT_RESOLVED", "attempted_urls": attempted,
         "candidate_links_found": len(candidates), "cache_hit": False,
+        "expected_identity_key": expected_identity_key,
+        "resolved_identity_key": best.get("identity_key"),
+        "identity_candidates": list(best.get("identity_candidates") or []),
+        "identity_aligned": bool(expected_identity_key and best.get("identity_key") == expected_identity_key),
     }
+    if expected_identity_key and not out["identity_aligned"]:
+        out["resolved"]=False
+        out["text"]=""
+        out["resolver_status"]="EXPECTED_IDENTITY_NOT_FOUND"
     _cache_put("fulltext",cache_key,out)
     return out
 

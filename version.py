@@ -15,7 +15,7 @@ FIRM_NAME = "ELF - Erfan's Law Firm"
 # Public release line. Increment only for a deliberate release milestone.
 PUBLIC_VERSION = "1.3.14"
 RELEASE_CHANNEL = "RC"
-RELEASE_SEQUENCE = 17
+RELEASE_SEQUENCE = 18
 
 # Backward-compatible technical version used by health/API/user-agent.
 LEXICORE_VERSION = f"{PUBLIC_VERSION}-rc{RELEASE_SEQUENCE}"

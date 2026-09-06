@@ -114,8 +114,15 @@ def create_case_analysis_blueprint(*, allowed_file, verification_queries, case_p
             verify_online = regulatory_mode in ('online','hybrid')
 
         verification_q = verification_queries(text, title)
+        # RC18 R15 latency closure: do not run a second official-source search here.
+        # Dynamic case-scoped retrieval below already performs the authoritative
+        # federation using the same qualified queries.  This pre-pass used to add
+        # up to ~25s of duplicate DNS/TLS/search work before the real verification
+        # pipeline even started, which could push a complete Case Analysis beyond
+        # the request/proxy time limit.  Keep only cached source-health metadata
+        # for the deterministic working-paper status; no network search is issued.
         t0=time.monotonic()
-        official = verify_queries(verification_q, include_health=True, health_cache_only=True) if verify_online else None
+        official = verify_queries([], include_health=True, health_cache_only=True) if verify_online else None
         perf['official_source_discovery']=round((time.monotonic()-t0)*1000)
         t0=time.monotonic()
         result = case_payload(text, title, input_type, filename, official)

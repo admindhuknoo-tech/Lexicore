@@ -111,9 +111,17 @@ def _analysis_readiness(result: Dict) -> Dict:
     score += law_bonus
     if law_bonus:
         variables_plus.append({"variable":"Dasar hukum resmi yang telah lolos verifikasi","impact":round(law_bonus,1),"basis":f"Regulasi terverifikasi relevan dan berlaku={applicable}; pasal terverifikasi={provision}"})
-    elif verified == 0:
+    elif applicable == 0 and provision == 0:
+        # Instrument identity/status alone is not enough to improve case readiness.
+        # Readiness may rise only after a regulation survives the case-nexus,
+        # tempus and applicability gates.  This prevents transient or false-positive
+        # source verification from inflating the working-paper score.
         score -= 4.0
-        variables_minus.append({"variable":"Dasar hukum positif belum terverifikasi memadai","impact":-4.0,"basis":"Belum ada regulasi resmi yang lolos verifikasi pada tingkat yang cukup untuk penilaian substantif."})
+        variables_minus.append({
+            "variable":"Dasar hukum positif belum terverifikasi memadai",
+            "impact":-4.0,
+            "basis":"Belum ada regulasi resmi yang lolos seluruh gate identitas, keterkaitan perkara, tempus, dan keberlakuan pada perkara."
+        })
 
     # Keep a legal working-paper estimate away from artificial 0/100 certainty.
     score=int(round(max(15.0, min(85.0, score))))

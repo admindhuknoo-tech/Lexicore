@@ -580,7 +580,7 @@ def _case_export_sections(x):
     ]
     for r in verified_official[:8]:
         v=r.get('positive_law_verification') or {}
-        title=r.get('title') or '-'
+        title=r.get('canonical_title') or r.get('title') or '-'
         line=(f"{title} | Sumber resmi: {'Terkonfirmasi' if v.get('official_source_confirmed') else 'Belum terkonfirmasi'}"
               f" | Teks hukum: {'Tersedia' if v.get('text_retrieved') else 'Belum terverifikasi'}"
               f" | Status norma: {_human_release_status(v.get('legal_status') or 'UNVERIFIED')}"
@@ -659,8 +659,25 @@ def _case_export_sections(x):
                 'Tempus terverifikasi: '+str(funnel.get('tempus_verified',0)),
                 'Regulasi terverifikasi relevan dan berlaku: '+str(funnel.get('verified_applicable',funnel.get('temporal_verified_applicable',0))),
                 'Pasal yang diperiksa: '+str(funnel.get('provision_requested',0)),
+                'Pasal ditemukan pada teks resmi: '+str(funnel.get('provision_located',0)),
                 'Pasal yang berhasil diverifikasi pada teks resmi: '+str(funnel.get('provision_verified',0)),
             ]
+            diagnostics=snap.get('verification_diagnostics') or []
+            if diagnostics:
+                verify_lines.append('Diagnostik identity untuk pasal located tetapi belum verified:')
+                for idx,d in enumerate(diagnostics[:6],1):
+                    if not isinstance(d,dict):
+                        continue
+                    expected=d.get('expected_instrument_key') or '-'
+                    resolved=d.get('resolved_instrument_key') or '-'
+                    reason=d.get('identity_match_reason') or '-'
+                    nexus=d.get('case_nexus_status') or '-'
+                    req=', '.join(str(x) for x in (d.get('requested_provisions') or [])) or '-'
+                    loc=', '.join(str(x) for x in (d.get('located_provisions') or [])) or '-'
+                    candidates=', '.join(str(x) for x in (d.get('identity_candidates') or [])[:4]) or '-'
+                    verify_lines.append(
+                        f"DIAG {idx} | expected={expected} | resolved={resolved} | identity={d.get('identity_confirmed')} | reason={reason} | nexus={nexus} | requested={req} | located={loc} | candidates={candidates} | binding_preserved={bool(d.get('provision_binding_preserved'))}"
+                    )
         elif sm:
             verify_lines.append('Hasil penelusuran: '+str(sm.get('results_found',0)))
         if snap.get('event_date_candidate'):

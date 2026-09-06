@@ -7,7 +7,7 @@ should retain the deterministic Deep Case Analysis fallback.
 from __future__ import annotations
 import json, os, re, time, threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterable
 
 class FullDocumentFailure(RuntimeError):
     def __init__(self, message: str, diagnostics: Dict[str, Any] | None = None):
@@ -41,6 +41,8 @@ MAX_CHUNKS = max(1, min(40, int(os.environ.get('LEXICORE_AI_MAX_CHUNKS', '24')))
 CONCURRENCY = max(1, min(4, int(os.environ.get('LEXICORE_AI_CONCURRENCY', '2'))))
 TIMEOUT = max(8, min(90, int(os.environ.get('LEXICORE_AI_TIMEOUT_SECONDS', '35'))))
 AI_RETRIES = max(0, min(3, int(os.environ.get('LEXICORE_AI_RETRIES', '2'))))
+MAX_INPUT_TOKENS_PER_CHUNK = max(1200, min(12000, int(os.environ.get('LEXICORE_AI_MAX_INPUT_TOKENS_PER_CHUNK', '3600'))))
+SYNTHESIS_TOKEN_BUDGET = max(4000, min(60000, int(os.environ.get('LEXICORE_AI_SYNTHESIS_TOKEN_BUDGET', '22000'))))
 
 
 class GeminiHTTPError(RuntimeError):
@@ -75,21 +77,48 @@ def _http_reason(code: int) -> str:
     return f'HTTP_{code}'
 
 
-def is_available() -> bool:
+def configuration_diagnostics() -> Dict[str, Any]:
+    """Return explicit, fail-safe AI configuration state without making a network call.
+
+    LexiCore is allowed to run in deterministic-local mode, but an operator who
+    explicitly selects Gemini must be told immediately when the remote setup is
+    incomplete instead of discovering it through a later HTTP 500.
+    """
     cfg = provider_config()
-    return cfg['provider'] == 'gemini' and bool(os.environ.get('GEMINI_API_KEY')) and cfg['model'] != 'local-deterministic'
+    key = (os.environ.get('GEMINI_API_KEY') or '').strip()
+    error = None
+    if cfg['provider'] == 'gemini' and not key:
+        error = 'MISSING_GEMINI_API_KEY'
+    elif cfg['provider'] == 'gemini' and cfg['model'] == 'local-deterministic':
+        error = 'INVALID_GEMINI_MODEL'
+    return {
+        'configuration_valid': error is None,
+        'configuration_error': error,
+        'remote_ai_requested': cfg['provider'] == 'gemini',
+        'remote_ai_available': cfg['provider'] == 'gemini' and error is None,
+        'fallback_active': cfg['provider'] != 'gemini' or error is not None,
+        'fallback_reason': error or ('LOCAL_PROVIDER_SELECTED' if cfg['provider'] != 'gemini' else None),
+    }
+
+
+def is_available() -> bool:
+    return bool(configuration_diagnostics()['remote_ai_available'])
 
 
 def status() -> Dict[str, Any]:
     cfg = provider_config()
+    diag = configuration_diagnostics()
     return {
         'available': is_available(),
+        **diag,
         'provider': cfg['provider'],
         'model': cfg['model'],
         'reasoning_mode': 'FULL_DOCUMENT_MULTI_PASS_HYBRID',
         'chunk_size': CHUNK_SIZE,
         'chunk_overlap': CHUNK_OVERLAP,
         'max_chunks': MAX_CHUNKS,
+        'max_input_tokens_per_chunk': MAX_INPUT_TOKENS_PER_CHUNK,
+        'synthesis_token_budget': SYNTHESIS_TOKEN_BUDGET,
         'concurrency': CONCURRENCY,
         'timeout_seconds': TIMEOUT,
         'retries': AI_RETRIES,
@@ -99,30 +128,89 @@ def status() -> Dict[str, Any]:
     }
 
 
+def _estimate_tokens(text: str) -> int:
+    """Conservative dependency-free token estimate for Indonesian legal text/OCR.
+
+    It is intentionally an estimate, not a tokenizer contract.  We combine a
+    character bound with lexical/punctuation density and use the larger value so
+    OCR-heavy statutes, tables and citation-dense pleadings are budgeted safely.
+    """
+    text = text or ''
+    if not text:
+        return 0
+    lexical = re.findall(r"\w+|[^\w\s]", text, flags=re.UNICODE)
+    return max(1, int(max(len(text) / 3.4, len(lexical) * 1.18)))
+
+
+def _legal_segments(text: str) -> List[str]:
+    """Split at legal/document boundaries before applying hard token limits."""
+    text = (text or '').replace('\r\n', '\n').replace('\r', '\n').strip()
+    if not text:
+        return []
+    # Form-feed preserves PDF page boundaries when extraction provides them.
+    pages = [p for p in re.split(r'\f+', text) if p.strip()]
+    segments: List[str] = []
+    heading = re.compile(
+        r'(?im)(?=^[ \t]*(?:BAB\s+[IVXLCDM0-9]+\b|BAGIAN\s+(?:KE[- ]?[A-Z0-9]+|[IVXLCDM0-9]+)\b|'
+        r'PASAL\s+\d+[A-Z]?\b|DALAM\s+(?:EKSEPSI|POKOK\s+PERKARA|REKONVENSI|KONVENSI)\b|'
+        r'PETITUM\b|PERTANYAAN\s*:|JAWABAN\s*:|KESIMPULAN\b))'
+    )
+    for page in pages:
+        parts = [p.strip() for p in heading.split(page) if p.strip()]
+        if len(parts) == 1:
+            parts = [p.strip() for p in re.split(r'\n\s*\n+', page) if p.strip()]
+        segments.extend(parts)
+    return segments
+
+
+def _hard_split_token_budget(text: str) -> List[str]:
+    """Fallback split that respects both configured chars and estimated tokens."""
+    out: List[str] = []
+    text = (text or '').strip()
+    while text:
+        # Start from the configured character ceiling, then shrink until token-safe.
+        cut = min(len(text), CHUNK_SIZE)
+        candidate = text[:cut]
+        while cut > 800 and _estimate_tokens(candidate) > MAX_INPUT_TOKENS_PER_CHUNK:
+            cut = max(800, int(cut * 0.82))
+            candidate = text[:cut]
+        if cut < len(text):
+            # Prefer a sentence/newline boundary near the tail of the safe slice.
+            boundary = max(candidate.rfind('\n'), candidate.rfind('. '), candidate.rfind('; '))
+            if boundary >= int(cut * 0.60):
+                cut = boundary + 1
+                candidate = text[:cut]
+        out.append(candidate.strip())
+        if cut >= len(text):
+            break
+        overlap = min(CHUNK_OVERLAP, max(0, cut // 8))
+        text = text[max(1, cut - overlap):].lstrip()
+    return [x for x in out if x]
+
+
 def _chunks(text: str) -> List[str]:
     text = (text or '').strip()
     if not text:
         return []
-    # Prefer paragraph boundaries while keeping deterministic character limits.
-    paras = [p.strip() for p in re.split(r'\n\s*\n+', text) if p.strip()]
-    chunks, cur = [], ''
-    for p in paras:
-        candidate = (cur + '\n\n' + p).strip() if cur else p
-        if len(candidate) <= CHUNK_SIZE:
+    chunks: List[str] = []
+    cur = ''
+    for segment in _legal_segments(text):
+        candidate = (cur + '\n\n' + segment).strip() if cur else segment
+        if len(candidate) <= CHUNK_SIZE and _estimate_tokens(candidate) <= MAX_INPUT_TOKENS_PER_CHUNK:
             cur = candidate
             continue
         if cur:
             chunks.append(cur)
-            tail = cur[-CHUNK_OVERLAP:] if CHUNK_OVERLAP else ''
-            cur = (tail + '\n\n' + p).strip()
-        else:
-            start = 0
-            while start < len(p):
-                end = min(len(p), start + CHUNK_SIZE)
-                chunks.append(p[start:end])
-                if end >= len(p): break
-                start = max(end - CHUNK_OVERLAP, start + 1)
+            if len(chunks) >= MAX_CHUNKS:
+                break
             cur = ''
+        if len(segment) > CHUNK_SIZE or _estimate_tokens(segment) > MAX_INPUT_TOKENS_PER_CHUNK:
+            for piece in _hard_split_token_budget(segment):
+                chunks.append(piece)
+                if len(chunks) >= MAX_CHUNKS:
+                    break
+        else:
+            cur = segment
         if len(chunks) >= MAX_CHUNKS:
             break
     if cur and len(chunks) < MAX_CHUNKS:
@@ -131,9 +219,9 @@ def _chunks(text: str) -> List[str]:
 
 
 def _gemini_request(prompt: str, *, structured: bool = True) -> Dict[str, Any]:
-    key = os.environ.get('GEMINI_API_KEY')
+    key = (os.environ.get('GEMINI_API_KEY') or '').strip()
     if not key:
-        raise RuntimeError('GEMINI_API_KEY belum dikonfigurasi')
+        raise RuntimeError('AI_CONFIGURATION_ERROR:MISSING_GEMINI_API_KEY')
     cfg = provider_config()
     if cfg['provider'] != 'gemini':
         raise RuntimeError('Remote AI provider tidak aktif; gunakan mode local atau konfigurasi Gemini')
@@ -200,7 +288,10 @@ def chunk_diagnostics(text: str) -> Dict[str, Any]:
         'characters': len(text or ''),
         'segments_total': len(chunks),
         'segment_lengths': [len(c) for c in chunks[:8]],
+        'segment_token_estimates': [_estimate_tokens(c) for c in chunks[:8]],
         'chunk_size': CHUNK_SIZE,
+        'max_input_tokens_per_chunk': MAX_INPUT_TOKENS_PER_CHUNK,
+        'synthesis_token_budget': SYNTHESIS_TOKEN_BUDGET,
         'chunk_overlap': CHUNK_OVERLAP,
         'max_chunks': MAX_CHUNKS,
     }
@@ -260,8 +351,73 @@ Kembalikan JSON murni:
 }}'''
 
 
+def _truncate_value(value: Any, limit: int = 520) -> Any:
+    if isinstance(value, str):
+        return value if len(value) <= limit else value[:limit-1].rstrip() + '…'
+    if isinstance(value, dict):
+        return {k: _truncate_value(v, limit) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_truncate_value(v, limit) for v in value]
+    return value
+
+
+def _compact_evidence_maps(evidence_maps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplicate and budget map-reduce evidence before the synthesis request."""
+    fields = ('facts','admissions','denials_or_limits','allegations','actors','documents','legal_refs',
+              'procedural_points','unresolved_questions','source_items')
+    seen = set()
+    compact: List[Dict[str, Any]] = []
+    for item in evidence_maps or []:
+        row: Dict[str, Any] = {'_segment': item.get('_segment')}
+        for field in fields:
+            values = item.get(field) or []
+            kept = []
+            for value in values[:8]:
+                norm = json.dumps(value, ensure_ascii=False, sort_keys=True) if isinstance(value, (dict,list)) else str(value)
+                key = (field, re.sub(r'\s+', ' ', norm).strip().lower())
+                if not key[1] or key in seen:
+                    continue
+                seen.add(key)
+                kept.append(_truncate_value(value))
+            if kept:
+                row[field] = kept
+        if len(row) > 1:
+            compact.append(row)
+
+    # Enforce a synthesis input ceiling by trimming low-priority tail records,
+    # never by silently allowing an oversized request.
+    low_priority = ('unresolved_questions','actors','documents','procedural_points','allegations')
+    def token_count() -> int:
+        return _estimate_tokens(json.dumps(compact, ensure_ascii=False))
+    guard = 0
+    while compact and token_count() > SYNTHESIS_TOKEN_BUDGET and guard < 500:
+        changed = False
+        for field in low_priority:
+            for row in reversed(compact):
+                vals = row.get(field)
+                if vals:
+                    vals.pop()
+                    if not vals:
+                        row.pop(field, None)
+                    changed = True
+                    break
+            if changed:
+                break
+        if not changed:
+            # Preserve at least the earliest source-grounded material, but cap the
+            # number of segment maps when all low-priority material is exhausted.
+            if len(compact) > 1:
+                compact.pop()
+                changed = True
+        if not changed:
+            break
+        guard += 1
+    return compact
+
+
 def _synthesis_prompt(title: str, text_len: int, evidence_maps: List[Dict[str, Any]], fallback: Dict[str, Any], official: Any) -> str:
-    evidence_json = json.dumps(evidence_maps, ensure_ascii=False)
+    compact_maps = _compact_evidence_maps(evidence_maps)
+    evidence_json = json.dumps(compact_maps, ensure_ascii=False)
     fallback_compact = {k: fallback.get(k) for k in ('case_posture','domain_classification','domain_contract','facts','incriminating_facts','mitigating_facts','legal_issues','element_matrix','evidentiary_gaps','recommendations','provision_refs','regulatory_matches','norm_conflicts')}
     return f'''Anda adalah Senior Legal Reasoning Engine LexiCore untuk lawyer Indonesia.
 Sintesis seluruh peta bukti dari dokumen "{title}" ({text_len} karakter) menjadi analisis yuridis berimbang dan source-grounded.

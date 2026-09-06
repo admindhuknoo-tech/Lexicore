@@ -7,6 +7,7 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
+from contextlib import contextmanager
 
 from services.backup_service import create_database_backup, ensure_daily_backup, prune_backups
 
@@ -95,6 +96,25 @@ def get_db_connection():
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")
     return conn
+
+
+@contextmanager
+def db_session(*, write: bool = False):
+    """Short-lived SQLite session with guaranteed rollback and close."""
+    conn = get_db_connection()
+    try:
+        yield conn
+        if write:
+            conn.commit()
+    except Exception:
+        if write:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        raise
+    finally:
+        conn.close()
 
 
 def _create_tables(conn):
@@ -229,22 +249,20 @@ def validate_schema(conn) -> Dict[str, List[str]]:
 
 def init_database():
     # First create missing tables. Then inspect the shape of existing tables.
-    conn = get_db_connection()
-    _create_tables(conn)
-    drift = schema_drift(conn)
-    current_version = _schema_version(conn)
-    conn.close()
+    with db_session(write=True) as conn:
+        _create_tables(conn)
+        drift = schema_drift(conn)
+        current_version = _schema_version(conn)
 
     # A restore point is created before any ALTER TABLE operation.  Test DBs
     # can opt out via LEXICORE_DISABLE_AUTO_BACKUP=1.
     if (drift or current_version < SCHEMA_VERSION) and os.environ.get("LEXICORE_DISABLE_AUTO_BACKUP") != "1":
         create_database_backup(DB_PATH, reason=f"pre_migration_v{current_version}_to_v{SCHEMA_VERSION}")
 
-    conn = get_db_connection()
-    _create_tables(conn)
-    changed = _migrate_schema(conn)
-    validate_schema(conn)
-    conn.close()
+    with db_session(write=True) as conn:
+        _create_tables(conn)
+        changed = _migrate_schema(conn)
+        validate_schema(conn)
     if os.environ.get("LEXICORE_DISABLE_AUTO_BACKUP") != "1":
         if os.environ.get("LEXICORE_AUTO_BACKUP_DAILY", "1") != "0":
             ensure_daily_backup(DB_PATH)
@@ -375,23 +393,28 @@ class RiskAssessmentManager:
 class CaseAnalysisManager:
     @staticmethod
     def save(data:Dict)->int:
-        conn=get_db_connection(); cur=conn.cursor(); cur.execute('''INSERT INTO case_analyses
+        with db_session(write=True) as conn:
+            cur=conn.cursor(); cur.execute('''INSERT INTO case_analyses
         (title,input_type,filename,source_text,facts,legal_issues,applicable_law,legal_analysis,arguments_for,arguments_against,evidence_needed,risks,recommendations,coverage_note,case_posture,domain_classification,analysis_provenance,case_readiness,case_working_paper)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
-            data.get('title','Case Analysis'),data.get('input_type','narrative'),data.get('filename',''),data.get('source_text',''),
-            json.dumps(data.get('facts',[]),ensure_ascii=False),json.dumps(data.get('legal_issues',[]),ensure_ascii=False),
-            json.dumps(data.get('applicable_law',[]),ensure_ascii=False),data.get('legal_analysis',''),
-            json.dumps(data.get('arguments_for',[]),ensure_ascii=False),json.dumps(data.get('arguments_against',[]),ensure_ascii=False),
-            json.dumps(data.get('evidence_needed',[]),ensure_ascii=False),json.dumps(data.get('risks',[]),ensure_ascii=False),
-            json.dumps(data.get('recommendations',[]),ensure_ascii=False),data.get('coverage_note',''),data.get('case_posture',''),
-            json.dumps(data.get('domain_classification',{}),ensure_ascii=False),json.dumps(data.get('analysis_provenance',{}),ensure_ascii=False),
-            json.dumps(data.get('case_readiness',{}),ensure_ascii=False),
-            json.dumps(data.get('case_working_paper',{}),ensure_ascii=False)))
-        i=cur.lastrowid; conn.commit(); conn.close(); AuditLogger.log_action('save_case_analysis','case_analysis',i,data.get('title','')); return i
+                data.get('title','Case Analysis'),data.get('input_type','narrative'),data.get('filename',''),data.get('source_text',''),
+                json.dumps(data.get('facts',[]),ensure_ascii=False),json.dumps(data.get('legal_issues',[]),ensure_ascii=False),
+                json.dumps(data.get('applicable_law',[]),ensure_ascii=False),data.get('legal_analysis',''),
+                json.dumps(data.get('arguments_for',[]),ensure_ascii=False),json.dumps(data.get('arguments_against',[]),ensure_ascii=False),
+                json.dumps(data.get('evidence_needed',[]),ensure_ascii=False),json.dumps(data.get('risks',[]),ensure_ascii=False),
+                json.dumps(data.get('recommendations',[]),ensure_ascii=False),data.get('coverage_note',''),data.get('case_posture',''),
+                json.dumps(data.get('domain_classification',{}),ensure_ascii=False),json.dumps(data.get('analysis_provenance',{}),ensure_ascii=False),
+                json.dumps(data.get('case_readiness',{}),ensure_ascii=False),
+                json.dumps(data.get('case_working_paper',{}),ensure_ascii=False)))
+            i=cur.lastrowid
+        AuditLogger.log_action('save_case_analysis','case_analysis',i,data.get('title',''))
+        return i
 
     @staticmethod
     def all(limit:int=50)->List[Dict]:
-        conn=get_db_connection(); rows=conn.execute('SELECT * FROM case_analyses ORDER BY created_at DESC LIMIT ?',(limit,)).fetchall(); conn.close(); out=[]
+        with db_session() as conn:
+            rows=conn.execute('SELECT * FROM case_analyses ORDER BY created_at DESC LIMIT ?',(limit,)).fetchall()
+        out=[]
         for r in rows:
             d=dict(r)
             for k in ('facts','legal_issues','applicable_law','arguments_for','arguments_against','evidence_needed','risks','recommendations'):
@@ -407,16 +430,20 @@ class CaseAnalysisManager:
 class LegalSourceVerificationManager:
     @staticmethod
     def save(case_analysis_id:int,data:Dict)->int:
-        conn=get_db_connection(); cur=conn.cursor(); cur.execute('''INSERT INTO legal_source_verifications
+        with db_session(write=True) as conn:
+            cur=conn.cursor(); cur.execute('''INSERT INTO legal_source_verifications
         (case_analysis_id,status,checked_at,query_bundle,source_health,results_count,professional_status)
         VALUES (?,?,?,?,?,?,?)''', (case_analysis_id,data.get('status',''),data.get('checked_at',''),
-            json.dumps(data.get('searches',[]),ensure_ascii=False),json.dumps(data.get('source_health',[]),ensure_ascii=False),
-            (data.get('summary') or {}).get('results_found',0),data.get('professional_verification','PENDING')))
-        i=cur.lastrowid; conn.commit(); conn.close(); AuditLogger.log_action('official_source_verification','case_analysis',case_analysis_id,data.get('status','')); return i
+                json.dumps(data.get('searches',[]),ensure_ascii=False),json.dumps(data.get('source_health',[]),ensure_ascii=False),
+                (data.get('summary') or {}).get('results_found',0),data.get('professional_verification','PENDING')))
+            i=cur.lastrowid
+        AuditLogger.log_action('official_source_verification','case_analysis',case_analysis_id,data.get('status',''))
+        return i
 
     @staticmethod
     def latest_for_case(case_analysis_id:int)->Optional[Dict]:
-        conn=get_db_connection(); row=conn.execute('SELECT * FROM legal_source_verifications WHERE case_analysis_id=? ORDER BY created_at DESC LIMIT 1',(case_analysis_id,)).fetchone(); conn.close()
+        with db_session() as conn:
+            row=conn.execute('SELECT * FROM legal_source_verifications WHERE case_analysis_id=? ORDER BY created_at DESC LIMIT 1',(case_analysis_id,)).fetchone()
         if not row: return None
         d=dict(row); d['query_bundle']=json.loads(d.get('query_bundle') or '[]'); d['source_health']=json.loads(d.get('source_health') or '[]'); return d
 
@@ -543,11 +570,14 @@ class RegulatoryCorpusManager:
 class AuditLogger:
     @staticmethod
     def log_action(action:str,entity_type:str=None,entity_id:int=None,details:str=None):
-        conn=get_db_connection(); conn.execute('INSERT INTO audit_log (action,entity_type,entity_id,details) VALUES (?,?,?,?)',(action,entity_type,entity_id,details)); conn.commit(); conn.close()
+        with db_session(write=True) as conn:
+            conn.execute('INSERT INTO audit_log (action,entity_type,entity_id,details) VALUES (?,?,?,?)',(action,entity_type,entity_id,details))
 
     @staticmethod
     def get_recent_logs(limit:int=50)->List[Dict]:
-        conn=get_db_connection(); rows=conn.execute('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?',(limit,)).fetchall(); conn.close(); return [dict(r) for r in rows]
+        with db_session() as conn:
+            rows=conn.execute('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?',(limit,)).fetchall()
+        return [dict(r) for r in rows]
 
 
 if __name__ == '__main__': init_database()
