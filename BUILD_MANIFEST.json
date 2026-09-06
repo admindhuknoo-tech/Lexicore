@@ -1,0 +1,302 @@
+{
+  "release": {
+    "product_name": "LexiCore",
+    "product_label": "LexiCore Assistant",
+    "initiative": "Evidence-to-Action Legal Intelligence",
+    "firm_name": "ELF - Erfan's Law Firm",
+    "public_version": "1.3.14",
+    "release_channel": "RC",
+    "release_sequence": 17,
+    "version": "1.3.14-rc17",
+    "build_id": "local",
+    "release_id": "1.3.14-rc17+local"
+  },
+  "file_count": 57,
+  "files": [
+    {
+      "path": ".env",
+      "sha256": "c1ff7e09ea865f1de8a603fcbaaa03d5b42541f8b32a58f6272d3a44094ff6cd",
+      "bytes": 251
+    },
+    {
+      "path": ".env.example",
+      "sha256": "02c8225da069730372dabfeac93a1ba2cd82d187c4eeb9815ec0c7872e1ca886",
+      "bytes": 692
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "32aa85bc8caf0f575c0bac176fc18365c1de471add2ea9e14ec800a377ab711c",
+      "bytes": 93
+    },
+    {
+      "path": "AUDIT_REPORT_V1_3_14_RC17.md",
+      "sha256": "829bcf42afcb66c01be615b418b1141f13e6ca38646b7b868ceb0b7a6d900c66",
+      "bytes": 2323
+    },
+    {
+      "path": "Hybrid Approach.txt",
+      "sha256": "511956d491891ab60cd60ade925d0ed8a4b2e2b428af2332e360a9e9bdd082b5",
+      "bytes": 1115
+    },
+    {
+      "path": "README.md",
+      "sha256": "68d8a1b8f11ce9bdb993bd94b90d5f0d47d69e0fdf8dd902aaad0756da29f85b",
+      "bytes": 8030
+    },
+    {
+      "path": "RELEASE_POLICY.md",
+      "sha256": "6363bfd5d4e36c735c9247bb1e8a6a8d3a6885008b5778cd461eddf7a6d88c7e",
+      "bytes": 1658
+    },
+    {
+      "path": "ai_engine.py",
+      "sha256": "0e14da45d6d003da0db517dbb6d0c8d6eb75ba1423ebec637efc00d9352b37bb",
+      "bytes": 20859
+    },
+    {
+      "path": "app.py",
+      "sha256": "926d1db7f455142b58bb2278347de35f531ff40d62f9d4b033ce8bb905cfb3b4",
+      "bytes": 89952
+    },
+    {
+      "path": "build_release.bat",
+      "sha256": "7e6b3b1ede5e0f895ef820b864b891c4155dc491a097ce3ad08933f90d2b4363",
+      "bytes": 227
+    },
+    {
+      "path": "cleanup_artifact_hygiene.bat",
+      "sha256": "33784c8a4c120809e4e1c97ab55dd0f86f4a39b7bda1add559f0f260dc8818ee",
+      "bytes": 91
+    },
+    {
+      "path": "client_communication.py",
+      "sha256": "43e1ac5b7b8456a2e43a28a6687206f9d36dba02699e834921d6f2c5fb5f061a",
+      "bytes": 10105
+    },
+    {
+      "path": "contract_review.py",
+      "sha256": "d99baf3faa0dea1045637a6a4dd016fe266f02131199f3811a975624bbcd9f51",
+      "bytes": 44639
+    },
+    {
+      "path": "database.py",
+      "sha256": "acd92e691446d25c4bc951d5b9e3b0642cbac87acf04fc52007f2e2016893f30",
+      "bytes": 32836
+    },
+    {
+      "path": "env_loader.py",
+      "sha256": "b7337e7f9b07e4061d08742e4f59b5e0e600cd5933f24541a4912d0a88e58621",
+      "bytes": 620
+    },
+    {
+      "path": "exporters/__init__.py",
+      "sha256": "1f39b8dc61231476d02f956bbd3e5669bada4f3e7c2ac0087fb7929710210540",
+      "bytes": 35
+    },
+    {
+      "path": "exporters/case_docx.py",
+      "sha256": "d2300416dbfda81838737e1be46676e58dc4dbec5773147d323afcfca40e2ad0",
+      "bytes": 8259
+    },
+    {
+      "path": "exporters/case_pdf.py",
+      "sha256": "553b4e51188bbb228652ef8b70f47b7677149f02989192797db0712133c3c92d",
+      "bytes": 7603
+    },
+    {
+      "path": "exporters/common.py",
+      "sha256": "587d2fdb7dc557ff2e46e7ea63f66e5e3d73345fb6579db28d94c21df58c5005",
+      "bytes": 41610
+    },
+    {
+      "path": "legal_drafting.py",
+      "sha256": "136ac8b1ba3e2f50e82d3014bcb068b91b58d988e2821c4142c9fef8d6e38f2b",
+      "bytes": 40483
+    },
+    {
+      "path": "legal_sources.py",
+      "sha256": "b57e7f64425b72116c67f52a02bdad50c5117dcb41ba997768a49df5974201b7",
+      "bytes": 28654
+    },
+    {
+      "path": "lexicore.db",
+      "sha256": "7692abd2aee4f880738d8db44f7c5acd2499e255e361f32a5add982c27bcd03e",
+      "bytes": 1650688
+    },
+    {
+      "path": "norm_conflict.py",
+      "sha256": "544ff4e808bfea326caeac7a3f8122a617d2d08f347c7a0aac8ef131bf16b845",
+      "bytes": 16373
+    },
+    {
+      "path": "ocr_check.bat",
+      "sha256": "3d33a715e745bb9e8f944a493f13f684d98fd373f48296875f714b1c66c42054",
+      "bytes": 843
+    },
+    {
+      "path": "regulatory_db.py",
+      "sha256": "b3de061d7e6e3f051d755aa6c09ae093824bb331d1cbee7d1ce0598e67e44fde",
+      "bytes": 65892
+    },
+    {
+      "path": "regulatory_intelligence.py",
+      "sha256": "fc0874daf1663c2bdb2e973b006714841eb1be89c22453d828960e210c28e39f",
+      "bytes": 12636
+    },
+    {
+      "path": "release_check.bat",
+      "sha256": "3f2155f619046a5cb86c7e409b73bb2ffa4f42a00dc745c6dd98b66c7e5c91c8",
+      "bytes": 454
+    },
+    {
+      "path": "requirements-dev.txt",
+      "sha256": "c1815f938262f9a92e8442880be0ee5a53df890eca361e8101367cf621a0245a",
+      "bytes": 34
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "bd2a4357f3a3c7fa292b83ad15483152f6d2eb63206e828399b81dfc270dfcc3",
+      "bytes": 197
+    },
+    {
+      "path": "routes/__init__.py",
+      "sha256": "2ddf8ec262960e62bb938a07cc86bb19964ac3b440ff9ffc6dda8a11ca44023b",
+      "bytes": 39
+    },
+    {
+      "path": "routes/case_analysis.py",
+      "sha256": "ae28242fd1b82652ca9d7b18e5bcf0b9b42d0f8702e8334102cc7840f8069c6d",
+      "bytes": 18779
+    },
+    {
+      "path": "services/__init__.py",
+      "sha256": "91238b9c0ebf70829d27b6803014278a27f8c4b07692729adae86cff150c42fe",
+      "bytes": 37
+    },
+    {
+      "path": "services/backup_service.py",
+      "sha256": "955f4ddb7b7665efd5eadaa13f1211207c53d47f34f4a5333e6eec36955c323e",
+      "bytes": 3500
+    },
+    {
+      "path": "services/case_consistency_guard.py",
+      "sha256": "f708b722e6400e2f8d009dc94bd7467d237f61d7494df1a2ed79dfef88d069a8",
+      "bytes": 26858
+    },
+    {
+      "path": "services/case_domain_classifier.py",
+      "sha256": "351c98dfefcefb012697ea5b9587cfe06dca36c8f3999548dbef69895cc2c74f",
+      "bytes": 10980
+    },
+    {
+      "path": "services/case_law_summary.py",
+      "sha256": "a32dc7dee3cb8869541ac6fe039434797328f7902ea6d1e218e1c3426c94d550",
+      "bytes": 5768
+    },
+    {
+      "path": "services/case_reasoning_guard.py",
+      "sha256": "ae863043f5e24a11a9113fcd9f7844dc2098fa1c8db76b67851a06fec27a8f3c",
+      "bytes": 15903
+    },
+    {
+      "path": "services/case_working_paper.py",
+      "sha256": "9ec16ed9a1c9cddcf5855ede46dbff698e9b943b967c2c899304f973ea4c967d",
+      "bytes": 18780
+    },
+    {
+      "path": "services/compliance_risk.py",
+      "sha256": "09d36b6ce93d7c95981696033c2c1fa619e3c9a77e754419998a8dbc93e3e152",
+      "bytes": 47803
+    },
+    {
+      "path": "services/document_ocr.py",
+      "sha256": "4e39a83d42713b0819417086161a4cdaaf9befd1fb89a5bd46b625a0fe839715",
+      "bytes": 22623
+    },
+    {
+      "path": "services/legal_ocr_postprocess.py",
+      "sha256": "fe5257372f0028b6b31496bdfad503c11a57e9cb2be742f2f253a1cb0d7eb6b4",
+      "bytes": 9130
+    },
+    {
+      "path": "services/legal_research_service.py",
+      "sha256": "fed013b3f350c5c0a2af6ea801da07d9fbaf28b6bfdfda1a4133d0b833a87a4e",
+      "bytes": 11783
+    },
+    {
+      "path": "services/legal_review_engine.py",
+      "sha256": "b6c1778f49a03b6c02000da8a3b4bf660a50d82542f26aa3c7f2aa5e330e46a4",
+      "bytes": 19212
+    },
+    {
+      "path": "services/positive_law_verification.py",
+      "sha256": "be7fbfc1b053f2cf9aedb76c6e570bc9a42b3b7e799c2d82eb9b77731dfea52f",
+      "bytes": 23016
+    },
+    {
+      "path": "services/regulatory_retrieval.py",
+      "sha256": "b24bb5f94b0f0a69292ac15dd4b8f692e8c2c9c571d3d978f552ef92c55e288c",
+      "bytes": 48641
+    },
+    {
+      "path": "static/index.html",
+      "sha256": "14553b25d27e3f182515acf1a919be646151ec805af3a048a7c3239f1bc1bf70",
+      "bytes": 185182
+    },
+    {
+      "path": "tests/__init__.py",
+      "sha256": "0cf38f312f174921313ed6c83a1c9a5fcdb80ba91617be788a846e5befa129a4",
+      "bytes": 43
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha256": "6e884bae9a160b5312f9ec8725f7eee869546f41662ca5537d1ead6c507b8826",
+      "bytes": 2687
+    },
+    {
+      "path": "tests/test_legal_research_case_summary.py",
+      "sha256": "b9006697f21a7579970c00292ccc7ca372bfcfc469a153d87fe499620738e1ed",
+      "bytes": 2055
+    },
+    {
+      "path": "tests/test_migrations.py",
+      "sha256": "f6345968510dd5307d4008f9aee59b582473d943eb8e1af6d6b7fb7f1a741102",
+      "bytes": 12152
+    },
+    {
+      "path": "tests/test_positive_law_verification.py",
+      "sha256": "769e7a25a99d5f4e50dedcd1c0b3907f24e9248b9c11a4dec87da81a24c7514f",
+      "bytes": 12933
+    },
+    {
+      "path": "tests/test_professional_review_engine.py",
+      "sha256": "b6fc4c9312bf316151494eb871fac9bbc6c9a99c671219201718d90c24fbe71c",
+      "bytes": 3521
+    },
+    {
+      "path": "tests/test_smoke.py",
+      "sha256": "c6667ba3095c2fef30d4d788ed1027a81d7d0600d4c972075c080fa1a51767d9",
+      "bytes": 99180
+    },
+    {
+      "path": "tools/build_release.py",
+      "sha256": "54210512662acc2b50e722973f6c642ba7f41c1c58b125a07b7f5038efffb03e",
+      "bytes": 2575
+    },
+    {
+      "path": "tools/cleanup_artifact_hygiene.py",
+      "sha256": "5da36e4f113b8c8afd9d6b5fa68d0979a0babff893d79771d28295c46ec702c0",
+      "bytes": 1197
+    },
+    {
+      "path": "tools/release_audit.py",
+      "sha256": "d82251cdbf593c8a0bf88318b5b2aa6e4a763339f9267b982416048ab514b48c",
+      "bytes": 24619
+    },
+    {
+      "path": "version.py",
+      "sha256": "970ff2c372f1a22a6d33e5a6ddf6df7c8c66adaacf2cad8e73ad2f5755facb13",
+      "bytes": 1508
+    }
+  ]
+}

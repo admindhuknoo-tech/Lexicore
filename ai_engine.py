@@ -15,10 +15,26 @@ class FullDocumentFailure(RuntimeError):
         self.diagnostics = diagnostics or {}
 
 from version import LEXICORE_VERSION
+from services.case_domain_classifier import FEW_SHOT_BOUNDARY
 from urllib import request as urlrequest, error as urlerror
 
-PROVIDER = os.environ.get('LEXICORE_AI_PROVIDER', 'gemini').strip().lower()
-MODEL = os.environ.get('LEXICORE_AI_MODEL', 'gemini-2.5-flash').strip()
+def provider_config() -> Dict[str, str]:
+    """Resolve provider/model at call time, not import time.
+
+    This prevents stale .env/test state and makes runtime diagnostics truthful.
+    """
+    provider = os.environ.get('LEXICORE_AI_PROVIDER', 'local').strip().lower() or 'local'
+    model_env = os.environ.get('LEXICORE_AI_MODEL', '').strip()
+    if provider == 'gemini':
+        model = model_env or 'gemini-3.6-flash'
+    else:
+        provider = 'local' if provider not in ('gemini',) else provider
+        model = 'local-deterministic'
+    return {'provider': provider, 'model': model}
+
+# Compatibility aliases only. Core execution resolves provider_config() dynamically.
+PROVIDER = provider_config()['provider']
+MODEL = provider_config()['model']
 CHUNK_SIZE = max(4000, int(os.environ.get('LEXICORE_AI_CHUNK_SIZE', '10000')))
 CHUNK_OVERLAP = max(0, min(2000, int(os.environ.get('LEXICORE_AI_CHUNK_OVERLAP', '700'))))
 MAX_CHUNKS = max(1, min(40, int(os.environ.get('LEXICORE_AI_MAX_CHUNKS', '24'))))
@@ -60,14 +76,16 @@ def _http_reason(code: int) -> str:
 
 
 def is_available() -> bool:
-    return PROVIDER == 'gemini' and bool(os.environ.get('GEMINI_API_KEY'))
+    cfg = provider_config()
+    return cfg['provider'] == 'gemini' and bool(os.environ.get('GEMINI_API_KEY')) and cfg['model'] != 'local-deterministic'
 
 
 def status() -> Dict[str, Any]:
+    cfg = provider_config()
     return {
         'available': is_available(),
-        'provider': PROVIDER,
-        'model': MODEL,
+        'provider': cfg['provider'],
+        'model': cfg['model'],
         'reasoning_mode': 'FULL_DOCUMENT_MULTI_PASS_HYBRID',
         'chunk_size': CHUNK_SIZE,
         'chunk_overlap': CHUNK_OVERLAP,
@@ -76,7 +94,7 @@ def status() -> Dict[str, Any]:
         'timeout_seconds': TIMEOUT,
         'retries': AI_RETRIES,
         'min_request_interval': MIN_REQUEST_INTERVAL,
-        'transport': 'REST_X_GOOG_API_KEY',
+        'transport': 'LOCAL' if cfg['provider'] == 'local' else 'REST_X_GOOG_API_KEY',
         'fallback': 'DEEP_CASE_ANALYSIS_V2',
     }
 
@@ -116,7 +134,10 @@ def _gemini_request(prompt: str, *, structured: bool = True) -> Dict[str, Any]:
     key = os.environ.get('GEMINI_API_KEY')
     if not key:
         raise RuntimeError('GEMINI_API_KEY belum dikonfigurasi')
-    endpoint = f'https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent'
+    cfg = provider_config()
+    if cfg['provider'] != 'gemini':
+        raise RuntimeError('Remote AI provider tidak aktif; gunakan mode local atau konfigurasi Gemini')
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{cfg['model']}:generateContent"
     generation = {'temperature': 0.15, 'maxOutputTokens': 8192}
     if structured:
         generation['responseMimeType'] = 'application/json'
@@ -241,7 +262,7 @@ Kembalikan JSON murni:
 
 def _synthesis_prompt(title: str, text_len: int, evidence_maps: List[Dict[str, Any]], fallback: Dict[str, Any], official: Any) -> str:
     evidence_json = json.dumps(evidence_maps, ensure_ascii=False)
-    fallback_compact = {k: fallback.get(k) for k in ('facts','incriminating_facts','mitigating_facts','legal_issues','element_matrix','evidentiary_gaps','recommendations','provision_refs','regulatory_matches','norm_conflicts')}
+    fallback_compact = {k: fallback.get(k) for k in ('case_posture','domain_classification','domain_contract','facts','incriminating_facts','mitigating_facts','legal_issues','element_matrix','evidentiary_gaps','recommendations','provision_refs','regulatory_matches','norm_conflicts')}
     return f'''Anda adalah Senior Legal Reasoning Engine LexiCore untuk lawyer Indonesia.
 Sintesis seluruh peta bukti dari dokumen "{title}" ({text_len} karakter) menjadi analisis yuridis berimbang dan source-grounded.
 
@@ -256,6 +277,17 @@ PRINSIP WAJIB:
 8. Jangan menampilkan chain-of-thought internal. Berikan alasan hukum ringkas dan dapat diaudit.
 9. Regulatory corpus lokal adalah retrieval aid, bukan sumber final; jangan menaikkan LOCAL_CORPUS_MATCH menjadi VERIFIED tanpa sumber resmi.
 10. Norm conflict output adalah issue spotting. Uji lex superior, lex specialis, lex posterior, tempus, dan kewenangan pembentuk secara terpisah sebelum rekomendasi final.
+11. CASE POSTURE dan DOMAIN CLASSIFICATION dari deterministic engine adalah KONTRAK YURIDIS IMMUTABLE. AI boleh memperkaya alasan tetapi DILARANG mengubah primary domain hanya karena menemukan istilah transaksi/perjanjian.
+12. Jika BPR/Bank/Fasilitas Kredit/Keuangan Negara-Daerah muncul, lakukan Tipikor priority screen terlebih dahulu. Perjanjian kredit pada perkara penyidikan dugaan fraud/penyimpangan internal BPR adalah hubungan pendukung, bukan otomatis wanprestasi sebagai primary domain.
+13. Jangan mengeluarkan rekomendasi, bukti yang dibutuhkan, atau regulasi dari domain yang tidak berada pada PRIMARY/SECONDARY contract kecuali diberi label SUPPORTING dan dijelaskan relevansi materialnya.
+14. Gunakan tiga level eksplisit: FACT (didukung sumber), INFERENCE (analisis dari fakta), LEGAL CONCLUSION (hanya jika norma, identitas instrumen, status berlaku, tempus, case nexus dan unsur yang relevan cukup terverifikasi).
+15. No evidence → no specific allegation. No nexus → no domain-specific conclusion. No tempus → no definitive applicable-law conclusion. No verified provision → no definitive legal conclusion.
+16. Jangan melakukan silent correction atas nomor/tahun undang-undang yang tampak salah. Tampilkan sebagai POTENTIAL_TYPO_OR_OCR dan minta verifikasi terhadap dokumen asli/sumber resmi.
+17. Pada eksepsi, bedakan kompetensi/forum dari merits. Dalil bahwa peristiwa lebih tepat dikualifikasikan sebagai tindak pidana lain tidak otomatis berarti pengadilan yang memeriksa dakwaan tidak berwenang.
+18. Bedakan error in persona (salah identitas subjek) dari tidak terbuktinya atribusi perbuatan atau adanya pihak lain yang lebih bertanggung jawab.
+
+FEW-SHOT BATAS DEMARKASI DOMAIN:
+{FEW_SHOT_BOUNDARY}
 
 EVIDENCE MAPS:
 {evidence_json}
@@ -387,7 +419,7 @@ def analyze_full_document(text: str, title: str, fallback: Dict[str, Any], offic
     successful = [x for x in evidence_maps if x]
     diagnostics = {
         'characters': len(text), 'segments_total': len(chunks), 'segments_read': len(successful),
-        'provider': PROVIDER, 'model': MODEL, 'segment_trace': trace,
+        'provider': provider_config()['provider'], 'model': provider_config()['model'], 'segment_trace': trace,
         'failures': failures[:10], 'elapsed_seconds': round(time.time()-started, 2),
     }
     if not successful:

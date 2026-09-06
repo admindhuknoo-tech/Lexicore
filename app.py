@@ -7,28 +7,63 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from docx import Document
 
+from env_loader import load_project_env
+load_project_env()
+
 from contract_review import ContractReviewEngine
 from database import (init_database, DraftManager, AnalysisManager, ResearchManager,
-                      RiskAssessmentManager, CommunicationManager, AuditLogger, get_db_connection, SCHEMA_VERSION)
+                      RiskAssessmentManager, CommunicationManager, AuditLogger, RegulatoryCorpusManager,
+                      get_db_connection, SCHEMA_VERSION)
 from legal_sources import source_health, federated_search, public_source_registry
 from ai_engine import status as ai_status
 from regulatory_db import get_all_regulations, search_regulations, retrieve_for_case
 from norm_conflict import analyze_conflicts
 from regulatory_intelligence import normalized_catalog, graph_for_query, timeline_for_regulation, resolve_conflict_from_query, intelligence_for_case
 from services.backup_service import create_database_backup
-from version import LEXICORE_VERSION, PRODUCT_NAME, INITIATIVE, FIRM_NAME
+from version import LEXICORE_VERSION, PRODUCT_NAME, PRODUCT_LABEL, INITIATIVE, FIRM_NAME, release_metadata
 from routes.case_analysis import create_case_analysis_blueprint
+from legal_drafting import build_legal_draft, template_catalog, TEMPLATE_REGISTRY
+from services.case_domain_classifier import classify_case
+from services.legal_research_service import search_legal_authorities
+from services.case_law_summary import summarize_case_source, summarize_doctrine_source, CASE_TYPES, DOCTRINE_TYPES
+from services.compliance_risk import build_risk_matrix, question_set, normalize_category
+from services.case_consistency_guard import executive_fact_candidates, classify_source_item
+from client_communication import build_client_communication
 
 BASE_DIR=os.path.dirname(os.path.abspath(__file__))
 app=Flask(__name__, static_folder='static')
-CORS(app)
-app.config.update(MAX_CONTENT_LENGTH=50*1024*1024, UPLOAD_FOLDER=os.path.join(BASE_DIR,'uploads'), ALLOWED_EXTENSIONS={'pdf','docx'})
+# Security fix (v1.3.5.4): `CORS(app)` with no restriction reflects
+# Access-Control-Allow-Origin for ANY requesting origin. This API has zero
+# authentication (see the app.run() note below), and its own frontend is
+# served from this exact same Flask origin — so cross-origin access has no
+# legitimate use here. Left wide open, any website the lawyer happens to
+# have open in another tab could silently fetch() this locally running API
+# and read or delete confidential client/case data (drafts, contract
+# analyses, full case narratives with BAP/financial details) without the
+# user ever visiting LexiCore itself. That's a realistic "malicious webpage
+# talks to your local server" attack, not a theoretical one, and it
+# defeats the network-exposure guard further down in this file, which only
+# protects against LAN attackers, not against the browser itself.
+# Cross-origin access is now opt-in only, via a comma-separated allowlist in
+# LEXICORE_CORS_ORIGINS (e.g. for a separate frontend dev server). By
+# default no origin is allowed, which matches how the app is actually used.
+_cors_origins = [o.strip() for o in os.environ.get('LEXICORE_CORS_ORIGINS', '').split(',') if o.strip()]
+if _cors_origins:
+    CORS(app, origins=_cors_origins)
+    print(f'LexiCore: CORS diaktifkan untuk origin: {_cors_origins}')
+app.config.update(MAX_CONTENT_LENGTH=50*1024*1024, UPLOAD_FOLDER=os.path.join(BASE_DIR,'uploads'), ALLOWED_EXTENSIONS={'pdf','docx','png','jpg','jpeg','webp','tif','tiff'})
 os.makedirs(app.config['UPLOAD_FOLDER'],exist_ok=True)
 init_database()
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+@app.route('/api/ocr/status', methods=['GET'])
+def ocr_status_endpoint():
+    from services.document_ocr import ocr_runtime_status
+    return jsonify(success=True, data=ocr_runtime_status(load_engine=False))
 
 def risk_level(risks):
     high=sum(1 for r in risks if r.get('risk_level')=='HIGH'); med=sum(1 for r in risks if r.get('risk_level')=='MEDIUM')
@@ -75,12 +110,13 @@ def _history_row(kind, item_id):
         'contract_reviews': ('parties','risks'),
         'research_notes': ('keywords',),
         'risk_assessments': ('answers','findings','recommendations'),
-        'case_analyses': ('facts','legal_issues','applicable_law','arguments_for','arguments_against','evidence_needed','risks','recommendations'),
+        'case_analyses': ('facts','legal_issues','applicable_law','arguments_for','arguments_against','evidence_needed','risks','recommendations','domain_classification','analysis_provenance','case_readiness'),
     }.get(kind,())
     import json as _json
+    dict_json_fields={'answers','domain_classification','analysis_provenance','case_readiness'}
     for key in json_fields:
-        try: d[key]=_json.loads(d.get(key) or ('{}' if key=='answers' else '[]'))
-        except Exception: d[key] = {} if key=='answers' else []
+        try: d[key]=_json.loads(d.get(key) or ('{}' if key in dict_json_fields else '[]'))
+        except Exception: d[key] = {} if key in dict_json_fields else []
     if kind=='case_analyses':
         try:
             from database import CaseRegulatorySnapshotManager
@@ -173,194 +209,13 @@ def draft_detail(draft_id):
         return jsonify(success=DraftManager.delete_draft(draft_id))
     ok=DraftManager.update_draft(draft_id,request.get_json(silent=True) or {}); return jsonify(success=ok)
 
-def _draft_working_note():
-    return '\n\nCATATAN LEXICORE by ELF (Erfan’s Law Firm)\nDRAFT KERJA — Professional Verification: PENDING. Verifikasi identitas, kewenangan, fakta, bukti, kompetensi absolut/relatif, hukum yang berlaku, tenggat, dan strategi sebelum dokumen digunakan atau ditandatangani.'
-
-
 def _build_legal_draft(doc_type, p1, p2, date, duration, prompt):
-    """Document-type aware drafting. Setiap jenis dokumen memakai struktur hukumnya sendiri."""
-    instruction = prompt or '[URAIKAN FAKTA / INSTRUKSI KHUSUS]'
+    return build_legal_draft(doc_type,p1,p2,date,duration,prompt)
 
-    if doc_type == 'Somasi':
-        content = f'''SOMASI / TEGURAN HUKUM
 
-Tanggal: {date}
-
-Kepada Yth.
-{p2}
-[ALAMAT PIHAK YANG DISOMASI]
-
-Perihal: SOMASI / TEGURAN HUKUM
-
-Dengan hormat,
-
-Kami bertindak untuk dan atas kepentingan {p1}. Berdasarkan dokumen dan keterangan yang tersedia, pokok persoalan yang perlu ditindaklanjuti adalah:
-
-{instruction}
-
-I. DASAR HUBUNGAN HUKUM / KRONOLOGI
-1. [Uraikan hubungan hukum para pihak secara kronologis.]
-2. [Cantumkan prestasi/kewajiban yang diperjanjikan atau diwajibkan.]
-3. [Cantumkan tindakan/kelalaian yang dipersoalkan beserta tanggal dan bukti.]
-
-II. KEWAJIBAN / PELANGGARAN YANG DIPERSOALKAN
-[Uraikan secara spesifik tindakan yang diminta untuk dipenuhi, dihentikan, diperbaiki, atau dipertanggungjawabkan. Jangan menambahkan pasal yang belum diverifikasi.]
-
-III. TUNTUTAN / PERMINTAAN
-Dengan ini {p1} meminta {p2} untuk:
-1. [Tindakan konkret pertama];
-2. [Tindakan konkret kedua]; dan
-3. Memberikan jawaban tertulis dalam jangka waktu [___] hari kalender sejak diterimanya somasi ini.
-
-IV. RESERVASI HAK
-Apabila tidak terdapat penyelesaian dalam tenggang tersebut, {p1} akan mempertimbangkan langkah hukum yang tersedia sesuai fakta, bukti, forum yang berwenang, dan hukum yang berlaku, tanpa mengurangi hak-hak lainnya.
-
-Hormat kami,
-
-[KUASA HUKUM / PIHAK]
-Untuk dan atas nama {p1}''' + _draft_working_note()
-        return content, 4
-
-    if doc_type == 'Gugatan Perdata':
-        content = f'''DRAFT GUGATAN PERDATA
-
-Kepada Yth.
-Ketua [PENGADILAN NEGERI YANG BERWENANG]
-Di [TEMPAT]
-
-Perihal: Gugatan Perdata
-
-I. PARA PIHAK
-PENGGUGAT:
-{p1}
-[Identitas, alamat, dan kedudukan hukum Penggugat]
-
-TERGUGAT:
-{p2}
-[Identitas, alamat, dan kedudukan hukum Tergugat]
-
-II. KEWENANGAN MENGADILI
-[Verifikasi kompetensi absolut dan relatif pengadilan berdasarkan hubungan hukum, domisili, objek sengketa, forum pilihan, dan ketentuan yang berlaku.]
-
-III. POSITA / FUNDAMENTUM PETENDI
-1. [Hubungan hukum antara Penggugat dan Tergugat.]
-2. [Kronologi fakta material dan tanggal-tanggal penting.]
-3. [Perbuatan atau kelalaian Tergugat yang dipersoalkan.]
-4. [Kerugian/akibat dan hubungan kausal yang dapat dibuktikan.]
-5. [Dasar hukum yang telah diverifikasi dari sumber resmi.]
-
-Keterangan / instruksi perkara:
-{instruction}
-
-IV. ALAT BUKTI AWAL
-P-1. [Dokumen pertama]
-P-2. [Dokumen kedua]
-P-3. [Bukti elektronik/saksi/alat bukti lain yang relevan]
-
-V. PETITUM
-Berdasarkan uraian tersebut, Penggugat memohon agar Majelis Hakim berkenan:
-1. Menerima dan mengabulkan gugatan Penggugat sepanjang terbukti menurut hukum;
-2. [Petitum deklaratoir/constitutief/condemnatoir yang spesifik dan konsisten dengan posita];
-3. [Permohonan terkait kerugian/prestasi apabila memiliki dasar dan bukti];
-4. Menghukum pihak yang ditentukan menurut hukum untuk membayar biaya perkara;
-5. Atau memberikan putusan lain yang dianggap adil menurut hukum (ex aequo et bono), sepanjang sesuai karakter perkara.
-
-Hormat kami,
-[Penggugat / Kuasa Hukum]''' + _draft_working_note()
-        return content, 5
-
-    if doc_type == 'Surat Kuasa':
-        content = f'''SURAT KUASA KHUSUS
-
-Tanggal: {date}
-
-Yang bertanda tangan di bawah ini:
-
-PEMBERI KUASA
-{p1}
-[Identitas lengkap dan alamat]
-
-Dengan ini memberikan kuasa kepada:
-
-PENERIMA KUASA
-{p2}
-[Identitas/profesi/alamat penerima kuasa]
-
--------------------------------- KHUSUS --------------------------------
-
-Untuk mewakili dan bertindak untuk serta atas nama Pemberi Kuasa dalam perkara/urusan:
-
-{instruction}
-
-LINGKUP KUASA
-1. Menghadap instansi, pengadilan, pejabat, atau pihak yang relevan sesuai ruang lingkup perkara;
-2. Mengajukan, menerima, menandatangani, dan menanggapi surat/dokumen yang diperlukan sepanjang sah dan relevan;
-3. Menghadiri pertemuan, mediasi, pemeriksaan, atau persidangan sesuai kewenangan yang diberikan;
-4. Melakukan tindakan hukum lain yang secara spesifik diperlukan untuk kepentingan perkara ini, dengan memperhatikan batas kuasa dan hukum yang berlaku.
-
-BATASAN / HAK SUBSTITUSI
-[Nyatakan secara tegas apakah kuasa mencakup hak substitusi, perdamaian, menerima pembayaran, mencabut perkara, upaya hukum, atau tindakan khusus lain. Jangan diasumsikan otomatis.]
-
-Pemberi Kuasa,                         Penerima Kuasa,
-
-{p1}                                  {p2}''' + _draft_working_note()
-        return content, 4
-
-    if doc_type == 'Legal Opinion':
-        content = f'''LEGAL OPINION / PENDAPAT HUKUM
-
-Tanggal: {date}
-Klien / Pemohon: {p1}
-Pihak / objek terkait: {p2}
-
-I. MANDAT DAN PERTANYAAN HUKUM
-{instruction}
-
-II. FAKTA DAN ASUMSI YANG DIGUNAKAN
-1. [Fakta yang didukung dokumen/bukti.]
-2. [Fakta yang masih berupa keterangan atau asumsi.]
-3. [Fakta material yang belum tersedia dan perlu diminta.]
-
-III. DOKUMEN YANG DITELAAH
-1. [Dokumen 1]
-2. [Dokumen 2]
-3. [Dokumen 3]
-
-IV. ISU HUKUM
-1. [Isu hukum utama.]
-2. [Isu kewenangan/prosedural bila relevan.]
-3. [Isu pembuktian/risiko.]
-
-V. DASAR HUKUM
-[Cantumkan hanya peraturan, pasal, putusan, atau sumber resmi yang telah diverifikasi. Setiap citation harus memuat jenis aturan, nomor, tahun, dan pasal bila tersedia.]
-
-VI. ANALISIS
-[Analisis hubungan antara fakta terbukti, unsur norma, pembuktian, konflik norma, tempus, dan kemungkinan counter-argument.]
-
-VII. KESIMPULAN
-[Kesimpulan terbatas sesuai fakta dan sumber yang terverifikasi; hindari kesimpulan absolut bila bukti belum lengkap.]
-
-VIII. REKOMENDASI / NEXT STEPS
-1. [Langkah prioritas P1.]
-2. [Langkah prioritas P2.]
-3. [Dokumen/bukti/sumber hukum yang harus diverifikasi.]''' + _draft_working_note()
-        return content, 8
-
-    if doc_type == 'Non-Disclosure Agreement':
-        clauses=[('DEFINISI INFORMASI RAHASIA','Definisikan informasi rahasia secara terukur dan pengecualiannya.'),('TUJUAN PENGUNGKAPAN',f'Informasi dipertukarkan untuk tujuan: {instruction}.'),('KEWAJIBAN PENERIMA','Penerima wajib membatasi akses dan menggunakan standar perlindungan yang wajar.'),('PENGECUALIAN','Informasi publik, telah dimiliki secara sah, diperoleh dari pihak ketiga secara sah, atau wajib diungkap berdasarkan hukum dikecualikan dengan syarat yang tepat.'),('JANGKA WAKTU',f'Kewajiban berlaku sejak {date} selama {duration} bulan atau sesuai periode yang diverifikasi sesuai sifat informasi.'),('PENGEMBALIAN / PEMUSNAHAN','Atur pengembalian atau pemusnahan informasi serta retensi yang diwajibkan hukum.'),('REMEDI DAN SENGKETA','Tetapkan remediasi dan forum sengketa secara proporsional dan sah.')]
-        intro=f'Pada {date}, {p1} dan {p2} menyepakati pengaturan kerahasiaan berikut.'
-    elif doc_type == 'Perjanjian Kerja':
-        clauses=[('PARA PIHAK DAN JABATAN',f'{p1} sebagai pemberi kerja dan {p2} sebagai pekerja untuk jabatan/pekerjaan yang harus dirinci.'),('MULAI DAN JANGKA WAKTU',f'Hubungan kerja dimulai {date}; jenis dan durasi hubungan kerja harus disesuaikan dengan hukum ketenagakerjaan yang berlaku. Input durasi: {duration} bulan.'),('TEMPAT DAN WAKTU KERJA','Rinci tempat kerja, jam kerja, istirahat, lembur, dan pengaturan kerja yang relevan.'),('UPAH DAN TUNJANGAN','Rinci komponen upah, waktu pembayaran, tunjangan, pajak, dan jaminan sosial sesuai ketentuan yang berlaku.'),('HAK DAN KEWAJIBAN','Rinci tugas, standar kerja, kebijakan perusahaan, keselamatan kerja, dan hak pekerja.'),('KERAHASIAAN DAN DATA','Atur kerahasiaan yang proporsional serta pemrosesan data pribadi.'),('BERAKHIRNYA HUBUNGAN KERJA','Pengakhiran harus mengikuti dasar, prosedur, hak, dan kewajiban yang berlaku; jangan mengandalkan klausul kontrak untuk meniadakan hak normatif.'),('KETENTUAN KHUSUS',instruction)]
-        intro=f'Perjanjian kerja ini dibuat pada {date} antara {p1} dan {p2}.'
-    else:
-        clauses=[('LATAR BELAKANG DAN TUJUAN',f'{p1} dan {p2} bermaksud bekerja sama dengan ruang lingkup: {instruction}.'),('RUANG LINGKUP','Rinci pekerjaan, deliverable, standar penerimaan, jadwal, dan pihak yang bertanggung jawab.'),('JANGKA WAKTU',f'Perjanjian berlaku sejak {date} selama {duration} bulan, dengan mekanisme perpanjangan/pengakhiran yang harus dinyatakan tegas.'),('HAK DAN KEWAJIBAN','Rinci prestasi masing-masing pihak, dependensi, pelaporan, dan kewajiban kerja sama.'),('NILAI, PEMBAYARAN DAN PAJAK','Rinci nilai, termin, invoice, bukti pembayaran, pajak, keterlambatan, dan kondisi pembayaran.'),('PERNYATAAN DAN JAMINAN','Nyatakan kewenangan para pihak dan jaminan yang material serta dapat dipenuhi.'),('KERAHASIAAN DAN DATA','Atur kerahasiaan serta data pribadi sesuai kebutuhan transaksi.'),('WANPRESTASI DAN CURE PERIOD','Definisikan pelanggaran material, pemberitahuan, kesempatan perbaikan, dan konsekuensinya secara proporsional.'),('FORCE MAJEURE','Definisikan keadaan kahar, kewajiban pemberitahuan, mitigasi, dan dampaknya terhadap prestasi.'),('PENGAKHIRAN','Atur sebab pengakhiran dan konsekuensi pasca-pengakhiran.'),('PENYELESAIAN SENGKETA','Tentukan tahapan penyelesaian dan forum yang berwenang setelah diverifikasi.'),('KETENTUAN PENUTUP','Perubahan, keterpisahan klausul, pemberitahuan, dan ketentuan administrasi lainnya.')]
-        intro=f'Perjanjian ini dibuat pada {date} antara {p1} (“Pihak Pertama”) dan {p2} (“Pihak Kedua”).'
-
-    body=[doc_type.upper(),'',intro,'']
-    for n,(title,text) in enumerate(clauses,1):
-        body.extend([f'PASAL {n}',title,text,''])
-    body.extend(['DITANDATANGANI OLEH:','',f'{p1}                              {p2}'])
-    return '\n'.join(body) + _draft_working_note(), len(clauses)
+@app.route('/api/drafting/templates')
+def drafting_templates():
+    return jsonify(success=True,data=template_catalog(),count=len(TEMPLATE_REGISTRY))
 
 
 @app.route('/api/generate/draft',methods=['POST'])
@@ -373,8 +228,8 @@ def generate_draft():
     try: duration=max(1,int(data.get('duration') or 12))
     except (TypeError,ValueError): duration=12
     prompt=(data.get('prompt') or '').strip()
-    allowed={'Perjanjian Kerjasama','Non-Disclosure Agreement','Perjanjian Kerja','Surat Kuasa','Somasi','Gugatan Perdata','Legal Opinion'}
-    if doc_type not in allowed: return jsonify(success=False,error='Jenis dokumen tidak didukung'),400
+    if doc_type == 'Surat Kuasa': doc_type='Surat Kuasa Khusus'
+    if doc_type not in TEMPLATE_REGISTRY: return jsonify(success=False,error='Jenis dokumen tidak didukung'),400
     content,cc=_build_legal_draft(doc_type,p1,p2,date,duration,prompt)
     wc=len(content.split())
     i=DraftManager.create_draft(dict(title=f'{doc_type} — {p1} / {p2}',doc_type=doc_type,party1=p1,party2=p2,effective_date=date,duration=duration,content=content,word_count=wc,clause_count=cc,status='generated'))
@@ -391,6 +246,69 @@ def export_docx(draft_id):
     bio=BytesIO(); doc.save(bio); bio.seek(0); safe=secure_filename(d['title']) or 'lexicore-draft'
     return send_file(bio,as_attachment=True,download_name=f'{safe}.docx',mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
+
+@app.route('/api/export/document/docx', methods=['POST'])
+def export_workspace_docx():
+    """Generic DOCX exporter for non-drafting LexiCore workspaces.
+
+    The frontend sends already-rendered, user-visible content as structured blocks.
+    This keeps export logic presentation-only: it does not rerun legal analysis or
+    alter any substantive result before export.
+    """
+    data=request.get_json(silent=True) or {}
+    title=(data.get('title') or 'LexiCore Working Paper').strip()
+    subtitle=(data.get('subtitle') or '').strip()
+    blocks=data.get('blocks') or []
+    if not isinstance(blocks,list) or not blocks:
+        return jsonify(success=False,error='Belum ada hasil yang dapat diekspor'),400
+
+    doc=Document()
+    doc.add_heading(title,0)
+    if subtitle:
+        p=doc.add_paragraph(subtitle)
+        try: p.style='Subtitle'
+        except Exception: pass
+
+    for block in blocks[:500]:
+        if not isinstance(block,dict):
+            continue
+        kind=(block.get('type') or 'paragraph').lower()
+        if kind=='heading':
+            text=str(block.get('text') or '').strip()
+            if text:
+                level=max(1,min(int(block.get('level') or 2),4))
+                doc.add_heading(text,level=level)
+        elif kind=='table':
+            rows=block.get('rows') or []
+            rows=[r for r in rows if isinstance(r,list)]
+            if not rows: continue
+            width=max((len(r) for r in rows), default=0)
+            if not width: continue
+            table=doc.add_table(rows=1, cols=width)
+            table.style='Table Grid'
+            for j,val in enumerate(rows[0]):
+                table.rows[0].cells[j].text=str(val or '')
+            for row in rows[1:]:
+                cells=table.add_row().cells
+                for j in range(width):
+                    cells[j].text=str(row[j] if j < len(row) else '')
+        elif kind=='list':
+            items=block.get('items') or []
+            for item in items:
+                text=str(item or '').strip()
+                if text: doc.add_paragraph(text,style='List Bullet')
+        else:
+            text=str(block.get('text') or '').strip()
+            if text: doc.add_paragraph(text)
+
+    doc.add_paragraph('')
+    footer=doc.add_paragraph('LexiCore Assistant by ELF — Erfan’s Law Firm | Working document — professional verification required before legal use.')
+    try: footer.style='Caption'
+    except Exception: pass
+    bio=BytesIO(); doc.save(bio); bio.seek(0)
+    safe=secure_filename(title) or 'lexicore-working-paper'
+    return send_file(bio,as_attachment=True,download_name=f'{safe}.docx',mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
 @app.route('/api/review',methods=['POST'])
 def review_contract():
     f=request.files.get('file')
@@ -398,12 +316,45 @@ def review_contract():
     if not allowed_file(f.filename): return jsonify(success=False,error='Hanya PDF dan DOCX yang didukung'),400
     td=tempfile.mkdtemp()
     try:
-        path=os.path.join(td,secure_filename(f.filename)); f.save(path); result=ContractReviewEngine.review(path); result['risk_score']=risk_level(result.get('risks',[])); result['analysis_id']=AnalysisManager.save_analysis(result); return jsonify(success=True,data=result)
+        path=os.path.join(td,secure_filename(f.filename)); f.save(path)
+        # Bug fix (v1.3.5.4): a malformed/corrupt/encrypted PDF or DOCX made
+        # DocumentExtractor raise PdfReadError/PackageNotFoundError (or similar)
+        # with nothing catching it here. Flask then returned an unhandled 500
+        # HTML error page instead of JSON, which the frontend cannot parse —
+        # the user just saw a broken request with no explanation. Extraction
+        # and analysis failures are now caught and reported the same way as
+        # every other validation error in this API.
+        try:
+            result=ContractReviewEngine.review(path)
+        except ValueError as exc:
+            return jsonify(success=False,error=str(exc)),400
+        except Exception:
+            return jsonify(success=False,error='Dokumen tidak dapat dibaca. File mungkin rusak, terenkripsi/berpassword, atau formatnya tidak valid. Coba unggah ulang atau gunakan salinan lain.'),422
+        result['risk_score']=risk_level(result.get('risks',[])); result['analysis_id']=AnalysisManager.save_analysis(result); return jsonify(success=True,data=result)
     finally: shutil.rmtree(td,ignore_errors=True)
 
 @app.route('/api/analyses')
 def analyses():
     data=AnalysisManager.get_all_analyses(request.args.get('limit',50,type=int)); return jsonify(success=True,data=data,count=len(data))
+
+@app.route('/api/research/search',methods=['POST'])
+def research_search():
+    d=request.get_json(silent=True) or {}
+    q=(d.get('query') or d.get('citation') or d.get('title') or '').strip()
+    if len(q)<3: return jsonify(success=False,error='Masukkan query dasar hukum minimal 3 karakter'),400
+    mode=(d.get('mode') or 'hybrid').strip().lower()
+    focus=(d.get('focus') or 'mixed').strip().lower()
+    direct_ids=None
+    if focus in {'jurisprudence','case_law'}:
+        direct_ids=('ma','mk','jdih_mk')
+    result=search_legal_authorities(q,mode=mode,limit=max(1,min(int(d.get('limit') or 12),30)),direct_ids=direct_ids)
+    result['research_focus']=focus
+    if focus in {'jurisprudence','case_law'}:
+        result['research_note']='Fokus yurisprudensi: sumber resmi MA/MK diprioritaskan. Ringkasan putusan hanya dibentuk dari teks putusan yang dimasukkan/diambil, bukan dari judul hasil pencarian.'
+    elif focus=='doctrine':
+        result['research_note']='Fokus doktrin: masukkan teks buku/jurnal/pendapat ahli yang dapat dipertanggungjawabkan. LexiCore tidak memperlakukan doktrin sebagai sumber hukum primer.'
+    return jsonify(success=True,data=result)
+
 
 @app.route('/api/research/summarize',methods=['POST'])
 def research_summarize():
@@ -432,16 +383,19 @@ def research_summarize():
     secondary_types={'legal_opinion','doctrine','memo'}
     ss=sentences(text)
 
+    structured={}
     if source_type in case_types:
-        issue=d.get('issue') or next((s for s in ss if any(k in s.lower() for k in ['apakah','sengketa','masalah','permohonan','gugatan','dakwaan'])), ss[0] if ss else '')
-        holding=next((s for s in ss if any(k in s.lower() for k in ['mengadili','memutus','menetapkan','dikabulkan','ditolak','putusan'])), ss[-1] if ss else '')
-        reasoning=' '.join(ss[1:5])[:1200] if len(ss)>1 else text[:1200]
-        issue_label='ISU HUKUM'; result_label='AMAR / HASIL'; reasoning_label='PERTIMBANGAN / REASONING'
+        structured=summarize_case_source(text)
+        issue=structured['chronology']
+        holding=structured['disposition']
+        reasoning=structured['ratio_decidendi']
+        issue_label='KRONOLOGI KASUS'; result_label='AMAR PUTUSAN'; reasoning_label='PERTIMBANGAN HUKUM HAKIM / RATIO DECIDENDI'
     elif source_type in secondary_types:
-        issue=d.get('issue') or (ss[0] if ss else text[:500])
-        holding=' '.join(ss[1:3])[:900] if len(ss)>1 else text[:900]
-        reasoning=' '.join(ss[3:6])[:1200] if len(ss)>3 else text[:1200]
-        issue_label='TOPIK / ISU'; result_label='POKOK PENDAPAT'; reasoning_label='ARGUMEN / ANALISIS'
+        structured=summarize_doctrine_source(text)
+        issue=structured['doctrine_topic']
+        holding=structured['doctrine_thesis']
+        reasoning=structured['doctrine_analysis']
+        issue_label='TOPIK / ISU DOKTRIN'; result_label='POKOK PENDAPAT / TESIS'; reasoning_label='ARGUMENTASI / ANALISIS DOKTRIN'
     else:
         issue=d.get('issue') or next((s for s in ss if any(k in s.lower() for k in ['menimbang','mengingat','berdasarkan','ketentuan','mengatur','dimaksud'])), ss[0] if ss else '')
         holding=next((s for s in ss if any(k in s.lower() for k in ['wajib','dilarang','berhak','berwenang','harus','dapat','ditetapkan','diatur'])), ss[1] if len(ss)>1 else (ss[0] if ss else ''))
@@ -449,7 +403,7 @@ def research_summarize():
         issue_label='RUANG LINGKUP / ISU PENGATURAN'; result_label='NORMA / POKOK PENGATURAN'; reasoning_label='KONTEKS / ANALISIS'
 
     words=re.findall(r'\b[a-zA-ZÀ-ÿ]{5,}\b',text.lower()); stop={'dengan','dalam','bahwa','untuk','adalah','karena','kepada','tersebut','sebagai','pihak','serta','yang','dari'}; freq={w:words.count(w) for w in set(words) if w not in stop}; keywords=[w for w,_ in sorted(freq.items(),key=lambda x:x[1],reverse=True)[:8]]
-    record=dict(title=d.get('title') or 'Legal Research Note',jurisdiction=d.get('jurisdiction','Indonesia'),citation=d.get('citation',''),source_type=source_type,source_text=text,issue=issue,holding=holding,reasoning=reasoning,keywords=keywords)
+    record=dict(title=d.get('title') or 'Legal Research Note',jurisdiction=d.get('jurisdiction','Indonesia'),citation=d.get('citation',''),source_type=source_type,source_text=text,issue=issue,holding=holding,reasoning=reasoning,keywords=keywords,research_payload=structured)
     record['research_id']=ResearchManager.save(record)
     record.update(source_label=source_labels.get(source_type,source_type),issue_label=issue_label,result_label=result_label,reasoning_label=reasoning_label)
     return jsonify(success=True,data=record)
@@ -457,16 +411,45 @@ def research_summarize():
 @app.route('/api/research')
 def research_list(): return jsonify(success=True,data=ResearchManager.all(request.args.get('limit',30,type=int)))
 
+@app.route('/api/compliance/questions')
+def compliance_questions():
+    category=normalize_category(request.args.get('category','General Corporate'))
+    return jsonify(success=True,data={'category':category,'questions':question_set(category)})
+
 @app.route('/api/compliance/assess',methods=['POST'])
 def compliance_assess():
-    d=request.get_json(silent=True) or {}; a=d.get('answers') or {}; weights={'license':20,'privacy':20,'contracts':15,'employment':15,'tax':15,'aml':15}; findings=[]; rec=[]; score=0
-    labels={'license':'Perizinan','privacy':'Perlindungan Data','contracts':'Kontrak','employment':'Ketenagakerjaan','tax':'Pajak','aml':'AML/KYC'}
-    for key,w in weights.items():
-        val=str(a.get(key,'yes')).lower()
-        if val=='no': score+=w; findings.append(f'{labels[key]}: kontrol belum tersedia'); rec.append(f'Prioritaskan remediasi area {labels[key]} dan dokumentasikan PIC serta target waktunya.')
-        elif val=='partial': score+=round(w*0.5); findings.append(f'{labels[key]}: kontrol baru sebagian'); rec.append(f'Lengkapi bukti kepatuhan dan SOP {labels[key]}.')
-    level='HIGH' if score>=60 else ('MEDIUM' if score>=30 else 'LOW'); record=dict(title=d.get('title','Compliance & Risk Assessment'),entity=d.get('entity',''),category=d.get('category','General'),answers=a,score=score,risk_level=level,findings=findings,recommendations=rec)
-    record['assessment_id']=RiskAssessmentManager.save(record); return jsonify(success=True,data=record)
+    d=request.get_json(silent=True) or {}
+    answers=d.get('answers') or {}
+    custom_controls=d.get('custom_controls') or []
+    category=normalize_category(d.get('category','General Corporate'))
+    assessed=build_risk_matrix(category,answers,custom_controls)
+    findings=[r['risk_identification'] for r in assessed['matrix'] if r['risk_level'] in {'HIGH','MEDIUM'}]
+    recommendations=[]
+    for row in assessed['matrix']:
+        if row['risk_level'] in {'HIGH','MEDIUM'}:
+            recommendations.extend(row.get('mitigation_checklist') or [])
+    # retain the legacy fields for compatibility while persisting the richer matrix.
+    record=dict(
+        title=d.get('title','Compliance & Risk Assessment'),
+        entity=d.get('entity',''),
+        category=category,
+        answers=answers,
+        score=assessed['score'],
+        risk_level=assessed['risk_level'],
+        findings=findings,
+        recommendations=list(dict.fromkeys(recommendations)),
+        risk_matrix=assessed['matrix'],
+        professional_verification='PENDING',
+        assessment_method='CATEGORY_SPECIFIC_DETERMINISTIC_MATRIX',
+        custom_controls=custom_controls,
+        system_question_count=assessed.get('system_question_count',0),
+        custom_question_count=assessed.get('custom_question_count',0),
+    )
+    if not bool(d.get('preview')):
+        record['assessment_id']=RiskAssessmentManager.save(record)
+    else:
+        record['preview']=True
+    return jsonify(success=True,data=record)
 
 @app.route('/api/compliance')
 def compliance_list(): return jsonify(success=True,data=RiskAssessmentManager.all(request.args.get('limit',30,type=int)))
@@ -476,6 +459,9 @@ CASE_LAW_REGISTRY = [
     {'domain':'Konstitusi & Hak Dasar','keywords':['konstitusi','hak asasi','diskriminasi','kebebasan','kewenangan negara','uji materi'],'sources':['UUD Negara Republik Indonesia Tahun 1945','Putusan Mahkamah Konstitusi yang relevan']},
     {'domain':'Pidana Materiil','keywords':['pidana','tersangka','terdakwa','dakwaan','penipuan','penggelapan','pencurian','penganiayaan','ancaman','pemalsuan','korupsi'],'sources':['UU No. 1 Tahun 2023 tentang KUHP','UU No. 1 Tahun 2026 tentang Penyesuaian Pidana','Undang-undang pidana khusus yang relevan']},
     {'domain':'Acara Pidana','keywords':['penyidikan','penyelidikan','penangkapan','penahanan','penggeledahan','penyitaan','praperadilan','penuntutan','saksi','barang bukti'],'sources':['UU No. 20 Tahun 2025 tentang Kitab Undang-Undang Hukum Acara Pidana','PERMA/SEMA dan putusan pengadilan yang relevan']},
+    {'domain':'Tindak Pidana Korupsi','keywords':['tindak pidana korupsi','tipikor','kerugian keuangan negara','kerugian keuangan daerah','penyalahgunaan kewenangan'],'sources':['UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001 tentang Pemberantasan Tindak Pidana Korupsi','KUHP Nasional/ketentuan transisi yang relevan menurut tempus']},
+    {'domain':'Perbankan & Jasa Keuangan','keywords':['bpr','bank perekonomian rakyat','bank perkreditan rakyat','fasilitas kredit','pemberian kredit','komite kredit','analisa 5c','slik','ojk'],'sources':['UU Perbankan beserta perubahannya yang berlaku pada tempus','POJK/SEOJK yang berlaku pada tempus dan relevan dengan BPR/kredit']},
+    {'domain':'BUMD & Pemerintahan Daerah','keywords':['perumda','bumd','pemerintah daerah','pemerintah kota','kpm','dewan pengawas'],'sources':['UU Pemerintahan Daerah beserta perubahannya','PP tentang BUMD dan peraturan daerah/pendirian Perumda yang relevan']},
     {'domain':'Perdata & Perikatan','keywords':['wanprestasi','perjanjian','utang','piutang','ganti rugi','jual beli','sewa','perbuatan melawan hukum','kontrak'],'sources':['KUHPerdata / Burgerlijk Wetboek (periksa status pasal secara spesifik)','Undang-undang sektoral yang menyimpangi atau menggantikan BW','Yurisprudensi yang relevan']},
     {'domain':'Perusahaan & Komersial','keywords':['perseroan','direksi','komisaris','pemegang saham','pt ','perusahaan','merger','akuisisi','usaha'],'sources':['Undang-undang perseroan/perusahaan yang berlaku','Peraturan pelaksana dan regulasi sektor usaha yang relevan']},
     {'domain':'Ketenagakerjaan','keywords':['pekerja','buruh','karyawan','phk','upah','hubungan kerja','pesangon'],'sources':['Peraturan ketenagakerjaan yang berlaku beserta perubahan dan peraturan pelaksananya','Putusan PHI/MA yang relevan']},
@@ -548,9 +534,16 @@ def _select_sentences(text, markers, limit=8, exclude=None):
 
 def _deep_case_profile(text):
     low=text.lower(); ss=sentences(text)
-    is_criminal=any(k in low for k in ['tersangka','terdakwa','dakwaan','penyidik','pidana','kejaksaan','korupsi'])
-    is_corruption=any(k in low for k in ['korupsi','tipikor','pemberantasan tindak pidana korupsi','pasal 603'])
-    is_credit=any(k in low for k in ['kredit','bpr','debitur','perkreditan','agunan','5c','slik'])
+    domain_contract=classify_case(text)
+    active=set(domain_contract.get('domain_contract') or [])
+    primary=domain_contract.get('primary_domain')
+    is_corruption=primary=='corruption'
+    is_criminal=is_corruption or 'criminal' in active or str(domain_contract.get('posture','')).startswith('PIDANA')
+    is_credit='financial_services' in active
+    is_land='land_property' in active
+    is_civil_procedure='civil_procedure' in active
+    is_religious='religious_court' in active
+    is_employment='employment' in active
 
     incr_markers=['mengakui','benar','saya setujui','saya menyetujui','pemutus kredit','menyimpang','menyimpangi','tidak membuat justifikasi','tanpa survey','tanpa survei','tidak memeriksa','tidak sesuai ketentuan','bertentangan dengan ketentuan','memiliki kewenangan untuk menolak','saya acc','saya memutuskan']
     mitig_markers=['tidak pernah memerintah','tidak pernah melarang','percaya kepada','berdasarkan pertimbangan','komite kredit','kredit sebelumnya','riwayat pembayaran lancar','bpkb','agunan','fidusia','dokumen fiat','dokumen analisa','tidak menerima','tidak mengetahui','tidak ikut langsung','bagian marketing','kewenangan bagian kredit']
@@ -580,6 +573,14 @@ def _deep_case_profile(text):
         ]
     if is_criminal:
         issues += ['Apakah hak tersangka, pendampingan penasihat hukum, pemberitahuan sangkaan, dan proses pemeriksaan telah dipenuhi sesuai hukum acara yang berlaku?']
+    if is_civil_procedure:
+        issues += ['Apakah gugatan memenuhi syarat formil, para pihak lengkap, posita-petitum konsisten, dan pengadilan yang dipilih memiliki kompetensi absolut serta relatif?']
+    if is_land:
+        issues += ['Bagaimana riwayat alas hak, data fisik/yuridis, proses pendaftaran, status sertipikat, dan hubungan antara bukti keperdataan dengan administrasi pertanahan?']
+    if is_religious:
+        issues += ['Apakah materi sengketa termasuk kompetensi absolut Peradilan Agama berdasarkan status para pihak dan objek sengketa yang sebenarnya?']
+    if is_employment:
+        issues += ['Apakah hubungan kerja, jenis perjanjian, alasan tindakan perusahaan, prosedur bipartit/PHI, dan hak normatif pekerja telah dipetakan berdasarkan ketentuan yang berlaku?']
 
     years=sorted(set(int(x) for x in re.findall(r'\b(20\d{2})\b',text)))
     temporal=False
@@ -604,6 +605,14 @@ def _deep_case_profile(text):
         gaps += ['PKPB/SOP yang berlaku tepat pada tanggal keputusan kredit','Seluruh SK/SE Direksi dan perubahan/revokasinya','POJK/aturan eksternal yang berlaku pada tempus kredit','SLIK, berita acara survei, analisa 5C, analisa pendapatan, appraisal agunan, opinion kepatuhan, notulen/lembar komite, fiat, dan bukti pencairan','Laporan SPI/internal audit dan tindak lanjut atas temuan']
     if is_criminal:
         gaps += ['BAP saksi lain, ahli, dokumen penyitaan, audit, dan alat bukti yang dipakai untuk menghubungkan masing-masing unsur pasal']
+    if is_civil_procedure:
+        gaps += ['Salinan lengkap gugatan, relaas/panggilan, surat kuasa khusus, identitas dan kapasitas seluruh pihak, serta dokumen yang menentukan kompetensi absolut/relatif']
+    if is_land:
+        gaps += ['Sertipikat/buku tanah, surat ukur, warkah/alasan hak, riwayat peralihan, SKPT terbaru, dan dokumen ukur/pengumuman data fisik-yuridis yang relevan']
+    if is_religious:
+        gaps += ['Dokumen status para pihak dan objek hubungan hukum yang menentukan kewenangan Peradilan Agama']
+    if is_employment:
+        gaps += ['Perjanjian kerja, peraturan perusahaan/PKB, slip upah, surat peringatan/pemberitahuan, risalah bipartit, dan dokumen dasar PHK/tindakan perusahaan']
 
     strategy=[]
     if is_corruption:
@@ -618,25 +627,81 @@ def _deep_case_profile(text):
         strategy += ['Rekonstruksi credit approval chain dari permohonan sampai monitoring pascapencairan dan petakan siapa mengetahui apa, kapan, serta berdasarkan dokumen apa.']
     if temporal:
         strategy += ['Buat matriks tempus delicti vs norma lama/norma baru/ketentuan peralihan dan bandingkan unsur serta ancaman pidana untuk memastikan penerapan hukum yang sah dan lebih menguntungkan bila relevan.']
+    if is_civil_procedure:
+        strategy += ['Susun matriks eksepsi dan jawaban per posita; pisahkan isu kompetensi, pihak, kejelasan gugatan, pembuktian pokok perkara, dan rekonvensi bila relevan.']
+    if is_land:
+        strategy += ['Rekonstruksi chain of title/warkah dan cocokkan dengan buku tanah, surat ukur, SKPT, serta tindakan administrasi BPN sebelum menyimpulkan kekuatan hak.']
+    if is_religious:
+        strategy += ['Uji kompetensi absolut berdasarkan substansi hubungan hukum, bukan sekadar label gugatan, dan verifikasi Pasal 49 UU Peradilan Agama beserta perkembangan putusan yang relevan.']
+    if is_employment:
+        strategy += ['Petakan hubungan kerja, proses bipartit dan hak normatif; jangan mengandalkan klausul kontrak untuk meniadakan hak yang bersifat wajib.']
 
-    conclusion=('Dokumen menunjukkan risiko hukum material pada aspek tata kelola/prosedur. Namun pelanggaran prosedur tidak otomatis membuktikan tindak pidana; kesimpulan pidana memerlukan pembuktian unsur secara individual, termasuk mens rea, actual loss, causal connection, dan personal responsibility.' if is_corruption else 'Dokumen memerlukan pengujian unsur hukum secara terstruktur terhadap fakta, bukti, kewenangan, status norma, dan hubungan kausal sebelum kesimpulan final dibuat.')
+    # Fail-closed base synthesis.  Domain-specific narrative is applied later by
+    # services.case_reasoning_guard only when the source itself supports the
+    # required nexus/gates.  This prevents a classifier hit from becoming a
+    # hard-coded legal conclusion.
+    conclusion='Dokumen memerlukan pengujian fakta, bukti, identitas norma, status berlaku, tempus, keterkaitan perkara, dan atribusi pertanggungjawaban sebelum kesimpulan hukum spesifik dapat dibuat.'
 
     return {
       'facts':facts,'incriminating_facts':incr,'mitigating_facts':mitig,'legal_issues':_unique(issues,14),
       'element_matrix':elements,'evidentiary_gaps':_unique(gaps,18),'strategy':_unique(strategy,14),
       'conclusion':conclusion,'temporal_issue':temporal,'money_values':_money_values(text),'date_values':_date_values(text),'provision_refs':_provision_refs(text),
-      'is_criminal':is_criminal,'is_corruption':is_corruption,'is_credit':is_credit
+      'is_criminal':is_criminal,'is_corruption':is_corruption,'is_credit':is_credit,'domain_contract':domain_contract
     }
 
 
+
+def _case_domain_allowed_registry_labels(domain_contract):
+    active=set((domain_contract or {}).get('domain_contract') or [])
+    mapping={
+      'corruption':{'Tindak Pidana Korupsi','Pidana Materiil'},
+      'financial_services':{'Perbankan & Jasa Keuangan'},
+      'criminal':{'Pidana Materiil','Acara Pidana'},
+      'regional_government':{'BUMD & Pemerintahan Daerah','Administrasi Pemerintahan'},
+      'civil_contract':{'Perdata & Perikatan'},
+      'civil_procedure':{'Hukum Acara Perdata'},
+      'land_property':{'Pertanahan & Properti'},
+      'religious_court':{'Keluarga & Peradilan Agama'},
+      'employment':{'Ketenagakerjaan'},
+      'corporate':{'Perusahaan & Komersial'},
+      'consumer':{'Konsumen'},
+      'data_privacy':{'Teknologi, ITE & Data'},
+      'bankruptcy':{'Perdata & Perikatan'},
+      'arbitration':{'Perdata & Perikatan'},
+    }
+    out=set()
+    for did in active: out |= mapping.get(did,set())
+    return out
+
+
+def _qualified_document_refs(refs):
+    """Only parent-qualified instruments enter Applicable Law; orphan Pasal stays evidence text."""
+    out=[]
+    for ref in refs or []:
+        t=re.sub(r'\s+',' ',str(ref or '')).strip()
+        low=t.lower()
+        if not t: continue
+        if re.fullmatch(r'pasal\s+\d+[a-z]?(?:\s+ayat\s*\([^)]*\))?(?:\s+huruf\s+[a-z])?',t,re.I):
+            continue
+        if any(k in low for k in ('undang-undang','uu no','peraturan otoritas','pojk','seojk','perma','sema','kuhp','kuhap','kuhperdata','uupa')):
+            out.append(t)
+    return _unique(out,12)
+
 def _case_analysis_payload(text,title='Case Analysis',input_type='narrative',filename='',official_verification=None):
-    matched=_case_issue_spot(text); profile=_deep_case_profile(text)
+    profile=_deep_case_profile(text)
+    domain_contract=profile.get('domain_contract') or classify_case(text)
+    allowed_labels=_case_domain_allowed_registry_labels(domain_contract)
+    matched=_case_issue_spot(text)
     applicable=[]
-    for _,item,hits in matched[:7]:
+    # Domain contract is authoritative: keyword hits outside active domains are ignored.
+    for _,item,hits in matched:
+        if item.get('domain') not in allowed_labels:
+            continue
         for src in item['sources']:
             if not any(x.get('source')==src for x in applicable):
                 applicable.append({'domain':item['domain'],'source':src,'status':'PERLU VERIFIKASI PASAL, PERUBAHAN, STATUS BERLAKU, DAN RELEVANSI TERHADAP FAKTA'})
-    for ref in profile['provision_refs'][:12]:
+        if len(applicable)>=12: break
+    for ref in _qualified_document_refs(profile.get('provision_refs')):
         if not any(ref.lower() in x['source'].lower() for x in applicable):
             applicable.insert(0,{'domain':'Norma disebut dalam dokumen','source':ref,'status':'WAJIB DICEK KE SUMBER RESMI + TEMPUS/STATUS BERLAKU'})
     if not applicable:
@@ -661,19 +726,18 @@ def _case_analysis_payload(text,title='Case Analysis',input_type='narrative',fil
     if not pros: pros=['Belum teridentifikasi fakta meringankan yang kuat hanya dari teks; diperlukan pembacaan bukti lain.']
     if not cons: cons=['Belum teridentifikasi fakta memberatkan yang kuat hanya dari teks; diperlukan pembacaan bukti lain.']
 
+    # Keep deterministic payload neutral.  A case-specific guarded synthesis is
+    # applied after deterministic/AI processing in routes/case_analysis.py.
     analysis=profile['conclusion']
-    if profile['is_corruption']:
-        analysis += ' Fokus analisis tidak berhenti pada apakah SOP dilanggar, tetapi pada apakah jaksa dapat membuktikan setiap unsur pidana di luar keraguan yang wajar. Untuk kasus berbasis kredit/perbankan, actual loss, causal chain, pembagian fungsi organisasi, dan bukti keuntungan personal harus dipisahkan secara tegas.'
-    if profile['temporal_issue']:
-        analysis += ' Terdapat pula isu temporal law yang harus diaudit karena dokumen memuat tahun perbuatan dan norma yang berbeda masa berlakunya.'
 
     # v1.3.1.1: restore Regulatory Corpus + Norm Conflict integration from v1.3.0.
-    regulatory_matches=retrieve_for_case(text, profile.get('provision_refs',[]), limit=8)
+    regulatory_matches=retrieve_for_case(text, profile.get('provision_refs',[]), limit=10, allowed_domains=domain_contract.get('domain_contract') or [])
     regulatory_intelligence=intelligence_for_case(regulatory_matches)
     norm_conflicts=analyze_conflicts(profile.get('provision_refs',[]), text, regulatory_matches)
 
     return dict(
       title=title,input_type=input_type,filename=filename,source_text=text,
+      case_posture=domain_contract.get('posture'),domain_classification=domain_contract,domain_contract=domain_contract,
       facts=profile['facts'],incriminating_facts=profile['incriminating_facts'],mitigating_facts=profile['mitigating_facts'],
       legal_issues=profile['legal_issues'],applicable_law=applicable,legal_analysis=analysis,
       element_matrix=profile['element_matrix'],arguments_for=pros,arguments_against=cons,
@@ -686,9 +750,86 @@ def _case_analysis_payload(text,title='Case Analysis',input_type='narrative',fil
       norm_conflicts=norm_conflicts,
       official_verification=official_verification,legal_status=legal_status,
       analytical_method='DEEP_CASE_ANALYSIS_V2',
-      coverage_note='LexiCore v1.2.2 membaca dokumen dengan pendekatan source-grounded: fakta material, fakta memberatkan/meringankan, issue spotting, element-by-element analysis, evidentiary gaps, mens rea, actual loss, causal chain, personal responsibility, tempus/ketentuan peralihan, dan strategi langkah hukum. Official JDIH Federation digunakan untuk verifikasi sumber; kesimpulan final tetap Professional Verification: PENDING.'
+      coverage_note=PRODUCT_LABEL + ' membaca dokumen dengan pendekatan source-grounded dan fail-closed: fakta sumber → isu → domain/nexus → identitas/status norma → tempus → unsur/atribusi → kesimpulan bersyarat. Istilah domain-spesifik hanya boleh muncul bila nexus sumbernya terpenuhi; kesimpulan final tetap Professional Verification: PENDING.'
     )
 
+
+
+def _sanitize_executive_text(value):
+    """Remove identifiers that do not belong in an executive summary.
+
+    The full source remains available in the source ledger; this only keeps the
+    high-level working-paper summary from unnecessarily repeating NIK, phone,
+    email, and detailed address data.
+    """
+    t=re.sub(r'\s+',' ',str(value or '')).strip()
+    t=re.sub(r'\bN\.?I\.?K\.?\s*[:\-]?\s*\d{12,18}\b','NIK [REDACTED]',t,flags=re.I)
+    t=re.sub(r'\b(?:\+62|62|0)8\d{7,12}\b','[PHONE REDACTED]',t)
+    t=re.sub(r'\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b','[EMAIL REDACTED]',t,flags=re.I)
+    t=re.sub(r'\b(?:Jl\.?|Jalan)\s+[^.;]{3,100}(?=[.;]|$)','[ADDRESS REDACTED]',t,flags=re.I)
+    return t.strip(' ;,-')
+
+
+def _source_ledger_candidates(source_text, limit=48):
+    """Create a broad extractive source ledger for audit/traceability.
+
+    This function intentionally preserves document structure, pleading labels,
+    prayers, objections and other source material because ``source_ledger`` is
+    the audit trace of what was actually read.  It is *not* the lawyer-facing
+    Evidence Map.  The stricter ``material_source_ledger`` / ``evidence_rows``
+    projection is responsible for excluding counsel addresses, identity blocks,
+    procedural metadata, prayers, legal argument and other non-merits material.
+
+    Keeping these two layers separate prevents a recurring regression where
+    cleaning the Evidence Map accidentally deleted source trace needed by other
+    workflows/tests.
+    """
+    text=str(source_text or '').replace('\r','\n')
+    text=re.sub(r'(?i)dipindai\s+dengan\s+camscanner',' ',text)
+    text=re.sub(r'[ \t]+',' ',text)
+    raw=[re.sub(r'\s+',' ',x).strip(' -\t') for x in re.split(r'\n{1,}|(?<=[.!?;:])\s+(?=[A-Z0-9IV])',text)]
+
+    anchors=(
+        'perbuatan','kejadian','terjadi','terdakwa','penggugat','tergugat','saksi','debitur','kreditur',
+        'pemberian kredit','kredit macet','pencairan','pembayaran','plafon','appraisal','agunan','jaminan',
+        'fidusia','bpkb','rekening','audit','kerugian','dana','keuntungan','gratifikasi','fee','kickback',
+        'direktur','jabatan','kewenangan','keputusan','komite','persetujuan','sop','kepatuhan','pengawas',
+        'perjanjian','wanprestasi','melawan hukum','hak','kewajiban','tanah','sertipikat','sertifikat','shm',
+        'waris','ahli waris','penguasaan','penyerahan','jual beli','utang','piutang','tidak ditemukan',
+        'dialihkan','dijual','disimpan','tersimpan','digantikan','diangkat','diperpanjang','eksepsi',
+        'kompetensi','kewenangan mengadili','error in persona','obscuur','plurium','dakwaan','rekonvensi',
+        'konvensi','permohonan','petitum','kesimpulan','replik','duplik','ptsl','skpt'
+    )
+    structural_re=re.compile(r'(?i)^(?:dalam\s+)?(?:eksepsi|konvensi|rekonvensi|kesimpulan|permohonan|petitum|replik|duplik)(?:\b.*)?$')
+    scored=[]
+    for idx,chunk in enumerate(raw):
+        if not chunk or len(chunk)>900:
+            continue
+        low=chunk.lower()
+        structural=bool(structural_re.match(chunk))
+        if len(chunk)<12 and not structural:
+            continue
+        score=sum(2 for a in anchors if a in low)
+        if re.search(r'(?i)\b(?:Rp\.?\s*)?[0-9][0-9.]{3,}',chunk): score+=1
+        if re.search(r'(?i)\b(?:tidak|belum|melebihi|memberikan|menerima|menjual|mengalihkan|menyimpan|menjabat|diangkat|digantikan)\b',chunk): score+=2
+        if structural: score=max(score,2)
+        if score<=0:
+            continue
+        label='DOCUMENT' if structural else ('ALLEGATION' if any(x in low for x in ('mendalilkan','menyatakan','dakwaan','didakwa','menuntut')) else 'SOURCE FACT')
+        scored.append((score,idx,chunk,label))
+
+    strongest=sorted(scored,key=lambda x:(-x[0],x[1]))[:max(limit*3,limit)]
+    strongest=sorted(strongest,key=lambda x:x[1])
+    out=[]; seen=set()
+    for score,idx,chunk,label in strongest:
+        key=re.sub(r'\W+',' ',chunk.lower()).strip()[:180]
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append({'label':label,'statement':chunk[:780],'evidence':chunk[:780],'segment':None,'source':'DETERMINISTIC_EXTRACTIVE'})
+        if len(out)>=limit:
+            break
+    return out
 
 def _compact_executive_summary(result):
     source=re.sub(r'\s+',' ',str(result.get('source_text') or '')).strip()
@@ -701,7 +842,8 @@ def _compact_executive_summary(result):
         noise=(
             'demi keadilan dan kebenaran','paraf:','mengertikah tersangka',
             'anak dani','anak dan (alm)','jo.pasal','jo. pasal','----------',
-            'nama lengkap drs.','tindak pidana khusus'
+            'nama lengkap drs.','tindak pidana khusus','nik:','n.i.k','no.handphone',
+            'phone ','email :','alamat :','tempat tinggal','lahir di'
         )
         if any(x in low for x in noise):
             return False
@@ -710,33 +852,51 @@ def _compact_executive_summary(result):
             return False
         return True
 
-    facts=[str(x).strip() for x in _unique(result.get('facts') or [], 14) if fact_quality(x)]
+    facts=[_sanitize_executive_text(x) for x in _unique(result.get('facts') or [], 14) if fact_quality(x)]
+    semantic_facts=[_sanitize_executive_text(x) for x in executive_fact_candidates(result.get('source_ledger') or [],5) if fact_quality(x)]
+    if semantic_facts:
+        facts=_unique(semantic_facts+facts,10)
 
-    # For recurring regulated-credit BAPs, prefer a reconstructed factual capsule
-    # over arbitrary first OCR fragments. This remains source-grounded: every
-    # clause below is emitted only when its anchor exists in source text.
+    # Case capsule uses the same global tempus guard as Legal Construction.
+    # A year occurring in a case number, SK number, statute citation or object
+    # model must never become the year of the legal event merely by proximity.
     case_bits=[]
     if source and re.search(r'Perumda\s+BPR|PD\.?\s*BPR', source, re.I):
-        if re.search(r'dugaan\s+Tindak\s+Pidana\s+Korupsi', source, re.I):
-            case_bits.append('dokumen merupakan pemeriksaan dalam perkara dugaan tindak pidana korupsi terkait fasilitas kredit pada Perumda BPR')
-        y=re.search(r'(?:fasilitas\s+kredit|pemberian\s+kredit|kredit).{0,180}?(20\d{2})', source, re.I)
-        if y:
-            case_bits.append('peristiwa kredit disebut berkaitan dengan tahun '+y.group(1))
+        if re.search(r'Tindak\s+Pidana\s+Korupsi|Tipikor', source, re.I):
+            bpr_label = ('Perumda BPR' if re.search(r'Perumda\s+BPR', source, re.I)
+                         else ('PD BPR' if re.search(r'PD\.?\s*BPR', source, re.I) else 'BPR'))
+            case_bits.append(f'dokumen berkaitan dengan perkara tindak pidana korupsi dan fasilitas kredit pada {bpr_label}')
+        guard=result.get('reasoning_guard') or {}
+        tempus=guard.get('tempus') or {}
+        years=tempus.get('event_year_candidates') or []
+        if len(years)==1 and tempus.get('status') not in ('TEMPUS_INSUFFICIENT','TEMPUS_REQUIRES_EVENT_DATE'):
+            case_bits.append('kandidat tahun perbuatan yang perlu diverifikasi: '+str(years[0]))
+        else:
+            case_bits.append('tahun/tanggal perbuatan kredit belum dapat ditetapkan secara aman dari dokumen ini')
         if re.search(r'Direktur\s+Utama', source, re.I):
-            case_bits.append('pihak yang dianalisis disebut pernah menjabat Direktur Utama pada periode relevan')
-        debtor=re.search(r'kepada\s+Debitur\s+([A-Z][A-Za-z .]{2,60}?)(?:\s+Tahun|\s+sebesar|\s+dengan|\.|,)', source, re.I)
-        if debtor:
-            name=re.sub(r'\s+',' ',debtor.group(1)).strip()
-            if 2 <= len(name.split()) <= 5:
-                case_bits.append('fasilitas kredit disebut diberikan kepada debitur '+name)
+            case_bits.append('dokumen menyebut pihak yang dianalisis pernah menjabat Direktur Utama; periode dan atribusi tindakannya tetap harus dipetakan')
     if case_bits:
         facts=['; '.join(case_bits)+'.'] + facts
+    else:
+        posture=str(result.get('case_posture') or (result.get('domain_classification') or {}).get('posture') or '')
+        civil_bits=[]
+        if posture=='PERDATA_LITIGASI' or re.search(r'penggugat|tergugat|gugatan',source,re.I):
+            if re.search(r'jawaban\s+(?:pertama\s+)?(?:para\s+)?tergugat|jawaban.*gugatan',source,re.I):
+                civil_bits.append('dokumen merupakan jawaban/pleading dalam sengketa perdata')
+            elif re.search(r'gugatan',source,re.I):
+                civil_bits.append('dokumen berkaitan dengan gugatan perdata')
+            if re.search(r'obscuur\s+libel',source,re.I): civil_bits.append('terdapat eksepsi obscuur libel')
+            if re.search(r'plurium\s+litis\s+consortium',source,re.I): civil_bits.append('terdapat eksepsi kurang pihak/plurium litis consortium')
+            if re.search(r'kompetensi\s+absolut|kewenangan\s+absolut|pengadilan\s+agama',source,re.I): civil_bits.append('kompetensi absolut forum dipersoalkan')
+            if re.search(r'sertipikat|sertifikat|shm|skpt|surat ukur|kantor pertanahan',source,re.I): civil_bits.append('objek/fakta pertanahan dan riwayat pendaftaran menjadi bagian material sengketa')
+        if civil_bits:
+            facts=['; '.join(civil_bits)+'.'] + [f for f in facts if not re.search(r'phone|email|alamat\s*:',f,re.I)]
 
     issues=_unique(result.get('legal_issues') or [], 5)
     gaps=_unique(result.get('evidentiary_gaps') or result.get('evidence_needed') or [], 5)
     out=[]
     if facts:
-        out.append('Fakta kunci: ' + '; '.join(str(x) for x in facts[:3]))
+        out.append('Fakta kunci: ' + _sanitize_executive_text('; '.join(str(x) for x in facts[:3])))
     elif source:
         out.append('Fakta kunci: dokumen sumber telah terbaca, tetapi fakta material belum cukup bersih untuk diringkas tanpa verifikasi terhadap teks sumber.')
     if issues:
@@ -765,6 +925,9 @@ def _clean_applicable_law(result):
         'civil_procedure': {'Hukum Acara Perdata'},
         'constitutional': {'Konstitusi & Hak Dasar'},
         'regional_government': {'Administrasi Pemerintahan','Perusahaan & Komersial'},
+        'administrative': {'Administrasi Pemerintahan','Hukum Acara TUN'},
+        'public_information': {'Keterbukaan Informasi Publik','Administrasi Pemerintahan'},
+        'investment': {'Penanaman Modal','Perusahaan & Komersial'},
     }
     allowed_labels={'Norma disebut dalam dokumen'}
     for did in domain_ids:
@@ -811,9 +974,43 @@ def _ensure_evidence_to_action(result):
             for doc in seg.get('documents') or []:
                 ledger.append({'label':'DOCUMENT','statement':str(doc),'evidence':'','segment':segno})
     if not ledger:
+        # Prefer a deeper extractive ledger from the actual source.  Facts from
+        # the deterministic analyzer remain useful, but OCR documents commonly
+        # contain far more material than that small list captures.
+        ledger.extend(_source_ledger_candidates(result.get('source_text') or '', limit=36))
+        existing={re.sub(r'\W+',' ',str(x.get('statement') or '').lower()).strip()[:180] for x in ledger}
         for fact in result.get('facts') or []:
-            ledger.append({'label':'SOURCE FACT','statement':re.sub(r'\s+',' ',str(fact)).strip()[:650],'evidence':'','segment':None})
+            statement=re.sub(r'\s+',' ',str(fact)).strip()[:650]
+            key=re.sub(r'\W+',' ',statement.lower()).strip()[:180]
+            if statement and key not in existing:
+                ledger.append({'label':'SOURCE FACT','statement':statement,'evidence':statement,'segment':None,'source':'DETERMINISTIC_FACT'})
+                existing.add(key)
     result['source_ledger']=ledger[:160]
+    # Keep the raw ledger for internal traceability, but create a separate
+    # user-facing projection that contains only case-material source items.
+    # Identity/contact/procedural metadata must never masquerade as evidence.
+    from services.case_consistency_guard import material_source_ledger
+    result['material_source_ledger']=material_source_ledger(result['source_ledger'], limit=80)
+    from services.case_consistency_guard import classify_source_item
+    hygiene_counts={}
+    for _item in result['source_ledger']:
+        if not isinstance(_item,dict):
+            continue
+        _cls=classify_source_item(_item).get('classification') or 'UNKNOWN'
+        hygiene_counts[_cls]=hygiene_counts.get(_cls,0)+1
+    result['evidence_hygiene']={
+        'policy':'MATERIAL_EVIDENCE_ONLY',
+        'raw_source_items':len(result['source_ledger']),
+        'user_visible_material_items':len(result['material_source_ledger']),
+        'classification_counts':hygiene_counts,
+        'excluded_from_evidence_map':[
+            'DOCUMENT_METADATA','PARTY_IDENTITY','PROCEDURAL_METADATA','PETITUM_OR_PRAYER',
+            'LEGAL_REFERENCE','LEGAL_ARGUMENT','PLEADING_ASSERTION','NON_MATERIAL_FRAGMENT','DOCUMENT_STRUCTURE'
+        ],
+    }
+    # v1.3.11: extractive evidence grouping, traceable to source_ledger indexes.
+    from services.legal_ocr_postprocess import group_source_ledger
+    result['evidence_groups']=group_source_ledger(result['source_ledger'])
 
     gaps=_unique(result.get('evidentiary_gaps') or [],18)
     established=_unique(result.get('facts') or [],12)
@@ -897,7 +1094,17 @@ def _case_readiness_profile(result):
     of obtaining a specific document or proof item.
     """
     ledger=result.get('source_ledger') or []
-    corpus=' '.join(str(v.get('statement',''))+' '+str(v.get('evidence','')) for v in ledger if isinstance(v,dict))
+    # Evidence readiness is satisfied only by actual document/evidence
+    # candidates, not by contact metadata, party identity or a pleading that
+    # merely says a document exists.  Assertions remain traceable but do not
+    # close evidentiary gaps by themselves.
+    readiness_items=[]
+    for v in ledger:
+        if not isinstance(v,dict): continue
+        meta=classify_source_item(v)
+        if meta.get('classification')=='ACTUAL_EVIDENTIARY_ITEM':
+            readiness_items.append(v)
+    corpus=' '.join(str(v.get('statement',''))+' '+str(v.get('evidence','')) for v in readiness_items)
     corpus_tokens=_readiness_tokens(corpus)
     needs=_unique((result.get('evidence_needed') or []) + (result.get('evidentiary_gaps') or []), 16)
     evidence_items=[]
@@ -1053,17 +1260,21 @@ def _case_verification_queries(text,title):
 
 @app.route('/api/regulations/catalog')
 def regulations_catalog():
-    data=get_all_regulations()
-    
+    data=RegulatoryCorpusManager.all(500)
     intel=normalized_catalog()
-    return jsonify(success=True,data=data,count=len(data),mode='CORE_REGULATORY_SEED',intelligence_model=intel.get('model'),counts=intel.get('counts'),official_verification_required=True,professional_verification='PENDING')
+    return jsonify(success=True,data=data,count=len(data),mode='LOCAL_DATABASE',storage='SQLITE',schema_version=SCHEMA_VERSION,
+                   intelligence_model=intel.get('model'),counts={'regulations':len(data),'articles':sum(len(x.get('articles',[])) for x in data)},
+                   official_verification_required=True,professional_verification='PENDING')
 
 @app.route('/api/regulations/search')
 def regulations_search():
-    q=(request.args.get('q') or '').strip()
-    data=search_regulations(q,limit=request.args.get('limit',8,type=int))
-    return jsonify(success=True,query=q,results=data,total_matched=len(data),mode='CORE_REGULATORY_SEED',graph=graph_for_query(q,limit=request.args.get('limit',8,type=int)),timeline=timeline_for_regulation(query=q),official_verification_required=True,professional_verification='PENDING')
-
+    q=(request.args.get('q') or '').strip(); mode=(request.args.get('mode') or 'offline').strip().lower()
+    limit=request.args.get('limit',12,type=int)
+    if mode not in ('offline','online','hybrid'): mode='offline'
+    data=search_legal_authorities(q,mode=mode,limit=limit)
+    return jsonify(success=True,query=q,mode=mode,data=data,
+                   results=data.get('local_results',[]) if mode=='offline' else data.get('local_results',[])+data.get('online_results',[]),
+                   total_matched=data.get('counts',{}).get('total',0),official_verification_required=True,professional_verification='PENDING')
 
 
 @app.route('/api/regulatory-intelligence/catalog')
@@ -1139,7 +1350,7 @@ def dashboard_metrics():
     finally:
         if conn is not None:
             conn.close()
-    counts['regulatory_corpus']=len(get_all_regulations())
+    counts['regulatory_corpus']=len(RegulatoryCorpusManager.all(1000))
     return jsonify(success=True,version=LEXICORE_VERSION,metrics=counts,metric_semantics={
         'regulatory_corpus':'core regulatory seed entries; case-specific regulations are retrieved dynamically',
         'norm_conflict_analyses':'persisted audit events',
@@ -1176,14 +1387,37 @@ def communications():
     if not d.get('message','').strip(): return jsonify(success=False,error='Isi komunikasi wajib diisi'),400
     i=CommunicationManager.save(d); return jsonify(success=True,communication_id=i,message='Komunikasi tersimpan')
 
+@app.route('/api/communication/whatsapp-link', methods=['POST'])
+def communication_whatsapp_link():
+    d=request.get_json(silent=True) or {}
+    client_id=(d.get('client_id') or '').strip()
+    number=(d.get('whatsapp_number') or '').strip()
+    if not number and client_id:
+        contact=CommunicationManager.contact_by_client_id(client_id) or {}
+        number=(contact.get('whatsapp_number') or '').strip()
+    digits=''.join(ch for ch in number if ch.isdigit())
+    if digits.startswith('0'):
+        digits='62'+digits[1:]
+    elif digits.startswith('8'):
+        digits='62'+digits
+    if not digits.startswith('62') or len(digits)<10:
+        return jsonify(success=False,error='Nomor WhatsApp terdaftar belum valid. Gunakan format 08xxxxxxxxxx atau 62xxxxxxxxxx.'),400
+    subject=(d.get('subject') or '').strip()
+    message=(d.get('message') or '').strip()
+    if not message:
+        return jsonify(success=False,error='Isi pesan belum tersedia.'),400
+    from urllib.parse import quote
+    body=(subject+'\n\n' if subject else '')+message
+    return jsonify(success=True,status='WHATSAPP_COMPOSER_READY',delivery_status='WHATSAPP_COMPOSER_READY',
+                   client_id=client_id or None,whatsapp_number=digits,
+                   whatsapp_url=f'https://wa.me/{digits}?text={quote(body)}')
+
+
 @app.route('/api/communication/generate',methods=['POST'])
 def generate_communication():
-    d=request.get_json(silent=True) or {}; kind=d.get('document_type','client_update'); client=d.get('client_name') or 'Klien'; matter=d.get('matter') or 'perkara/pekerjaan hukum Anda'; next_step=d.get('next_step') or 'kami akan melanjutkan penelaahan dan menginformasikan perkembangan berikutnya'
-    templates={
-      'client_update':(f'Pembaruan Perkara — {matter}',f'Yth. {client},\n\nKami menyampaikan pembaruan mengenai {matter}. Berdasarkan penelaahan saat ini, proses berjalan sesuai tahapan yang sedang ditangani. Langkah berikutnya: {next_step}.\n\nApabila terdapat dokumen atau informasi tambahan yang relevan, mohon disampaikan agar dapat kami masukkan dalam penelaahan.\n\nHormat kami,\nTim Hukum'),
-      'document_request':(f'Permintaan Dokumen — {matter}',f'Yth. {client},\n\nUntuk melengkapi penanganan {matter}, mohon menyiapkan dan mengirimkan dokumen/informasi pendukung yang relevan. Dokumen akan digunakan terbatas untuk kepentingan penanganan hukum.\n\nLangkah berikutnya setelah dokumen diterima: {next_step}.\n\nHormat kami,\nTim Hukum'),
-      'legal_notice':(f'Pemberitahuan Hukum — {matter}',f'Yth. {client},\n\nSurat ini merupakan pemberitahuan terkait {matter}. {next_step}. Isi final harus diverifikasi lawyer terhadap fakta, bukti, tenggat, dan dasar hukum sebelum dikirim kepada pihak tujuan.\n\nHormat kami,\nTim Hukum')}
-    subject,message=templates.get(kind,templates['client_update']); return jsonify(success=True,data={'subject':subject,'message':message})
+    d=request.get_json(silent=True) or {}
+    result=build_client_communication(d)
+    return jsonify(success=True,data=result)
 
 @app.route('/api/audit/logs')
 def audit(): return jsonify(success=True,data=AuditLogger.get_recent_logs(request.args.get('limit',50,type=int)))
@@ -1192,7 +1426,7 @@ def audit(): return jsonify(success=True,data=AuditLogger.get_recent_logs(reques
 def ai_status_endpoint(): return jsonify(success=True,**ai_status())
 
 @app.route('/api/health')
-def health(): return jsonify(status='online',timestamp=datetime.now().isoformat(),version=LEXICORE_VERSION,schema_version=SCHEMA_VERSION,product={'name':PRODUCT_NAME,'initiative':INITIATIVE,'firm':FIRM_NAME},modules=['legal_drafting','contract_review','legal_research','compliance_risk','case_analysis','full_document_ai_reasoning','official_jdih_federation','dynamic_case_regulatory_retrieval','regulatory_corpus','regulatory_intelligence','legal_relationship_graph','legal_timeline','norm_conflict_detector','evidence_to_action','client_communication'],ai=ai_status())
+def health(): return jsonify(status='online',timestamp=datetime.now().isoformat(),version=LEXICORE_VERSION,schema_version=SCHEMA_VERSION,product={'name':PRODUCT_NAME,'label':PRODUCT_LABEL,'initiative':INITIATIVE,'firm':FIRM_NAME,'release':release_metadata()},modules=['legal_drafting','contract_review','legal_research','compliance_risk','case_analysis','full_document_ai_reasoning','official_jdih_federation','dynamic_case_regulatory_retrieval','offline_regulatory_database','hybrid_legal_research','regulatory_corpus','regulatory_intelligence','legal_relationship_graph','legal_timeline','norm_conflict_detector','evidence_to_action','client_communication'],ai=ai_status())
 
 if __name__=='__main__':
     # Security fix (v1.3.3.14): this app has zero authentication and stores
@@ -1216,7 +1450,7 @@ if __name__=='__main__':
         print('LexiCore: LEXICORE_HOST=0.0.0.0 diminta tetapi belum ada autentikasi di API ini.')
         print('  Set LEXICORE_ALLOW_NETWORK_EXPOSURE=1 juga jika ini benar-benar disengaja (jaringan tepercaya saja).')
         host = '127.0.0.1'
-    print(f'{PRODUCT_NAME} v{LEXICORE_VERSION} — Case Working-Paper Export Rail + Review/History Cleanup + Frozen Navigation + ELF Branding — http://{host}:{port}')
+    print(f'{PRODUCT_LABEL} [{LEXICORE_VERSION}] — Comprehensive Legal Intelligence + Hybrid Research + Expanded Drafting — http://{host}:{port}')
     if debug_mode:
         print('LexiCore: berjalan dengan LEXICORE_DEBUG=1 (Werkzeug debugger aktif). Jangan gunakan di jaringan bersama.')
-    app.run(debug=debug_mode, host=host, port=port)
+    app.run(debug=debug_mode, host=host, port=port, threaded=True)

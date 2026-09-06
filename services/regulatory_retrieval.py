@@ -13,10 +13,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Iterable
 
-from legal_sources import federated_search
+from legal_sources import federated_search, federated_search_many, fetch_official_document, resolve_official_fulltext
+from services.positive_law_verification import html_to_text, verify_document_candidate, verify_provisions, classify_legal_document_candidate, regulation_identity, evaluate_case_nexus, normalize_provision_ref
+from services.case_domain_classifier import classify_case
+from database import RegulatoryCorpusManager
 
 DOMAIN_RULES = [
     {
@@ -63,13 +67,13 @@ DOMAIN_RULES = [
     {
         "id": "land_property", "label": "Pertanahan / Properti",
         "keywords": {"sertifikat":4.0,"sertipikat":4.0,"shm":5.0,"hgb":5.0,"hak milik":4.0,"bpn":5.0,"kantor pertanahan":5.0,"pendaftaran tanah":5.0,"surat ukur":4.0,"data fisik":3.0,"data yuridis":3.0,"uupa":5.0,"agraria":4.0},
-        "sources": ("bpk", "ma"),
+        "sources": ("atr_bpn", "bpk", "ma"),
         "queries": ("UUPA hak milik pendaftaran tanah", "PP pendaftaran tanah sertipikat hak milik"),
     },
     {
         "id": "religious_court", "label": "Peradilan Agama / Kompetensi Absolut",
         "keywords": {"pengadilan agama":5.0,"peradilan agama":5.0,"kompetensi absolut":5.0,"kewenangan absolut":5.0,"pasal 49":3.0,"uu no. 7 tahun 1989":5.0,"uu nomor 3 tahun 2006":5.0,"waris islam":4.0,"wakaf":4.0},
-        "sources": ("bpk", "ma"),
+        "sources": ("kemenag", "bpk", "ma"),
         "queries": ("UU Peradilan Agama Pasal 49 kewenangan absolut", "Peradilan Agama kompetensi absolut sengketa waris wakaf"),
     },
     {
@@ -89,6 +93,48 @@ DOMAIN_RULES = [
         "keywords": {"perda":3.0,"walikota":3.0,"bupati":3.0,"gubernur":3.0,"pemda":3.0,"pemerintah daerah":3.0,"bumd":5.0,"perumda":5.0},
         "sources": ("kemendagri", "bpk"),
         "queries": ("BUMD Perumda tata kelola Direksi",),
+    },
+    {
+        "id": "consumer", "label": "Perlindungan Konsumen",
+        "keywords": {"perlindungan konsumen":5.0,"konsumen":2.0,"pelaku usaha":2.0,"klausula baku":5.0,"badan penyelesaian sengketa konsumen":5.0,"bpsk":5.0},
+        "sources": ("bpk", "ma"),
+        "queries": ("UU Perlindungan Konsumen klausula baku pelaku usaha",),
+    },
+    {
+        "id": "data_privacy", "label": "Pelindungan Data Pribadi / ITE",
+        "keywords": {"data pribadi":5.0,"pelindungan data pribadi":5.0,"uu pdp":5.0,"informasi elektronik":4.0,"transaksi elektronik":4.0,"sistem elektronik":3.0},
+        "sources": ("komdigi", "bpk", "mk", "ma"),
+        "queries": ("UU Pelindungan Data Pribadi data pribadi", "UU ITE informasi elektronik transaksi elektronik"),
+    },
+    {
+        "id": "bankruptcy", "label": "Kepailitan / PKPU",
+        "keywords": {"kepailitan":5.0,"pkpu":5.0,"pailit":5.0,"dua kreditur":4.0,"pengadilan niaga":4.0},
+        "sources": ("ma", "bpk"),
+        "queries": ("UU Kepailitan PKPU dua kreditur jatuh tempo",),
+    },
+    {
+        "id": "arbitration", "label": "Arbitrase / ADR",
+        "keywords": {"arbitrase":5.0,"bani":5.0,"klausul arbitrase":5.0,"alternatif penyelesaian sengketa":4.0},
+        "sources": ("bpk", "ma"),
+        "queries": ("UU Arbitrase alternatif penyelesaian sengketa",),
+    },
+    {
+        "id": "administrative", "label": "Hukum Administrasi / PTUN",
+        "keywords": {"ptun":5.0,"keputusan tata usaha negara":5.0,"upaya administratif":5.0,"aaupb":5.0,"pejabat tata usaha negara":4.0},
+        "sources": ("bpk", "ma", "kemendagri", "kemenkum"),
+        "queries": ("UU PTUN keputusan tata usaha negara upaya administratif", "UU Administrasi Pemerintahan AUPB keputusan tindakan"),
+    },
+    {
+        "id": "public_information", "label": "Keterbukaan Informasi Publik",
+        "keywords": {"keterbukaan informasi publik":5.0,"informasi publik":4.0,"badan publik":4.0,"komisi informasi":5.0},
+        "sources": ("bpk", "komdigi", "ma"),
+        "queries": ("UU Keterbukaan Informasi Publik badan publik sengketa informasi",),
+    },
+    {
+        "id": "investment", "label": "Penanaman Modal / Investasi",
+        "keywords": {"penanaman modal":5.0,"investasi":4.0,"bkpm":5.0,"perizinan berusaha":4.0,"investor":3.0},
+        "sources": ("bpk", "kemenkum"),
+        "queries": ("UU Penanaman Modal perizinan berusaha investor",),
     },
 ]
 
@@ -116,43 +162,20 @@ def _count_signal(low: str, signal: str) -> int:
 
 
 def detect_domains(text: str) -> list[dict]:
-    low = (text or "").lower()
-    found = []
-    for rule in DOMAIN_RULES:
-        signals, raw = [], 0.0
-        for k, weight in rule["keywords"].items():
-            count = _count_signal(low, k)
-            if count:
-                signals.append(k.strip())
-                raw += weight * min(count, 6)
-        if not signals:
-            continue
-        # Saturating score. Strong legal entities (BPR/OJK/POJK/Tipikor) quickly
-        # outrank generic words such as perjanjian/utang/perusahaan.
-        confidence = min(0.99, 0.25 + raw / 20.0)
-        found.append({
-            "id": rule["id"], "label": rule["label"], "confidence": round(confidence, 2),
-            "signals": signals[:10], "signal_score": round(raw, 2), "source_ids": list(rule["sources"]),
+    """Return the immutable domain contract produced by Case Posture Classifier."""
+    contract=classify_case(text)
+    rule_map={r["id"]:r for r in DOMAIN_RULES}
+    out=[]
+    for d in contract.get('domains',[]):
+        rid=d.get('id'); rule=rule_map.get(rid,{})
+        out.append({
+            'id':rid,'label':d.get('label') or rule.get('label') or rid,
+            'confidence':round(float(d.get('confidence',0))/100.0,2),
+            'role':d.get('role','SECONDARY'),'signal_score':d.get('score',0),
+            'source_ids':list(rule.get('sources',('bpk','ma'))),
+            'signals':[],
         })
-
-    # Context suppression: in a heavily regulated banking case, generic civil /
-    # corporate vocabulary must not become the principal regulatory route.
-    scores = {x["id"]: x for x in found}
-    fin = scores.get("financial_services")
-    if fin and fin["confidence"] >= 0.65:
-        for sid in ("civil_contract", "corporate"):
-            if sid in scores:
-                scores[sid]["confidence"] = round(scores[sid]["confidence"] * 0.55, 2)
-    found = list(scores.values())
-    found.sort(key=lambda x: (x["confidence"], x.get("signal_score", 0)), reverse=True)
-    if not found:
-        return []
-    # Hard relevance gate: a weak incidental domain must not route official-source
-    # retrieval merely because one generic word occurred in a long pleading/BAP.
-    top = found[0]["confidence"]
-    threshold = max(0.45, round(top * 0.58, 2))
-    gated = [d for d in found if d["confidence"] >= threshold or d.get("signal_score", 0) >= 12]
-    return gated[:4]
+    return out
 
 
 def detect_material_year(text: str) -> int | None:
@@ -255,8 +278,35 @@ def _qualified_ref(ref: str) -> bool:
     return any(k in ref.lower() for k in ("uu ", "undang-undang", "pojk", "seojk", "peraturan", "kuhp", "kuhap", "kuhperdata", "perma", "sema"))
 
 
+
+KNOWN_REGULATION_QUERIES = {
+    "land_property": (
+        "Undang-Undang Nomor 5 Tahun 1960 Peraturan Dasar Pokok-Pokok Agraria",
+        "Peraturan Pemerintah Nomor 24 Tahun 1997 Pendaftaran Tanah",
+        "Peraturan Pemerintah Nomor 18 Tahun 2021 Pendaftaran Tanah",
+    ),
+    "religious_court": (
+        "Undang-Undang Nomor 7 Tahun 1989 Peradilan Agama",
+        "Undang-Undang Nomor 3 Tahun 2006 Perubahan Undang-Undang Nomor 7 Tahun 1989 Peradilan Agama",
+        "Undang-Undang Nomor 50 Tahun 2009 Perubahan Kedua Undang-Undang Nomor 7 Tahun 1989 Peradilan Agama",
+    ),
+}
+
+
+def _known_query_domains(query: str, domains: list[dict]) -> list[str]:
+    q=_clean(query).lower()
+    active={str(d.get("id")) for d in (domains or []) if isinstance(d,dict) and d.get("role") != "SUPPORTING_ONLY"}
+    matched=[]
+    for domain_id, rows in KNOWN_REGULATION_QUERIES.items():
+        if domain_id not in active:
+            continue
+        if any(q == _clean(x).lower() for x in rows):
+            matched.append(domain_id)
+    return matched
+
+
 def build_case_queries(text: str, title: str = "", provision_refs=None, domains=None,
-                       qualified_queries=None, legal_issues=None, max_queries: int = 8) -> list[str]:
+                       qualified_queries=None, legal_issues=None, max_queries: int = 10) -> list[str]:
     provision_refs = provision_refs or []
     domains = domains or detect_domains(text)
     legal_issues = legal_issues or []
@@ -270,13 +320,20 @@ def build_case_queries(text: str, title: str = "", provision_refs=None, domains=
 
     # 2) Domain/issue-driven routes before generic discovery phrases.
     rule_map = {r["id"]: r for r in DOMAIN_RULES}
-    for domain in domains[:3]:
+    active_domains=[d for d in domains if d.get("role") != "SUPPORTING_ONLY"]
+
+    # Known-regulation resolution first: exact legal instruments outrank broad
+    # discovery so official news/event pages do not consume the verification budget.
+    for domain in active_domains[:3]:
+        queries.extend(KNOWN_REGULATION_QUERIES.get(domain.get("id"), ())[:3])
+
+    for domain in active_domains[:3]:
         rule = rule_map.get(domain["id"], {})
         queries.extend(rule.get("queries", ())[:2])
 
     # Banking + corruption benchmark: add cross-domain questions lawyers actually
     # need to resolve, including personal authority and tempus.
-    ids = {d["id"] for d in domains[:4]}
+    ids = {d["id"] for d in active_domains[:4]}
     event_year = detect_material_year(text)
     if event_year and ("criminal" in ids or "corruption" in ids):
         queries.append(f"tempus delicti {event_year} asas legalitas ketentuan pidana")
@@ -317,7 +374,7 @@ def build_case_queries(text: str, title: str = "", provision_refs=None, domains=
 
 def _source_ids_for_domains(domains: list[dict]) -> tuple[str, ...]:
     ids = []
-    for d in domains[:4]:
+    for d in [x for x in domains if x.get("role") != "SUPPORTING_ONLY"][:4]:
         ids.extend(d.get("source_ids", []))
     if not ids:
         ids = ["bpk", "kemenkum", "ma", "mk"]
@@ -363,12 +420,21 @@ def _temporal_screen(row: dict, event_year: int | None) -> str:
     return "TEMPUS_REQUIRES_VERIFICATION"
 
 
-def _compact_searches(queries: list[str], domains: list[dict], event_year: int | None, per_source_limit: int = 4) -> dict:
+def _compact_searches(queries: list[str], domains: list[dict], event_year: int | None, procedural_year: int | None = None, per_source_limit: int = 4) -> dict:
     source_ids = _source_ids_for_domains(domains)
     bundles, flat, seen_urls = [], [], set()
     discovered_count = 0
+    # v1.3.13.11.1 — execute independent case queries concurrently.
+    # The processing loop below still follows the original query order so ranking,
+    # deduplication and report semantics remain deterministic.
+    # v1.3.13.11.2 — one bounded federation pool for all query/source jobs.
+    # Avoid the previous nested query-pool -> source-pool fan-out that could
+    # create dozens of simultaneous TLS requests and freeze the local process.
+    search_map=federated_search_many(
+        queries, direct_ids=source_ids, per_source_limit=per_source_limit,
+        max_workers=6, time_budget_seconds=30.0) if queries else {}
     for query in queries:
-        searches = federated_search(query, direct_ids=source_ids, per_source_limit=per_source_limit)
+        searches = search_map.get(query,[])
         compact_sources = []
         for src in searches:
             results = []
@@ -385,7 +451,18 @@ def _compact_searches(queries: list[str], domains: list[dict], event_year: int |
                     "source_score": item.get("score", 0),
                 }
                 row["relevance_score"] = _result_relevance(row, domains)
-                row["temporal_status"] = _temporal_screen(row, event_year)
+                known_domains=_known_query_domains(query, domains)
+                row["query_origin"] = "KNOWN_REGULATION" if known_domains else "DISCOVERY"
+                active_domain_ids=[str(d.get("id")) for d in (domains or []) if isinstance(d,dict) and d.get("role") != "SUPPORTING_ONLY"]
+                nexus=evaluate_case_nexus(row, active_domain_ids)
+                row["case_nexus_domains"] = list(dict.fromkeys((known_domains or []) + (nexus.get("matched_domains") or [])))
+                row["case_nexus_status"] = nexus.get("status") or "CASE_NEXUS_UNCERTAIN"
+                row["case_nexus_reason"] = nexus.get("reason")
+                row["document_classification"] = classify_legal_document_candidate(row)
+                qlow=(query or "").lower()
+                anchor_year = procedural_year if procedural_year and any(k in qlow for k in ("kuhap","praperadilan","upaya paksa","acara pidana","hukum acara","pengadilan")) else event_year
+                row["temporal_anchor"] = "PROCEDURAL" if anchor_year==procedural_year and procedural_year else "MATERIAL_EVENT"
+                row["temporal_status"] = _temporal_screen(row, anchor_year)
                 results.append(row); flat.append(row)
             compact_sources.append({
                 "source_id": src.get("source_id"), "source_name": src.get("source_name"),
@@ -399,6 +476,8 @@ def _compact_searches(queries: list[str], domains: list[dict], event_year: int |
     material = [r for r in candidates if r.get("relevance_score", 0) >= 0.38]
     temporal_not_excluded = [r for r in material if r.get("temporal_status") != "POST_EVENT_REFERENCE"]
     authoritative_located = [r for r in temporal_not_excluded if r.get("authoritative")]
+    legal_document_candidates=[r for r in temporal_not_excluded if (r.get("document_classification") or {}).get("legal_instrument_candidate")]
+    rejected_non_legal=[r for r in temporal_not_excluded if not (r.get("document_classification") or {}).get("legal_instrument_candidate")]
     return {
         "bundles": bundles, "results": material[:24], "source_ids": list(source_ids),
         "funnel": {
@@ -408,14 +487,234 @@ def _compact_searches(queries: list[str], domains: list[dict], event_year: int |
             "materially_relevant": len(material),
             "temporal_not_excluded": len(temporal_not_excluded),
             "authoritative_source_located": len(authoritative_located),
+            "legal_document_candidates": len(legal_document_candidates),
+            "rejected_non_legal_content": len(rejected_non_legal),
+            "positive_law_verified": 0,
+            "tempus_verified": 0,
+            "verified_applicable": 0,
             "temporal_verified_applicable": 0,
+            "provision_requested": 0,
+            "provision_verified": 0,
+            "provision_documents_verified": 0,
         },
+    }
+
+
+
+def _attach_requested_provisions(results: list[dict], provision_refs, local_database_matches) -> list[dict]:
+    """Attach article-level candidates without inventing Pasal numbers.
+
+    Sources are the case's explicit provision refs and matched local-corpus
+    articles whose regulation identity/subject aligns with an official result.
+    The official verifier still has to find the exact provision in retrieved
+    official text before it can be marked verified.
+    """
+    explicit=[]
+    for raw in provision_refs or []:
+        ref=normalize_provision_ref(str(raw))
+        if ref and ref not in explicit:
+            explicit.append(ref)
+
+    local=[]
+    for match in local_database_matches or []:
+        if not isinstance(match,dict):
+            continue
+        reg=match.get('regulation') or {}
+        reg_id=regulation_identity(reg.get('nomor') or '')
+        subject=_clean(reg.get('tentang') or '').lower()
+        refs=[]
+        for art in match.get('matched_articles') or []:
+            if not isinstance(art,dict):
+                continue
+            for key in ('qualified_citation','pasal'):
+                ref=normalize_provision_ref(art.get(key))
+                if ref and ref not in refs:
+                    refs.append(ref)
+        if refs:
+            local.append({'identity':reg_id,'subject':subject,'refs':refs})
+
+    out=[]
+    for row in results or []:
+        item=dict(row)
+        hay=_clean((item.get('title') or '')+' '+(item.get('query') or '')).lower()
+        cid=regulation_identity(item.get('query') or '')
+        if not cid.get('key'):
+            cid=regulation_identity(item.get('title') or '')
+        refs=list(explicit)
+        for entry in local:
+            same_identity=bool(cid.get('key') and entry['identity'].get('key') == cid.get('key'))
+            subject=entry.get('subject') or ''
+            subject_match=bool(subject and len(subject)>=8 and subject in hay)
+            # Common amendment-chain titles can mention the base subject while
+            # carrying the amending instrument's own identity. Subject matching
+            # permits article verification across that chain, but does not prove it.
+            if same_identity or subject_match:
+                for ref in entry['refs']:
+                    if ref not in refs:
+                        refs.append(ref)
+        item['requested_provisions']=refs[:8]
+        out.append(item)
+    return out
+
+
+def _verify_positive_law_results(results: list[dict], snapshot: dict, max_documents: int = 10) -> list[dict]:
+    """Verify only deterministic legal-instrument candidates.
+
+    Official news, event, profile, and unidentified landing pages remain visible
+    to diagnostics but do not consume the positive-law verification budget and
+    are excluded from the Regulation & Tempus legal-instrument report section.
+    """
+    enriched=[]
+    verified_budget=0
+    # Fetch first-level official documents concurrently, but with one small
+    # bounded pool. Processing and legal decisions below remain deterministic.
+    fetch_map={}
+    fetch_candidates=[]
+    budget_scan=0
+    for row in results:
+        classification=row.get('document_classification') or classify_legal_document_candidate(row)
+        url=row.get('url') or ''
+        if classification.get('legal_instrument_candidate') and budget_scan < max_documents and row.get('authoritative') and url:
+            budget_scan += 1
+            fetch_candidates.append(url)
+    if fetch_candidates:
+        with ThreadPoolExecutor(max_workers=min(4,len(fetch_candidates))) as ex:
+            futs={ex.submit(fetch_official_document,url,5):url for url in fetch_candidates}
+            for fut in as_completed(futs):
+                url=futs[fut]
+                try: fetch_map[url]=fut.result()
+                except Exception as exc:
+                    fetch_map[url]={"url":url,"reachable":False,"official_host":True,"body":b"",
+                                    "content_type":"","error":str(exc)[:240],"connectivity_status":"FETCH_ERROR"}
+    for row in results:
+        item=dict(row)
+        classification=item.get('document_classification') or classify_legal_document_candidate(item)
+        item['document_classification']=classification
+        item['positive_law_verification']={
+            'official_source_confirmed':bool(item.get('authoritative')),
+            'text_retrieved':False,'identity_confirmed':False,
+            'legal_status':'UNVERIFIED','tempus_status':'TEMPUS_UNVERIFIED',
+            'case_nexus_status':item.get('case_nexus_status') or 'CASE_NEXUS_UNCERTAIN',
+            'final_status':'UNVERIFIED','professional_verification':'PENDING',
+        }
+        if not classification.get('legal_instrument_candidate'):
+            item['positive_law_verification'].update({
+                'final_status':'REJECTED_NON_LEGAL_CONTENT',
+                'diagnostic':classification.get('reason') or 'not a deterministic legal instrument candidate',
+            })
+            enriched.append(item)
+            continue
+
+        url=item.get('url') or ''
+        if verified_budget < max_documents and item.get('authoritative') and url:
+            verified_budget += 1
+            fetched=fetch_map.get(url) or fetch_official_document(url, timeout=5)
+            item['document_fetch']={k:v for k,v in fetched.items() if k!='body'}
+            if fetched.get('reachable') and fetched.get('official_host'):
+                ctype=(fetched.get('content_type') or '').lower()
+                body=fetched.get('body') or b''
+                if 'html' in ctype:
+                    text=html_to_text(body)
+                    item['positive_law_verification']=verify_document_candidate(
+                        item, source_text=text, snapshot=snapshot)
+                    # v1.3.12.4: provision verification may require the linked
+                    # official PDF/full text rather than the metadata/detail page.
+                    pv=item['positive_law_verification'].get('provision_verification') or {}
+                    if (item['positive_law_verification'].get('identity_confirmed') is True
+                            and item['positive_law_verification'].get('case_nexus_status') != 'NO_CASE_NEXUS'
+                            and item['positive_law_verification'].get('case_nexus_status') == 'CASE_NEXUS_VERIFIED'
+                            and int(pv.get('requested_count') or 0) > int(pv.get('verified_count') or 0)):
+                        resolved=resolve_official_fulltext(
+                            fetched.get('final_url') or url, body, fetched.get('content_type') or '',
+                            requested_provisions=item.get('requested_provisions') or [], timeout=5, max_candidates=2)
+                        item['fulltext_resolution']={k:v for k,v in resolved.items() if k!='text'}
+                        if resolved.get('resolved') and resolved.get('text'):
+                            item['positive_law_verification']['provision_verification']=verify_provisions(
+                                item.get('requested_provisions') or [], resolved.get('text') or '', resolved.get('source_url'))
+                            item['positive_law_verification']['provision_source_url']=resolved.get('source_url')
+                            item['positive_law_verification']['provision_source_status']=resolved.get('resolver_status')
+                    # Post-fetch identity is the final legal-document gate.
+                    if not item['positive_law_verification'].get('identity_confirmed'):
+                        if item['positive_law_verification'].get('case_nexus_status') == 'NO_CASE_NEXUS':
+                            item['positive_law_verification']['final_status']='VERIFIED_NOT_RELEVANT'
+                            item['positive_law_verification']['diagnostic']='official legal content retrieved but rejected by the case-nexus gate; identity mismatch retained as a diagnostic, not as the final semantic state'
+                        else:
+                            item['positive_law_verification']['final_status']='UNVERIFIED_IDENTITY_MISMATCH'
+                            item['positive_law_verification']['diagnostic']='official page retrieved, but regulation identity does not match the requested instrument'
+                elif 'pdf' in ctype or str(fetched.get('final_url') or url).lower().split('?',1)[0].endswith('.pdf'):
+                    resolved=resolve_official_fulltext(
+                        fetched.get('final_url') or url, body, fetched.get('content_type') or '',
+                        requested_provisions=item.get('requested_provisions') or [], timeout=5, max_candidates=2)
+                    item['fulltext_resolution']={k:v for k,v in resolved.items() if k!='text'}
+                    if resolved.get('resolved') and resolved.get('text'):
+                        item['positive_law_verification']=verify_document_candidate(
+                            item, source_text=resolved.get('text') or '', snapshot=snapshot)
+                        pv=item['positive_law_verification'].get('provision_verification') or {}
+                        if pv.get('verified_count'):
+                            item['positive_law_verification']['provision_source_url']=resolved.get('source_url')
+                            item['positive_law_verification']['provision_source_status']=resolved.get('resolver_status')
+                    else:
+                        item['positive_law_verification'].update({
+                            'text_retrieved':bool(body),'legal_status':'STATUS_UNCERTAIN',
+                            'tempus_status':'TEMPUS_UNVERIFIED','final_status':'STATUS_UNCERTAIN',
+                            'diagnostic':'official PDF retrieved but text extraction failed',
+                        })
+                else:
+                    item['positive_law_verification'].update({
+                        'text_retrieved':bool(body),
+                        'legal_status':'STATUS_UNCERTAIN',
+                        'tempus_status':'TEMPUS_UNVERIFIED',
+                        'final_status':'STATUS_UNCERTAIN',
+                        'diagnostic':'official document retrieved but content type is unsupported for deterministic full-text verification',
+                    })
+            else:
+                item['positive_law_verification'].update({
+                    'transport_status':fetched.get('connectivity_status'),
+                    'diagnostic':fetched.get('error') or 'official document fetch failed',
+                })
+        enriched.append(item)
+    return enriched
+
+
+
+def _summarize_positive_law_verification(results: list[dict]) -> dict:
+    status_verified=0
+    tempus_verified=0
+    verified_applicable=0
+    provision_requested=0
+    provision_verified=0
+    provision_documents_verified=0
+    for r in results or []:
+        if not isinstance(r,dict):
+            continue
+        v=r.get("positive_law_verification") or {}
+        if not v.get("identity_confirmed"):
+            continue
+        if v.get("legal_status") in {"IN_FORCE","AMENDED_IN_FORCE","REVOKED"}:
+            status_verified += 1
+        if v.get("tempus_status") in {"TEMPUS_VERIFIED","NOT_YET_EFFECTIVE","REVOKED_AT_TEMPUS"}:
+            tempus_verified += 1
+        if v.get("final_status") == "VERIFIED_APPLICABLE":
+            verified_applicable += 1
+        pv=v.get("provision_verification") or {}
+        provision_requested += int(pv.get("requested_count") or 0)
+        provision_verified += int(pv.get("verified_count") or 0)
+        if pv.get("status") in {"PROVISION_VERIFIED","PROVISION_PARTIALLY_VERIFIED"} and int(pv.get("verified_count") or 0) > 0:
+            provision_documents_verified += 1
+    return {
+        "positive_law_verified": status_verified,
+        "tempus_verified": tempus_verified,
+        "verified_applicable": verified_applicable,
+        "temporal_verified_applicable": verified_applicable,
+        "provision_requested": provision_requested,
+        "provision_verified": provision_verified,
+        "provision_documents_verified": provision_documents_verified,
     }
 
 
 def filter_regulatory_matches_for_domains(matches: list[dict], domains: list[dict]) -> list[dict]:
     """Hard-prune local seed matches that do not belong to active case domains."""
-    active={d.get('id') for d in (domains or []) if isinstance(d,dict)}
+    active={d.get('id') for d in (domains or []) if isinstance(d,dict) and d.get('role') != 'SUPPORTING_ONLY'}
     if not active:
         return []
     vocab={
@@ -430,48 +729,139 @@ def filter_regulatory_matches_for_domains(matches: list[dict], domains: list[dic
         'civil_procedure': ('hir','rbg','rv','acara perdata','obscuur','plurium','kompetensi absolut'),
         'regional_government': ('bumd','perumda','pemerintah daerah'),
         'constitutional': ('uud 1945','konstitusi','mahkamah konstitusi'),
+        'data_privacy': ('data pribadi','pelindungan data pribadi','ite','informasi elektronik','transaksi elektronik'),
+        'bankruptcy': ('kepailitan','pkpu','pailit','pengadilan niaga'),
+        'arbitration': ('arbitrase','bani','alternatif penyelesaian sengketa'),
+        'consumer': ('perlindungan konsumen','klausula baku','pelaku usaha'),
+        'administrative': ('ptun','tata usaha negara','administrasi pemerintahan','aaupb','upaya administratif'),
+        'public_information': ('keterbukaan informasi publik','informasi publik','komisi informasi'),
+        'investment': ('penanaman modal','investasi','bkpm','perizinan berusaha'),
     }
     allowed=tuple(k for domain in active for k in vocab.get(domain,()))
+    exclusive={
+        'financial_services':('pojk','seojk','perbankan','bank perkreditan rakyat','bank perekonomian rakyat','bpr'),
+        'corruption':('tipikor','pemberantasan tindak pidana korupsi'),
+        'criminal':('kuhp','kuhap','kitab undang-undang hukum pidana','acara pidana'),
+        'employment':('ketenagakerjaan','pkwt','pemutusan hubungan kerja','hubungan industrial'),
+        'land_property':('uupa','pendaftaran tanah','hak tanggungan','pertanahan','agraria'),
+        'religious_court':('peradilan agama','pengadilan agama'),
+        'bankruptcy':('kepailitan','pkpu'),
+        'arbitration':('arbitrase','bani'),
+        'data_privacy':('pelindungan data pribadi','informasi dan transaksi elektronik'),
+        'administrative':('peradilan tata usaha negara','administrasi pemerintahan'),
+        'public_information':('keterbukaan informasi publik',),
+        'investment':('penanaman modal',),
+    }
     out=[]
     for row in matches or []:
         if not isinstance(row,dict): continue
         reg=row.get('regulation') or {}
-        hay=' '.join(str(reg.get(k) or '') for k in ('id','nomor','tentang','qualified_citation')).lower()
+        tags=' '.join(reg.get('domain_tags') or []).lower()
+        hay=' '.join(str(reg.get(k) or '') for k in ('id','nomor','tentang','qualified_citation')).lower()+' '+tags
         hay += ' ' + ' '.join(str(a.get('pasal') or a.get('topic') or '') for a in (row.get('matched_articles') or []) if isinstance(a,dict)).lower()
+        blocked=False
+        for required,markers in exclusive.items():
+            if required not in active and any(m in hay for m in markers):
+                blocked=True; break
+        if blocked: continue
         if allowed and any(k in hay for k in allowed):
             out.append(row)
     return out[:8]
 
 
+
+def _database_matches_for_domains(text: str, domains: list[dict], limit: int = 10) -> list[dict]:
+    """Retrieve the persisted SQLite corpus, constrained by the immutable domain contract."""
+    rule_map={r['id']:r for r in DOMAIN_RULES}
+    active=[d for d in (domains or []) if isinstance(d,dict) and d.get('role') != 'SUPPORTING_ONLY']
+    merged={}
+    for d in active[:4]:
+        queries=list(rule_map.get(d.get('id'),{}).get('queries',()))[:2]
+        if not queries: queries=[d.get('label') or d.get('id')]
+        for q in queries:
+            try:
+                db_rows=RegulatoryCorpusManager.search(q,limit=max(limit,12))
+            except Exception:
+                # Direct unit use may occur before Flask startup initialized schema.
+                # App startup normally creates/syncs the persistent corpus; fall back
+                # to legacy seed matches rather than failing the Case Analysis.
+                return []
+            for reg in db_rows:
+                rid=reg.get('id')
+                if not rid: continue
+                # Article relevance is computed only inside the already domain-gated regulation.
+                terms=[t for t in re.findall(r'[\w-]+',(q or '').lower(),flags=re.UNICODE) if len(t)>2]
+                arts=[]
+                for a in reg.get('articles',[]) or []:
+                    if not isinstance(a,dict): continue
+                    hay=' '.join(str(a.get(k) or '') for k in ('pasal','topic','content')).lower()+' '+' '.join(a.get('keywords',[]) or []).lower()
+                    score=sum(1 for t in terms if t in hay)
+                    if score: arts.append((score,a))
+                arts=[a for _,a in sorted(arts,key=lambda x:x[0],reverse=True)[:4]]
+                row={'regulation':reg,'matched_articles':arts,'score':max(1,len(arts)*3),'source':'SQLITE_REGULATORY_CORPUS',
+                     'verification_status':'LOCAL_DATABASE_MATCH — OFFICIAL SOURCE VERIFICATION REQUIRED','professional_verification':'PENDING'}
+                if rid not in merged or row['score']>merged[rid]['score']: merged[rid]=row
+    rows=filter_regulatory_matches_for_domains(list(merged.values()),active)
+    return rows[:limit]
+
+
 def retrieve_for_case_dynamic(*, text: str, title: str, provision_refs=None, qualified_queries=None,
-                              local_seed_matches=None, legal_issues=None, online: bool = True) -> dict:
-    domains = detect_domains(text)
+                              local_seed_matches=None, legal_issues=None, online: bool = True,
+                              retrieval_mode: str | None = None, domain_classification: dict | None = None) -> dict:
+    mode_requested=(retrieval_mode or ('hybrid' if online else 'offline')).strip().lower()
+    if mode_requested not in ('offline','online','hybrid'):
+        mode_requested='hybrid'
+    online = mode_requested in ('online','hybrid')
+    if domain_classification:
+        rule_map={r['id']:r for r in DOMAIN_RULES}
+        domains=[]
+        for d in domain_classification.get('domains',[]) or []:
+            rid=d.get('id'); rule=rule_map.get(rid,{})
+            domains.append({'id':rid,'label':d.get('label') or rule.get('label') or rid,'confidence':round(float(d.get('confidence',0))/100.0,2),'role':d.get('role','SECONDARY'),'signal_score':d.get('score',0),'source_ids':list(rule.get('sources',('bpk','ma'))),'signals':[]})
+    else:
+        domains = detect_domains(text)
+    local_database_matches = _database_matches_for_domains(text, domains, limit=10) if mode_requested in ('offline','hybrid') else []
     event_year = detect_material_year(text)
     event_date = detect_material_date(text)
     date_candidates = detect_case_dates(text)
+    procedural_dates=sorted([x.get('date') for x in date_candidates if x.get('role')=='procedural_or_filing' and x.get('date')])
+    procedural_date = procedural_dates[0] if procedural_dates else None
+    procedural_year = int(procedural_date[:4]) if procedural_date else None
     queries = build_case_queries(text, title, provision_refs, domains, qualified_queries, legal_issues)
-    local_seed_matches = filter_regulatory_matches_for_domains(list(local_seed_matches or []), domains)[:4]
+    legacy_seed = filter_regulatory_matches_for_domains(list(local_seed_matches or []), domains)[:4]
+    local_seed_matches = local_database_matches or legacy_seed
     official = {"bundles": [], "results": [], "source_ids": _source_ids_for_domains(domains),
-                "funnel": {"discovered":0,"unique_discovered":0,"candidate":0,"materially_relevant":0,"temporal_not_excluded":0,"authoritative_source_located":0,"temporal_verified_applicable":0}}
+                "funnel": {"discovered":0,"unique_discovered":0,"candidate":0,"materially_relevant":0,"temporal_not_excluded":0,"authoritative_source_located":0,"legal_document_candidates":0,"rejected_non_legal_content":0,"positive_law_verified":0,"tempus_verified":0,"verified_applicable":0,"temporal_verified_applicable":0,"provision_requested":0,"provision_verified":0,"provision_documents_verified":0}}
     error = None
     if online:
         try:
-            official = _compact_searches(queries, domains, event_year)
+            official = _compact_searches(queries, domains, event_year, procedural_year)
         except Exception as exc:
             error = str(exc)[:300]
 
     results = official.get("results", [])
-    mode = "DYNAMIC_CASE_SCOPED" if online else "LOCAL_SEED_FALLBACK"
+    results = _attach_requested_provisions(results, provision_refs, local_database_matches)
+    verification_snapshot = {
+        "event_year_candidate": event_year,
+        "event_date_candidate": event_date,
+        "procedural_date_candidate": procedural_date,
+    }
+    if online and results:
+        results = _verify_positive_law_results(results, verification_snapshot, max_documents=10)
+        official["results"] = results
+        funnel = official.get("funnel") or {}
+        funnel.update(_summarize_positive_law_verification(results))
+    mode = {"offline":"LOCAL_DATABASE_ONLY","online":"OFFICIAL_ONLINE_ONLY","hybrid":"HYBRID_LOCAL_OFFICIAL"}.get(mode_requested,"HYBRID_LOCAL_OFFICIAL")
     if online and not results:
-        mode = "DYNAMIC_CASE_SCOPED_NO_MATERIAL_MATCH"
+        mode = mode + "_NO_MATERIAL_ONLINE_MATCH"
     payload = {
-        "mode": mode, "domains": domains, "queries": queries,
-        "event_year_candidate": event_year, "event_date_candidate": event_date, "date_candidates": date_candidates,
+        "mode": mode, "retrieval_mode": mode_requested, "domains": domains, "queries": queries,
+        "event_year_candidate": event_year, "event_date_candidate": event_date, "procedural_date_candidate": procedural_date, "date_candidates": date_candidates,
         "official_results": results, "search_bundles": official.get("bundles", []),
         "official_source_ids": list(official.get("source_ids", [])),
         "retrieval_funnel": official.get("funnel", {}),
-        "local_seed_matches": local_seed_matches,
-        "official_results_count": len(results), "local_seed_count": len(local_seed_matches),
+        "local_seed_matches": local_seed_matches, "local_database_results": local_database_matches,
+        "official_results_count": len(results), "local_seed_count": len(local_seed_matches), "local_database_count": len(local_database_matches),
         "fetched_at": datetime.now(timezone.utc).isoformat(), "professional_verification": "PENDING",
         "cache_policy": "CASE_SCOPED_METADATA_ONLY", "error": error,
         "temporal_disclaimer": "Filter tempus ini adalah screening awal. Berlaku/tidak berlakunya norma wajib diverifikasi pada naskah resmi dan ketentuan peralihan.",

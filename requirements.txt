@@ -1,9 +1,13 @@
 Flask==2.3.3
 flask-cors==4.0.0
-PyPDF2==3.0.1
+pypdf>=5.9.0
+PyMuPDF>=1.24.0
+Pillow>=10.4.0
+rapidocr>=3.4.0
+onnxruntime>=1.26.0
+numpy>=1.26.0
 python-docx==1.1.0
 Werkzeug==2.3.7
 reportlab>=4.2.0
 
-# Dev-only, for running test_smoke.py — not needed to run the app itself:
-pytest>=8.0.0
+certifi>=2025.1.31

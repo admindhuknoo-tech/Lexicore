@@ -1,7 +1,11 @@
 .env
+*.db
+*.db-wal
+*.db-shm
+backups/
+uploads/
+*.log
 __pycache__/
 *.pyc
 .pytest_cache/
-lexicore.log
-backups/
-uploads/
+.venv/

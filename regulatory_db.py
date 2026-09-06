@@ -257,6 +257,251 @@ INITIAL_REGULATORY_CORPUS: List[Dict[str, Any]] = [
             _art('upk_standard_clause','uu_perlindungan_konsumen_8_1999','Klausula Baku','Korpus kerja mengenai pembatasan klausula baku tertentu yang merugikan konsumen. Gunakan qualified citation setelah verifikasi pasal yang tepat.','Klausula Baku',['klausula baku','exoneration clause','pengalihan tanggung jawab','konsumen']),
         ],
     },
+
+    {
+        'id':'uu_uupa_5_1960','nomor':'UU No. 5 Tahun 1960','tahun':1960,
+        'tentang':'Peraturan Dasar Pokok-Pokok Agraria','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'1960-09-24','promulgation_date':'1960-09-24','jdih_source':'JDIH BPK RI / ATR-BPN','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['agraria','pertanahan','hak atas tanah','hak milik','hgu','hgb'],
+        'articles':[
+            _art('uupa_rights','uu_uupa_5_1960','Hak-hak atas tanah','Korpus kerja mengenai jenis dan karakter hak atas tanah. Identitas pasal spesifik dan status implementasi wajib diverifikasi.','Hak Atas Tanah',['hak milik','hgu','hgb','hak pakai','tanah']),
+            _art('uupa_registration','uu_uupa_5_1960','Pendaftaran tanah','Korpus kerja mengenai mandat pendaftaran tanah untuk kepastian hukum; aturan pelaksana wajib dibaca bersama PP pendaftaran tanah yang berlaku.','Pendaftaran Tanah',['pendaftaran tanah','kepastian hukum','sertifikat','sertipikat']),
+        ],
+    },
+    {
+        'id':'pp_24_1997_pendaftaran_tanah','nomor':'PP No. 24 Tahun 1997 jo PP No. 18 Tahun 2021','tahun':1997,
+        'tentang':'Pendaftaran Tanah sebagaimana diubah antara lain oleh PP No. 18 Tahun 2021','jenis':'PP','hierarchy_rank':4,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'1997-07-08','promulgation_date':'1997-07-08','jdih_source':'JDIH BPK RI / ATR-BPN','official_url':'https://peraturan.bpk.go.id/Details/56273/pp-no-24-tahun-1997',
+        'domain_tags':['pertanahan','pendaftaran tanah','sertifikat','sertipikat','bpn','data fisik','data yuridis'],
+        'articles':[
+            _art('pp24_registration','pp_24_1997_pendaftaran_tanah','Pendaftaran awal & pemeliharaan data','Korpus kerja mengenai pendaftaran pertama kali dan pemeliharaan data pendaftaran tanah. Prosedur dan pasal spesifik wajib diverifikasi.','Pendaftaran & Pemeliharaan Data',['pendaftaran tanah','data fisik','data yuridis','buku tanah']),
+            _art('pp24_certificate','pp_24_1997_pendaftaran_tanah','Sertifikat & pembuktian','Korpus kerja mengenai sertifikat sebagai alat bukti dan mekanisme pendaftaran. Baca bersama perubahan PP 18/2021 dan yurisprudensi relevan.','Sertifikat & Pembuktian',['sertifikat','sertipikat','alat bukti','buku tanah']),
+        ],
+    },
+    {
+        'id':'uu_hak_tanggungan_4_1996','nomor':'UU No. 4 Tahun 1996','tahun':1996,
+        'tentang':'Hak Tanggungan atas Tanah Beserta Benda-Benda yang Berkaitan dengan Tanah','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'1996-04-09','promulgation_date':'1996-04-09','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/Details/46093/uu-no-4-',
+        'domain_tags':['hak tanggungan','jaminan','agunan','kredit','pertanahan','eksekusi'],
+        'articles':[
+            _art('ht_object','uu_hak_tanggungan_4_1996','Objek & pembebanan Hak Tanggungan','Korpus kerja mengenai hak atas tanah yang dapat dibebani dan pembebanan jaminan.','Objek Hak Tanggungan',['hak tanggungan','agunan','jaminan','hak atas tanah']),
+            _art('ht_execution','uu_hak_tanggungan_4_1996','Eksekusi Hak Tanggungan','Korpus kerja mengenai titel dan mekanisme eksekusi yang harus diverifikasi terhadap dokumen jaminan dan hukum acara yang berlaku.','Eksekusi Jaminan',['eksekusi','hak tanggungan','kreditur','debitur']),
+        ],
+    },
+    {
+        'id':'uu_fidusia_42_1999','nomor':'UU No. 42 Tahun 1999','tahun':1999,
+        'tentang':'Jaminan Fidusia','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PUTUSAN_MK',
+        'effective_date':'1999-09-30','promulgation_date':'1999-09-30','jdih_source':'JDIH BPK RI / Kemenkum','official_url':'https://peraturan.bpk.go.id/Details/45374/uu-no-42-tahun-1999',
+        'domain_tags':['fidusia','jaminan','agunan kendaraan','kredit','eksekusi'],
+        'articles':[
+            _art('fidusia_registration','uu_fidusia_42_1999','Pembebanan & pendaftaran fidusia','Korpus kerja mengenai pembebanan dan pendaftaran jaminan fidusia. Dokumen akta/sertifikat wajib diverifikasi.','Pembebanan Fidusia',['fidusia','jaminan','pendaftaran fidusia','agunan']),
+            _art('fidusia_execution','uu_fidusia_42_1999','Eksekusi fidusia','Korpus kerja mengenai eksekusi fidusia yang harus dibaca bersama Putusan MK No. 18/PUU-XVII/2019 dan perkembangan terkait.','Eksekusi Fidusia',['fidusia','eksekusi','cidera janji','penyerahan sukarela'],related_court_decisions=['Putusan MK No. 18/PUU-XVII/2019']),
+        ],
+    },
+    {
+        'id':'uu_peradilan_agama_7_1989','nomor':'UU No. 7 Tahun 1989 jo UU No. 3 Tahun 2006 jo UU No. 50 Tahun 2009','tahun':1989,
+        'tentang':'Peradilan Agama beserta perubahannya','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'1989-12-29','promulgation_date':'1989-12-29','jdih_source':'JDIH BPK RI / Mahkamah Agung','official_url':'https://peraturan.bpk.go.id/Details/46804/uu-no-7-',
+        'domain_tags':['peradilan agama','kompetensi absolut','perkawinan','waris','wakaf','ekonomi syariah'],
+        'articles':[
+            _art('pa_49','uu_peradilan_agama_7_1989','Pasal 49 (sebagaimana diubah)','Korpus kerja mengenai kompetensi absolut Pengadilan Agama. Materi perkara dan status para pihak harus diuji terhadap rumusan berlaku.','Kompetensi Absolut Peradilan Agama',['pasal 49','peradilan agama','kompetensi absolut','ekonomi syariah','waris','perkawinan']),
+        ],
+    },
+    {
+        'id':'uu_perkawinan_1_1974_16_2019','nomor':'UU No. 1 Tahun 1974 jo UU No. 16 Tahun 2019','tahun':1974,
+        'tentang':'Perkawinan sebagaimana diubah','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'1974-01-02','promulgation_date':'1974-01-02','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['perkawinan','perceraian','harta bersama','keluarga','anak'],
+        'articles':[
+            _art('marriage_validity','uu_perkawinan_1_1974_16_2019','Keabsahan & pencatatan perkawinan','Korpus kerja mengenai keabsahan/pencatatan perkawinan; ketentuan sektoral dan hukum agama yang relevan harus diverifikasi.','Keabsahan Perkawinan',['perkawinan','pencatatan','sah']),
+            _art('marriage_divorce','uu_perkawinan_1_1974_16_2019','Perceraian & akibat hukum','Korpus kerja mengenai perceraian dan akibatnya; baca bersama aturan pelaksana dan hukum acara forum yang berwenang.','Perceraian',['perceraian','anak','nafkah','harta bersama']),
+        ],
+    },
+    {
+        'id':'uu_pdp_27_2022','nomor':'UU No. 27 Tahun 2022','tahun':2022,
+        'tentang':'Pelindungan Data Pribadi','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2022-10-17','promulgation_date':'2022-10-17','jdih_source':'JDIH BPK RI / Setneg','official_url':'https://peraturan.bpk.go.id/Details/229798/uu-no-27-tahun-2022.',
+        'domain_tags':['data pribadi','privasi','pengendali data','prosesor data','transfer data','sanksi'],
+        'articles':[
+            _art('pdp_rights','uu_pdp_27_2022','Hak subjek data pribadi','Korpus kerja hak subjek data dan kewajiban pemrosesan yang relevan. Nomor pasal final wajib diverifikasi.','Hak Subjek Data',['data pribadi','hak subjek data','akses','penghapusan']),
+            _art('pdp_controller','uu_pdp_27_2022','Kewajiban pengendali/prosesor','Korpus kerja kewajiban pengendali/prosesor dalam pemrosesan, keamanan dan insiden.','Kewajiban Pengendali/Prosesor',['pengendali data','prosesor data','pemrosesan','keamanan data']),
+        ],
+    },
+    {
+        'id':'uu_ite_11_2008_1_2024','nomor':'UU No. 11 Tahun 2008 jo UU No. 19 Tahun 2016 jo UU No. 1 Tahun 2024','tahun':2008,
+        'tentang':'Informasi dan Transaksi Elektronik beserta perubahannya','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'2008-04-21','promulgation_date':'2008-04-21','jdih_source':'JDIH BPK RI / Komdigi','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['informasi elektronik','transaksi elektronik','bukti elektronik','sistem elektronik','ite'],
+        'articles':[
+            _art('ite_evidence','uu_ite_11_2008_1_2024','Informasi/Dokumen Elektronik sebagai alat bukti','Korpus kerja mengenai kedudukan informasi/dokumen elektronik dan syarat relevan.','Bukti Elektronik',['bukti elektronik','dokumen elektronik','informasi elektronik']),
+            _art('ite_system','uu_ite_11_2008_1_2024','Penyelenggaraan sistem/transaksi elektronik','Korpus kerja mengenai kewajiban dan aspek transaksi/sistem elektronik yang perlu diverifikasi berdasarkan konteks.','Sistem & Transaksi Elektronik',['sistem elektronik','transaksi elektronik','penyelenggara']),
+        ],
+    },
+    {
+        'id':'uu_kepailitan_37_2004','nomor':'UU No. 37 Tahun 2004','tahun':2004,
+        'tentang':'Kepailitan dan Penundaan Kewajiban Pembayaran Utang','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2004-10-18','promulgation_date':'2004-10-18','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/Details/40784/uu-no-37-tahun-2004',
+        'domain_tags':['kepailitan','pkpu','kreditur','debitur','utang','pengadilan niaga'],
+        'articles':[
+            _art('bankruptcy_threshold','uu_kepailitan_37_2004','Syarat permohonan pailit','Korpus kerja mengenai syarat permohonan pailit; identitas pasal, pembuktian dan yurisdiksi wajib diverifikasi.','Syarat Pailit',['pailit','dua kreditur','jatuh tempo','utang']),
+            _art('pkpu_process','uu_kepailitan_37_2004','PKPU','Korpus kerja proses PKPU dan perdamaian; tenggat dan tahapan wajib diverifikasi.','PKPU',['pkpu','perdamaian','kreditur','debitur']),
+        ],
+    },
+    {
+        'id':'uu_advokat_18_2003','nomor':'UU No. 18 Tahun 2003','tahun':2003,
+        'tentang':'Advokat','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2003-04-05','promulgation_date':'2003-04-05','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['advokat','penasihat hukum','jasa hukum','imunitas profesi','kode etik'],
+        'articles':[
+            _art('advocate_duties','uu_advokat_18_2003','Hak, kewajiban & kedudukan advokat','Korpus kerja mengenai kedudukan, hak dan kewajiban profesi advokat.','Profesi Advokat',['advokat','jasa hukum','penasihat hukum','profesi']),
+            _art('advocate_immunity','uu_advokat_18_2003','Itikad baik dalam menjalankan profesi','Korpus kerja isu perlindungan pelaksanaan tugas profesi dengan itikad baik; baca bersama putusan pengujian dan kode etik yang relevan.','Perlindungan Profesi',['advokat','itikad baik','imunitas','profesi']),
+        ],
+    },
+    {
+        'id':'uu_kekuasaan_kehakiman_48_2009','nomor':'UU No. 48 Tahun 2009','tahun':2009,
+        'tentang':'Kekuasaan Kehakiman','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2009-10-29','promulgation_date':'2009-10-29','jdih_source':'JDIH BPK RI / Mahkamah Agung','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['kekuasaan kehakiman','peradilan','hakim','asas peradilan','due process'],
+        'articles':[
+            _art('judiciary_principles','uu_kekuasaan_kehakiman_48_2009','Asas penyelenggaraan kekuasaan kehakiman','Korpus kerja mengenai asas independensi, peradilan yang adil, sederhana, cepat dan biaya ringan; pasal spesifik wajib diverifikasi.','Asas Peradilan',['kekuasaan kehakiman','hakim','peradilan','due process']),
+        ],
+    },
+    {
+        'id':'uu_peradilan_umum_2_1986_49_2009','nomor':'UU No. 2 Tahun 1986 jo UU No. 8 Tahun 2004 jo UU No. 49 Tahun 2009','tahun':1986,
+        'tentang':'Peradilan Umum beserta perubahannya','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'1986-03-08','promulgation_date':'1986-03-08','jdih_source':'JDIH BPK RI / Mahkamah Agung','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['peradilan umum','pengadilan negeri','pengadilan tinggi','kompetensi peradilan'],
+        'articles':[
+            _art('general_court_scope','uu_peradilan_umum_2_1986_49_2009','Kewenangan Peradilan Umum','Korpus kerja struktur dan kewenangan Peradilan Umum. Kompetensi perkara harus dibaca bersama hukum acara dan undang-undang sektoral.','Kompetensi Peradilan Umum',['pengadilan negeri','pengadilan tinggi','peradilan umum','kompetensi']),
+        ],
+    },
+    {
+        'id':'uu_ptun_5_1986_51_2009','nomor':'UU No. 5 Tahun 1986 jo UU No. 9 Tahun 2004 jo UU No. 51 Tahun 2009','tahun':1986,
+        'tentang':'Peradilan Tata Usaha Negara beserta perubahannya','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'1986-12-29','promulgation_date':'1986-12-29','jdih_source':'JDIH BPK RI / Mahkamah Agung','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['ptun','tata usaha negara','keputusan administrasi','sengketa administrasi'],
+        'articles':[
+            _art('ptun_object','uu_ptun_5_1986_51_2009','Objek dan kewenangan sengketa TUN','Korpus kerja mengenai objek sengketa dan kompetensi PTUN; harus dibaca bersama UU Administrasi Pemerintahan dan perkembangan putusan.','Sengketa TUN',['ptun','keputusan tata usaha negara','administrasi pemerintahan','kompetensi']),
+        ],
+    },
+    {
+        'id':'uu_keuangan_negara_17_2003','nomor':'UU No. 17 Tahun 2003','tahun':2003,
+        'tentang':'Keuangan Negara','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2003-04-05','promulgation_date':'2003-04-05','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['keuangan negara','keuangan daerah','apbn','apbd','kekayaan negara dipisahkan'],
+        'articles':[
+            _art('state_finance_scope','uu_keuangan_negara_17_2003','Ruang lingkup keuangan negara','Korpus kerja ruang lingkup keuangan negara/daerah dan kekayaan negara yang dikelola; penggunaan dalam Tipikor wajib diverifikasi terhadap fakta entitas dan yurisprudensi.','Ruang Lingkup Keuangan Negara',['keuangan negara','keuangan daerah','kekayaan negara','apbd','bumd']),
+        ],
+    },
+    {
+        'id':'uu_perbendaharaan_1_2004','nomor':'UU No. 1 Tahun 2004','tahun':2004,
+        'tentang':'Perbendaharaan Negara','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2004-01-14','promulgation_date':'2004-01-14','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['perbendaharaan negara','kerugian negara','pengelolaan uang','bendahara'],
+        'articles':[
+            _art('treasury_loss','uu_perbendaharaan_1_2004','Kerugian negara/daerah dan pertanggungjawaban','Korpus kerja pengelolaan perbendaharaan dan mekanisme pertanggungjawaban kerugian; unsur dan prosedur spesifik wajib diverifikasi.','Kerugian Negara/Daerah',['kerugian negara','kerugian daerah','perbendaharaan','pertanggungjawaban']),
+        ],
+    },
+    {
+        'id':'uu_pemeriksaan_keuangan_15_2004','nomor':'UU No. 15 Tahun 2004','tahun':2004,
+        'tentang':'Pemeriksaan Pengelolaan dan Tanggung Jawab Keuangan Negara','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2004-07-19','promulgation_date':'2004-07-19','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['pemeriksaan keuangan negara','bpk','audit','kerugian negara','tanggung jawab keuangan'],
+        'articles':[
+            _art('state_audit_scope','uu_pemeriksaan_keuangan_15_2004','Pemeriksaan pengelolaan dan tanggung jawab keuangan negara','Korpus kerja kerangka pemeriksaan oleh BPK; metode dan hasil pemeriksaan dalam suatu perkara tetap harus diuji pada laporan resmi yang relevan.','Pemeriksaan Keuangan Negara',['bpk','audit','keuangan negara','pemeriksaan']),
+        ],
+    },
+    {
+        'id':'uu_bpk_15_2006','nomor':'UU No. 15 Tahun 2006','tahun':2006,
+        'tentang':'Badan Pemeriksa Keuangan','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2006-10-30','promulgation_date':'2006-10-30','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['bpk','pemeriksaan keuangan','kerugian negara','audit negara'],
+        'articles':[
+            _art('bpk_authority','uu_bpk_15_2006','Tugas dan kewenangan BPK','Korpus kerja mengenai kedudukan, tugas, dan kewenangan BPK dalam pemeriksaan keuangan negara.','Kewenangan BPK',['bpk','audit negara','pemeriksaan keuangan','kerugian negara']),
+        ],
+    },
+    {
+        'id':'uu_pemda_23_2014','nomor':'UU No. 23 Tahun 2014 jo perubahan terakhir yang relevan','tahun':2014,
+        'tentang':'Pemerintahan Daerah beserta perubahannya','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'2014-10-02','promulgation_date':'2014-10-02','jdih_source':'JDIH BPK RI / Kemendagri','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['pemerintahan daerah','otonomi daerah','bumd','kewenangan daerah','kepala daerah'],
+        'articles':[
+            _art('local_government_bumd','uu_pemda_23_2014','Kerangka Pemerintahan Daerah dan BUMD','Korpus kerja hubungan kewenangan pemerintah daerah dan pengelolaan urusan/entitas daerah; perubahan sektoral wajib diverifikasi menurut tempus.','Pemerintahan Daerah & BUMD',['pemerintah daerah','bumd','perumda','kewenangan daerah']),
+        ],
+    },
+    {
+        'id':'pp_bumd_54_2017','nomor':'PP No. 54 Tahun 2017','tahun':2017,
+        'tentang':'Badan Usaha Milik Daerah','jenis':'PP','hierarchy_rank':4,'status':'BERLAKU',
+        'effective_date':'2017-12-28','promulgation_date':'2017-12-28','jdih_source':'JDIH BPK RI / Kemendagri','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['bumd','perumda','direksi','dewan pengawas','kpm','tata kelola'],
+        'articles':[
+            _art('bumd_governance','pp_bumd_54_2017','Organ dan tata kelola BUMD','Korpus kerja mengenai organ, pengurusan, pengawasan, dan tata kelola BUMD/Perumda. Ketentuan khusus BPR tetap harus dibaca bersama regulasi OJK.','Tata Kelola BUMD',['bumd','perumda','direksi','dewan pengawas','kpm']),
+        ],
+    },
+    {
+        'id':'uu_pelayanan_publik_25_2009','nomor':'UU No. 25 Tahun 2009','tahun':2009,
+        'tentang':'Pelayanan Publik','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2009-07-18','promulgation_date':'2009-07-18','jdih_source':'JDIH BPK RI','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['pelayanan publik','administrasi','maladministrasi','standar pelayanan'],
+        'articles':[
+            _art('public_service_duties','uu_pelayanan_publik_25_2009','Hak, kewajiban dan standar pelayanan publik','Korpus kerja standar penyelenggaraan pelayanan publik dan hak/kewajiban para pihak; pasal spesifik wajib diverifikasi.','Pelayanan Publik',['pelayanan publik','standar pelayanan','maladministrasi','penyelenggara']),
+        ],
+    },
+
+    {
+        'id':'perma_mediasi_1_2016','nomor':'PERMA No. 1 Tahun 2016','tahun':2016,
+        'tentang':'Prosedur Mediasi di Pengadilan','jenis':'PERMA','hierarchy_rank':90,'status':'BERLAKU',
+        'effective_date':'2016-02-04','promulgation_date':'2016-02-04','jdih_source':'JDIH Mahkamah Agung / JDIH BPK','official_url':'https://peraturan.bpk.go.id/Details/209641/perma-no-1-tahun-2016',
+        'domain_tags':['hukum acara perdata','mediasi','pengadilan','perdamaian'],
+        'articles':[
+            _art('perma_mediasi_scope','perma_mediasi_1_2016','Prosedur Mediasi','Korpus kerja mengenai kewajiban dan prosedur mediasi perkara perdata di pengadilan. Detail pengecualian, tenggat, dan akibat hukum wajib diverifikasi pada naskah resmi.','Mediasi di Pengadilan',['mediasi','perdamaian','hukum acara perdata','mediator']),
+        ],
+    },
+    {
+        'id':'perma_gugatan_sederhana_4_2019','nomor':'PERMA No. 4 Tahun 2019 jo PERMA No. 2 Tahun 2015','tahun':2019,
+        'tentang':'Perubahan atas Tata Cara Penyelesaian Gugatan Sederhana','jenis':'PERMA','hierarchy_rank':90,'status':'BERLAKU',
+        'effective_date':'2019-08-20','promulgation_date':'2019-08-20','jdih_source':'JDIH Mahkamah Agung / JDIH BPK','official_url':'https://peraturan.bpk.go.id/Details/206070/perma-no-4-tahun-2019',
+        'domain_tags':['hukum acara perdata','gugatan sederhana','peradilan umum'],
+        'articles':[
+            _art('small_claims_scope','perma_gugatan_sederhana_4_2019','Tata Cara Gugatan Sederhana','Korpus kerja mengenai penyelesaian gugatan sederhana. Batas nilai, kompetensi, syarat para pihak, dan prosedur wajib diverifikasi terhadap naskah resmi yang berlaku.','Gugatan Sederhana',['gugatan sederhana','small claim','hukum acara perdata']),
+        ],
+    },
+    {
+        'id':'inpres_khi_1_1991','nomor':'Inpres No. 1 Tahun 1991','tahun':1991,
+        'tentang':'Penyebarluasan Kompilasi Hukum Islam','jenis':'PER_LEMBAGA','hierarchy_rank':6,'status':'BERLAKU_SEBAGAI_RUJUKAN',
+        'effective_date':'1991-06-10','promulgation_date':'','jdih_source':'JDIH Pemerintah / JDIH BPK','official_url':'https://peraturan.bpk.go.id/Details/293351/inpres-no-1-tahun-1991',
+        'domain_tags':['hukum keluarga islam','waris islam','wakaf','peradilan agama'],
+        'articles':[
+            _art('khi_scope','inpres_khi_1_1991','Buku I-III KHI','Korpus kerja KHI mencakup perkawinan, kewarisan, dan perwakafan. Pasal spesifik serta relevansi kewenangan Peradilan Agama wajib diverifikasi pada naskah resmi dan praktik yudisial.','Kompilasi Hukum Islam',['perkawinan islam','waris islam','wakaf','peradilan agama']),
+        ],
+    },
+    {
+        'id':'uu_kip_14_2008','nomor':'UU No. 14 Tahun 2008','tahun':2008,
+        'tentang':'Keterbukaan Informasi Publik','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU',
+        'effective_date':'2010-04-30','promulgation_date':'2008-04-30','jdih_source':'JDIH BPK / Komisi Informasi','official_url':'https://peraturan.bpk.go.id/',
+        'domain_tags':['keterbukaan informasi','badan publik','informasi publik','sengketa informasi'],
+        'articles':[
+            _art('kip_scope','uu_kip_14_2008','Hak dan Kewajiban Informasi Publik','Korpus kerja mengenai akses, pengecualian, dan kewajiban badan publik. Klasifikasi informasi dan prosedur sengketa wajib diverifikasi pada sumber resmi.','Keterbukaan Informasi Publik',['informasi publik','badan publik','keterbukaan','komisi informasi']),
+        ],
+    },
+    {
+        'id':'uu_penanaman_modal_25_2007','nomor':'UU No. 25 Tahun 2007 jo UU No. 6 Tahun 2023','tahun':2007,
+        'tentang':'Penanaman Modal sebagaimana diubah melalui rezim Cipta Kerja','jenis':'UU','hierarchy_rank':3,'status':'BERLAKU_DENGAN_PERUBAHAN',
+        'effective_date':'2007-04-26','promulgation_date':'2007-04-26','jdih_source':'JDIH BPK / BKPM','official_url':'https://peraturan.bpk.go.id/Details/39903/uu-no-25-tahun-2007',
+        'domain_tags':['penanaman modal','investasi','perizinan berusaha','investor'],
+        'articles':[
+            _art('investment_scope','uu_penanaman_modal_25_2007','Kerangka Penanaman Modal','Korpus kerja mengenai hak, kewajiban, fasilitas, dan penyelenggaraan penanaman modal. Perubahan Cipta Kerja dan aturan pelaksana wajib diverifikasi sesuai tempus.','Penanaman Modal',['investasi','penanaman modal','perizinan berusaha','investor']),
+        ],
+    },
+    {
+        'id':'perma_e_court_7_2022','nomor':'PERMA No. 7 Tahun 2022','tahun':2022,
+        'tentang':'Perubahan atas PERMA No. 1 Tahun 2019 tentang Administrasi Perkara dan Persidangan di Pengadilan secara Elektronik','jenis':'PERMA','hierarchy_rank':90,'status':'BERLAKU',
+        'effective_date':'2022-10-11','promulgation_date':'2022-10-11','jdih_source':'JDIH Mahkamah Agung','official_url':'https://jdih.mahkamahagung.go.id/',
+        'domain_tags':['hukum acara','e-court','persidangan elektronik','administrasi perkara'],
+        'articles':[
+            _art('ecourt_scope','perma_e_court_7_2022','Administrasi dan Persidangan Elektronik','Korpus kerja mengenai administrasi perkara dan persidangan elektronik. Penerapan pada jenis perkara dan tahapan tertentu wajib diverifikasi pada naskah resmi dan kebijakan pengadilan.','E-Court / E-Litigation',['e-court','e-litigation','persidangan elektronik','administrasi perkara']),
+        ],
+    },
 ]
 
 
@@ -342,41 +587,78 @@ def search_regulations(query: str, limit: int = 8) -> List[Dict[str, Any]]:
     return results[:max(1,limit)]
 
 
-def retrieve_for_case(text: str, provision_refs: List[str] | None = None, limit: int = 10) -> List[Dict[str, Any]]:
+def retrieve_for_case(text: str, provision_refs: List[str] | None = None, limit: int = 10,
+                      allowed_domains: List[str] | None = None) -> List[Dict[str, Any]]:
+    """Local corpus retrieval constrained by the case-domain contract."""
+    low=(text or '').lower(); allowed=set(allowed_domains or [])
+    domain_queries={
+        'corruption':['korupsi penyalahgunaan kewenangan kerugian negara tipikor','UU Tipikor'],
+        'financial_services':['bpr kredit analisis kredit prinsip kehati-hatian manajemen risiko','bpr tata kelola direksi kredit'],
+        'criminal':['kuhap tersangka praperadilan upaya paksa advokat','asas legalitas tempus delicti kuhp'],
+        'regional_government':['bumd perumda direksi pemerintah daerah'],
+        'civil_contract':['wanprestasi perjanjian somasi pasal 1238 1243 1320 1338','perbuatan melawan hukum pasal 1365'],
+        'civil_procedure':['hukum acara perdata eksepsi obscuur libel plurium litis consortium','kompetensi absolut gugatan perdata'],
+        'land_property':['uupa pendaftaran tanah sertipikat hak milik','pp 24 1997 pendaftaran tanah hak tanggungan'],
+        'religious_court':['uu peradilan agama pasal 49 kompetensi absolut'],
+        'employment':['ketenagakerjaan phk pesangon pkwt pp 35 2021','perselisihan hubungan industrial bipartit'],
+        'corporate':['perseroan terbatas direksi komisaris rups business judgment rule'],
+        'consumer':['perlindungan konsumen klausula baku'],
+        'data_privacy':['pelindungan data pribadi bukti elektronik ite'],
+        'bankruptcy':['kepailitan pkpu kreditur debitur'],
+        'arbitration':['arbitrase klausul arbitrase alternatif penyelesaian sengketa'],
+        'administrative':['ptun keputusan tata usaha negara administrasi pemerintahan aaupb','upaya administratif peradilan tata usaha negara'],
+        'public_information':['keterbukaan informasi publik badan publik komisi informasi'],
+        'investment':['penanaman modal investasi perizinan berusaha'],
+    }
+    if not allowed:
+        try:
+            from services.case_domain_classifier import classify_case
+            allowed=set(classify_case(text).get('domain_contract') or [])
+        except Exception:
+            allowed=set()
     queries=[]
+    # Qualified references from the document remain valid discovery anchors but
+    # never override the domain gate by themselves.
     for ref in (provision_refs or [])[:10]:
-        if ref and ref not in queries:
-            queries.append(ref)
-    low=(text or '').lower()
-    topic_hints=[]
-    for keys,q in [
-        (['korupsi','tipikor','kerugian negara','pasal 603','pasal 604'],'korupsi penyalahgunaan kewenangan actual loss tipikor'),
-        (['penyalahgunaan wewenang','diskresi','pejabat pemerintahan'],'administrasi pemerintahan penyalahgunaan wewenang diskresi'),
-        (['kredit','bpr','agunan','slik','bank perkreditan rakyat','bank perekonomian rakyat'],'bpr kredit analisis kredit prinsip kehati-hatian manajemen risiko'),
-        (['bmpk','pihak terkait','konsentrasi kredit'],'bpr bmpk pihak terkait konsentrasi kredit'),
-        (['wanprestasi','perjanjian','kontrak','somasi'],'wanprestasi perjanjian somasi pasal 1238 1243 1320 1338'),
-        (['force majeure','keadaan memaksa','overmacht'],'force majeure keadaan memaksa pasal 1244 1245'),
-        (['perbuatan melawan hukum','pmh'],'perbuatan melawan hukum pasal 1365'),
-        (['arbitrase','klausul arbitrase','alternatif penyelesaian sengketa'],'arbitrase klausul arbitrase alternatif penyelesaian sengketa'),
-        (['konsumen','klausula baku','pelaku usaha'],'perlindungan konsumen klausula baku'),
-        (['tersangka','praperadilan','upaya paksa','penasihat hukum','advokat'],'kuhap tersangka praperadilan upaya paksa advokat due process'),
-        (['tempus','non-retroaktif','kuhp nasional'],'asas legalitas tempus delicti kuhp'),
-        (['phk','ketenagakerjaan','pesangon','pekerja','buruh','pkwt','pkwtt'],'ketenagakerjaan phk pesangon pkwt pp 35 2021'),
-        (['bipartit','perselisihan hubungan industrial','phi'],'perselisihan hubungan industrial bipartit mediasi phi'),
-        (['perseroan','direksi','komisaris','pemegang saham','rups'],'perseroan terbatas direksi komisaris rups business judgment rule'),
-    ]:
-        if any(k in low for k in keys):
-            topic_hints.append(q)
-    queries.extend(topic_hints)
+        if ref and ref not in queries: queries.append(ref)
+    for did in allowed:
+        queries.extend(domain_queries.get(did,[]))
+    if not queries:
+        queries=[' '.join(re.findall(r'\b[\w-]{4,}\b',(text or '')[:1200],flags=re.UNICODE)[:10])]
 
     merged={}
-    for qx in queries[:14]:
-        for hit in search_regulations(qx,limit=limit):
-            rid=hit['regulation']['id']
-            if rid not in merged or hit['score']>merged[rid]['score']:
-                merged[rid]=hit
+    for qx in queries[:16]:
+        for hit in search_regulations(qx,limit=max(limit,12)):
+            reg=hit['regulation']; tags=' '.join(reg.get('domain_tags') or []).lower(); title=(reg.get('tentang','')+' '+reg.get('nomor','')).lower()
+            # Hard domain guard. Qualified references are allowed only when the
+            # regulation also has material overlap with an active domain.
+            vocab={
+                'corruption':('korupsi','tipikor','penyalahgunaan wewenang','kerugian negara'),
+                'financial_services':('perbankan','bpr','kredit','ojk','manajemen risiko','tata kelola'),
+                'criminal':('pidana','kuhp','kuhap','tersangka','praperadilan'),
+                'regional_government':('bumd','perumda','pemerintah daerah'),
+                'civil_contract':('perdata','perikatan','kontrak','wanprestasi','pmh'),
+                'civil_procedure':('acara perdata','gugatan','eksepsi','kompetensi'),
+                'land_property':('agraria','pertanahan','pendaftaran tanah','hak tanggungan','fidusia'),
+                'religious_court':('peradilan agama','kompetensi absolut','perkawinan','waris','wakaf'),
+                'employment':('ketenagakerjaan','phk','pkwt','hubungan industrial'),
+                'corporate':('perseroan','direksi','komisaris','rups'),
+                'consumer':('konsumen','klausula baku'),
+                'data_privacy':('data pribadi','informasi elektronik','ite'),
+                'bankruptcy':('kepailitan','pkpu'),
+                'arbitration':('arbitrase','alternatif penyelesaian sengketa'),
+                'administrative':('tata usaha negara','administrasi pemerintahan','ptun','aaupb'),
+                'public_information':('keterbukaan informasi publik','komisi informasi','badan publik'),
+                'investment':('penanaman modal','investasi','perizinan berusaha'),
+            }
+            hay=title+' '+tags
+            if allowed and not any(any(k in hay for k in vocab.get(d,())) for d in allowed):
+                continue
+            rid=reg['id']
+            if rid not in merged or hit['score']>merged[rid]['score']: merged[rid]=hit
     out=sorted(merged.values(),key=lambda x:x['score'],reverse=True)[:limit]
     for item in out:
-        item['verification_status']='LOCAL_CORPUS_MATCH — OFFICIAL SOURCE VERIFICATION REQUIRED'
+        item['verification_status']='LOCAL_DATABASE_MATCH — OFFICIAL SOURCE VERIFICATION REQUIRED'
         item['professional_verification']='PENDING'
     return out
+
