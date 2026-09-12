@@ -75,36 +75,88 @@ def _first_date_after(text: str, labels: Iterable[str]) -> date | None:
 def _normalize_legal_identity_text(text: str | None) -> str:
     """Normalize layout noise without changing legal numbers/years.
 
-    Official PDFs commonly split headings across lines, use Unicode dash variants,
-    soft hyphens, or zero-width characters.  Identity matching may normalize
-    typography/layout, but must never repair a number or year.
+    This is typography-only normalization. It never repairs or substitutes an
+    instrument number/year. The broader zero-width/dash set is intentionally
+    accepted because official PDF/JDIH extraction can emit those characters.
     """
     s=unicodedata.normalize("NFKC", str(text or ""))
-    s=s.replace("\u00ad", "").replace("\u200b", "").replace("\ufeff", "")
-    s=re.sub(r"[‐‑‒–—−]", "-", s)
+    for ch in ("\u00ad", "\u200b", "\u200c", "\u200d", "\ufeff"):
+        s=s.replace(ch, "")
+    s=re.sub(r"[‐‑‒–—―−⁃]", "-", s)
     s=re.sub(r"\bUNDANG\s*-?\s*UNDANG\b", "UNDANG-UNDANG", s, flags=re.I)
     s=re.sub(r"\bREPUBL[K]?\s+INDONESIA\b", "REPUBLIK INDONESIA", s, flags=re.I)
     s=re.sub(r"\s+", " ", s).strip()
     return s
 
 
+def _canonical_identity_number(raw: str | None) -> str | None:
+    """Canonicalize formatting only (e.g. 08 -> 8); never infer a number."""
+    n=str(raw or "").strip().upper()
+    m=re.fullmatch(r"0*(\d+)([A-Z]?)", n)
+    if not m:
+        return n or None
+    return f"{int(m.group(1))}{m.group(2)}"
+
+
 def _reg_identity(text: str) -> dict:
-    """Extract only explicit regulation number/year identity from source text."""
+    """Extract explicit regulation identity with layout-tolerant syntax.
+
+    R16 keeps the RC18 fail-closed identity provenance, while accepting common
+    official representations: Nomor N Tahun Y, a type-bound N/Y shorthand, and
+    reversed Tahun Y ... Nomor N metadata rows. No typo/year repair is allowed.
+    """
     s=_normalize_legal_identity_text(text)
-    patterns=(
-        ("UU", r"(?:Undang-Undang|Undang undang|UU)(?:\s*\(UU\))?[\s:,-]+(?:(?:Republik|Republk)(?:\s+Indonesia)?[\s:,-]+)?(?:Nomor|No\.?)[\s:.-]*(\d+[A-Za-z]?)[\s,;:-]+Tahun[\s:.-]+(\d{4})"),
-        ("PP", r"(?:Peraturan Pemerintah|PP)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+[A-Za-z]?)\s+Tahun\s+(\d{4})"),
-        ("PERMA", r"(?:Peraturan Mahkamah Agung|PERMA)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+[A-Za-z]?)\s+Tahun\s+(\d{4})"),
-        ("SEMA", r"(?:Surat Edaran Mahkamah Agung|SEMA)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+[A-Za-z]?)\s+Tahun\s+(\d{4})"),
-        ("PERPRES", r"(?:Peraturan Presiden|PERPRES)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+[A-Za-z]?)\s+Tahun\s+(\d{4})"),
-        ("POJK", r"(?:Peraturan Otoritas Jasa Keuangan|POJK)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+)(?:/POJK\.\d+)?/(20\d{2})"),
-        ("POJK", r"(?:Peraturan Otoritas Jasa Keuangan|POJK)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+)\s+Tahun\s+(20\d{2})"),
-        ("SEOJK", r"(?:Surat Edaran Otoritas Jasa Keuangan|SEOJK)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+)(?:/SEOJK\.\d+)?/(20\d{2})"),
-        ("SEOJK", r"(?:Surat Edaran Otoritas Jasa Keuangan|SEOJK)\s+(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*(\d+)\s+Tahun\s+(20\d{2})"),
+    aliases=(
+        ("SEOJK", r"(?:Surat Edaran Otoritas Jasa Keuangan|SEOJK)"),
+        ("POJK", r"(?:Peraturan Otoritas Jasa Keuangan|POJK)"),
+        ("PERMA", r"(?:Peraturan Mahkamah Agung|PERMA)"),
+        ("PERPRES", r"(?:Peraturan Presiden|PERPRES)"),
+        ("SEMA", r"(?:Surat Edaran Mahkamah Agung|SEMA)"),
+        ("PERPU", r"(?:Peraturan Pemerintah Pengganti Undang-Undang|Peraturan Pemerintah Pengganti Undang undang|PERPPU|PERPU)"),
+        ("PP", r"(?:Peraturan Pemerintah|PP)"),
+        ("UU", r"(?:Undang-Undang|Undang undang|UU)(?:\s*\(UU\))?"),
     )
-    for kind,pat in patterns:
-        m=re.search(pat,s,re.I)
-        if m: return {"type":kind,"number":m.group(1),"year":int(m.group(2)),"key":f"{kind}:{m.group(1)}:{m.group(2)}"}
+    matches=[]
+    for kind,alias in aliases:
+        for am in re.finditer(alias, s, re.I):
+            if kind == "UU":
+                prefix=s[max(0,am.start()-55):am.start()].lower()
+                if re.search(r"peraturan pemerintah pengganti\s*$", prefix):
+                    continue
+            # A bounded window prevents an instrument label from binding to an
+            # unrelated date/number elsewhere on a long official page.
+            window=s[am.end():am.end()+110]
+            patterns=[]
+            if kind in {"POJK","SEOJK"}:
+                patterns.extend([
+                    re.compile(r"(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*[:.]?\s*(\d+)(?:/(?:POJK|SEOJK)\.\d+)?/(20\d{2})", re.I),
+                    re.compile(r"(?:Republik Indonesia\s+)?(?:Nomor|No\.?)\s*[:.]?\s*(\d+)\s+Tahun\s*[:.]?\s*(20\d{2})", re.I),
+                ])
+            patterns.extend([
+                re.compile(r"(?:Republik Indonesia\s+)?(?:Nomor|No\.?|Number)\s*[:.]?\s*(\d+[A-Za-z]?)\s+Tahun\s*[:.]?\s*(19\d{2}|20\d{2})", re.I),
+                # Shorthand must occur immediately after the instrument alias
+                # (apart from punctuation/whitespace), so DD/MM/YYYY dates later
+                # in the window cannot be mistaken for an instrument identity.
+                re.compile(r"^[\s:,.()-]*(\d{1,4}[A-Za-z]?)\s*/\s*(19\d{2}|20\d{2})(?!\d)", re.I),
+            ])
+            found=None
+            for pat in patterns:
+                m=pat.search(window)
+                if m:
+                    found=(m.start(), m.group(1), m.group(2)); break
+            if not found:
+                rev=re.search(r"Tahun\s*[:.]?\s*(19\d{2}|20\d{2}).{0,50}?(?:Nomor|No\.?)\s*[:.]?\s*(\d+[A-Za-z]?)", window, re.I)
+                if rev:
+                    found=(rev.start(), rev.group(2), rev.group(1))
+            if found:
+                pos=am.start()+found[0]
+                number=_canonical_identity_number(found[1])
+                year=int(found[2])
+                if number:
+                    matches.append((pos, {"type":kind,"number":number,"year":year,"key":f"{kind}:{number}:{year}"}))
+    if matches:
+        matches.sort(key=lambda x:x[0])
+        return matches[0][1]
     return {"type":None,"number":None,"year":None,"key":None}
 
 
@@ -186,6 +238,7 @@ DOMAIN_NEXUS_MARKERS = {
     "consumer": ("perlindungan konsumen", "konsumen", "pelaku usaha", "klausula baku"),
     "bankruptcy": ("kepailitan", "pkpu", "pailit", "pengadilan niaga"),
     "arbitration": ("arbitrase", "bani", "alternatif penyelesaian sengketa"),
+    "electoral_ethics": ("pemilihan umum", "pemilu", "pilkada", "kpu", "bawaslu", "dkpp", "kode etik", "penyelenggara pemilu", "pengadu", "teradu"),
 }
 
 def evaluate_case_nexus(candidate: dict, active_domain_ids: Iterable[str] = ()) -> dict:
@@ -235,10 +288,10 @@ def evaluate_case_nexus(candidate: dict, active_domain_ids: Iterable[str] = ()) 
 def _identity_from_key(value: str | None) -> dict:
     """Parse an already canonical TYPE:number:year key without inference."""
     s=str(value or "").strip()
-    m=re.fullmatch(r"(UU|PP|PERMA|SEMA|PERPRES|POJK|SEOJK):([0-9]+[A-Za-z]?):(19\d{2}|20\d{2})", s, re.I)
+    m=re.fullmatch(r"(UU|PP|PERPU|PERPPU|PERMA|SEMA|PERPRES|POJK|SEOJK):([0-9]+[A-Za-z]?):(19\d{2}|20\d{2})", s, re.I)
     if not m:
         return {"type":None,"number":None,"year":None,"key":None}
-    kind=m.group(1).upper(); number=m.group(2); year=int(m.group(3))
+    kind=m.group(1).upper(); number=_canonical_identity_number(m.group(2)); year=int(m.group(3))
     return {"type":kind,"number":number,"year":year,"key":f"{kind}:{number}:{year}"}
 
 
@@ -289,7 +342,7 @@ def _source_identity_candidates(source_text: str) -> list[dict]:
     )
     for kind,pat in patterns:
         for m in re.finditer(pat,s,re.I):
-            number=m.group(1); year=int(m.group(2)); key=f"{kind}:{number}:{year}"
+            number=_canonical_identity_number(m.group(1)); year=int(m.group(2)); key=f"{kind}:{number}:{year}"
             if key not in seen:
                 seen.add(key); out.append({"type":kind,"number":number,"year":year,"key":key})
     return out
@@ -350,11 +403,16 @@ def _provision_pattern(ref: str) -> re.Pattern | None:
         return None
     m=PROVISION_RE.search(norm)
     number=re.escape(m.group(1))
-    pat=rf"\bPasal\s+{number}\b"
+    # R36: tolerate PDF text-extraction whitespace around the article label
+    # without weakening the article number boundary. Newlines/NBSP are common
+    # in official PDFs; matching still requires the explicit word "Pasal" and
+    # the exact requested number.
+    ws=r"[\s\u00a0\u2007\u202f]*"
+    pat=rf"\bPasal{ws}{number}\b"
     if m.group(2):
-        pat += rf"(?:\s+ayat\s*\(\s*{re.escape(m.group(2).strip())}\s*\))"
+        pat += rf"(?:{ws}ayat{ws}\({ws}{re.escape(m.group(2).strip())}{ws}\))"
     if m.group(3):
-        pat += rf"(?:\s+huruf\s+{re.escape(m.group(3))})"
+        pat += rf"(?:{ws}huruf{ws}{re.escape(m.group(3))})"
     return re.compile(pat, re.I)
 
 
@@ -498,26 +556,42 @@ def extract_status_metadata(source_text: str) -> dict:
             r"\b(?:mulai\s+)?berlaku\s+(?:pada|sejak)\s+tanggal\s+diundangkan\b", low, re.I):
         effective=promulgation
 
-    repeal_marker=r"\b(?:dicabut dengan|dinyatakan tidak berlaku|tidak berlaku lagi|status(?: peraturan)?\s*:?\s*tidak berlaku)\b"
+    repeal_relationship_marker=r"\b(?:dicabut dengan|dinyatakan tidak berlaku|tidak berlaku lagi)\b"
+    explicit_repealed_marker=r"\bstatus(?: peraturan)?\s*:?\s*tidak berlaku\b"
     amendment_marker=r"\b(?:diubah dengan|telah diubah(?: dengan)?)\b"
     amends_other=bool(re.search(r"\bperubahan(?:\s+kedua|\s+ketiga)?\s+atas\b", low, re.I))
-    revoked=bool(re.search(repeal_marker, low, re.I))
     amended=bool(re.search(amendment_marker, low, re.I))
+    explicit_status_in_force=bool(re.search(r"\bstatus(?: peraturan)?\s*:?\s*berlaku\b", low, re.I))
+    explicit_status_repealed=bool(re.search(explicit_repealed_marker, low, re.I))
+    repeal_relationship=bool(re.search(repeal_relationship_marker, low, re.I))
     transitional=bool(re.search(r"\bketentuan peralihan\b", low, re.I))
-    explicit_in_force=bool(effective) or bool(re.search(r"\bberlaku mulai\b|\bmulai berlaku\b|\bstatus(?: peraturan)?\s*:?\s*berlaku\b", low, re.I))
+    explicit_in_force=bool(effective) or explicit_status_in_force
 
+    # R25 STATUS-SEMANTICS: a document may mention repeal relationships for
+    # another instrument, a partial provision, or historical context.  Such a
+    # mention must not override an explicit current ``Status Peraturan: Berlaku``
+    # marker.  A whole-instrument REVOKED state is therefore reserved for an
+    # explicit not-in-force status or an unambiguous repeal relationship where
+    # no in-force/amendment evidence conflicts with it.
+    revoked = explicit_status_repealed or (repeal_relationship and not explicit_status_in_force and not amended)
+
+    repeal_marker=r"\b(?:dicabut dengan|dinyatakan tidak berlaku|tidak berlaku lagi|status(?: peraturan)?\s*:?\s*tidak berlaku)\b"
     repeal_dates=_dates_near_relationship(text,repeal_marker)
     amendment_dates=_dates_near_relationship(text,amendment_marker)
     repeal_years=_relationship_years(text,repeal_marker)
     amendment_years=_relationship_years(text,amendment_marker)
 
     status="STATUS_UNCERTAIN"
-    if revoked:
+    if explicit_status_repealed:
         status="REVOKED"
-    elif explicit_in_force and amended:
+    elif explicit_status_in_force and amended:
         status="AMENDED_IN_FORCE"
-    elif explicit_in_force:
+    elif explicit_status_in_force:
         status="IN_FORCE"
+    elif amended and not repeal_relationship:
+        status="AMENDED_IN_FORCE"
+    elif revoked:
+        status="REVOKED"
 
     return {
         "legal_status": status,
@@ -535,6 +609,88 @@ def extract_status_metadata(source_text: str) -> dict:
         "transitional_rule_found": transitional,
         "explicit_in_force_marker": explicit_in_force,
     }
+
+
+
+def apply_post_verification_status_semantics(result: dict, candidate: dict) -> dict:
+    """Apply registry lifecycle semantics only after official identity is verified.
+
+    This helper is deliberately post-verification-only: it MUST NOT participate
+    in candidate ranking, fetch/recovery decisions, exact-lock, scheduler, or
+    fulltext resolution.  It only reconciles lifecycle semantics on an already
+    identity-confirmed official-text verification result.
+    """
+    if not isinstance(result, dict) or result.get("identity_confirmed") is not True:
+        return result
+    identity=result.get("identity") or {}
+    key=str(identity.get("expected_key") or identity.get("key") or "").upper()
+    if not key:
+        return result
+    try:
+        from regulatory_db import get_all_regulations
+    except Exception:
+        return result
+    registry=None
+    for reg in get_all_regulations() or []:
+        title=' '.join(str(reg.get(k) or '') for k in ('nomor','tentang')).strip()
+        rid=regulation_identity(title).get('key')
+        if str(rid or '').upper()==key:
+            registry=reg
+            break
+    if not registry:
+        return result
+    raw=str(registry.get('status') or '').upper().strip()
+    if raw in {'BERLAKU','IN_FORCE'}:
+        canonical='IN_FORCE'
+    elif raw.startswith('BERLAKU_DENGAN_') or raw in {'AMENDED','AMENDED_IN_FORCE','BERLAKU_DENGAN_PERUBAHAN'}:
+        canonical='AMENDED_IN_FORCE'
+    elif raw in {'DICABUT','REVOKED','TIDAK_BERLAKU'}:
+        canonical='REVOKED'
+    else:
+        canonical='STATUS_UNCERTAIN'
+
+    out=dict(result)
+    source_status=str(out.get('legal_status') or 'STATUS_UNCERTAIN')
+    explicit_in_force=bool(out.get('explicit_in_force_marker'))
+    if canonical in {'IN_FORCE','AMENDED_IN_FORCE'} and source_status in {'STATUS_UNCERTAIN','REVOKED'} and not explicit_in_force:
+        out['legal_status']=canonical
+        out['revoked']=False
+        out['repeal_date']=None
+        out['repeal_dates']=[]
+        out['repeal_years']=[]
+        if canonical=='AMENDED_IN_FORCE':
+            out['amended']=True
+    elif canonical=='REVOKED':
+        out['legal_status']='REVOKED'
+        out['revoked']=True
+    out['status_semantics_source']='LOCAL_CORPUS_METADATA_POST_VERIFICATION'
+    out['registry_status_raw']=raw
+
+    # Tempus/applicability are intentionally recomputed only from the preserved
+    # existing anchor.  Unknown material tempus remains fail-closed.
+    anchor=out.get('tempus_anchor')
+    tempus=verify_tempus(
+        effective_date=out.get('effective_date'), anchor_value=anchor,
+        revoked=bool(out.get('revoked')),
+        transitional_rule_found=bool(out.get('transitional_rule_found')),
+        repeal_date=out.get('repeal_date'), repeal_years=out.get('repeal_years') or [],
+    )
+    out['tempus_status']=tempus.get('status')
+    out['tempus_applicable']=tempus.get('applicable')
+    out['status_at_tempus']=tempus.get('status_at_tempus')
+    out['tempus_reason']=tempus.get('reason')
+    pv=out.get('provision_verification') or {}
+    provision_temporal=out.get('provision_temporal_version') or {}
+    out['final_status']=final_applicability(
+        official_source_confirmed=bool(out.get('official_source_confirmed')),
+        text_retrieved=bool(out.get('text_retrieved')),
+        identity_confirmed=True,
+        legal_status=out.get('legal_status') or 'STATUS_UNCERTAIN',
+        tempus=tempus,
+        case_nexus_status=str(out.get('case_nexus_status') or 'CASE_NEXUS_UNCERTAIN'),
+        provision_temporal_status=provision_temporal.get('status') or 'NOT_APPLICABLE',
+    )
+    return out
 
 def choose_temporal_anchor(candidate: dict, snapshot: dict) -> tuple[str | None, str]:
     hay=((candidate.get("title") or "")+" "+(candidate.get("query") or "")).lower()
@@ -625,7 +781,9 @@ def final_applicability(*, official_source_confirmed: bool, text_retrieved: bool
         return "VERIFIED_NOT_APPLICABLE"
     if tempus.get("status") == "TRANSITIONAL_REVIEW_REQUIRED":
         return "TRANSITIONAL_REVIEW_REQUIRED"
-    if tempus.get("status") in {"REPEAL_DATE_REQUIRED","TEMPUS_UNVERIFIED","TEMPUS_REQUIRES_EXACT_DATE"}:
+    if tempus.get("status") == "TEMPUS_UNVERIFIED":
+        return "VERIFICATION_REQUIRED"
+    if tempus.get("status") in {"REPEAL_DATE_REQUIRED","TEMPUS_REQUIRES_EXACT_DATE"}:
         return "POTENTIALLY_APPLICABLE"
     if legal_status not in {"IN_FORCE","AMENDED_IN_FORCE","REVOKED"}:
         return "STATUS_UNCERTAIN"

@@ -14,6 +14,8 @@ import re
 from difflib import SequenceMatcher
 from typing import Any, Dict, Iterable, List
 
+from services.document_posture_resolver import resolve_document_posture
+
 from services.case_consistency_guard import (
     classify_source_item,
     executive_fact_candidates,
@@ -137,7 +139,25 @@ def _document_type(text: str) -> str:
 
 def _structural_review(text: str, doc_type: str) -> Dict[str,Any]:
     low=_clean(text).lower(); expected=[]
-    if doc_type=='EKSEPSI_OR_OBJECTION':
+    if doc_type=='RESPONSE_TO_COMPLAINT':
+        expected=[
+            ('party_position',('teradu','terlapor','tergugat','termohon','terdakwa')),
+            ('response_scope',('jawaban atas','pokok aduan','pokok gugatan','pokok laporan')),
+            ('grounds',('sanggahan','menolak','membantah','jawaban')),
+            ('evidence',('bukti','lampiran','surat keputusan','dokumen')),
+            ('legal_basis',('dasar hukum','pasal','undang-undang','peraturan')),
+            ('prayer',('permohonan','petitum','memohon')),
+        ]
+    elif doc_type=='CLAIM_OR_COMPLAINT':
+        expected=[
+            ('party_position',('pengadu','pelapor','penggugat','pemohon')),
+            ('claim_scope',('pokok aduan','pokok gugatan','laporan dugaan','permohonan')),
+            ('facts',('bahwa','kronologi','kejadian','peristiwa')),
+            ('evidence',('bukti','lampiran','dokumen')),
+            ('legal_basis',('dasar hukum','pasal','undang-undang','peraturan')),
+            ('prayer',('permohonan','petitum','memohon')),
+        ]
+    elif doc_type in ('OBJECTION_OR_DEFENSE','EKSEPSI_OR_OBJECTION'):
         expected=[
             ('authority_identity',('surat kuasa','penasehat hukum','penasihat hukum')),
             ('case_position',('kasus posisi','dakwaan','kronologi')),
@@ -148,7 +168,7 @@ def _structural_review(text: str, doc_type: str) -> Dict[str,Any]:
         ]
     elif doc_type=='CIVIL_PLEADING':
         expected=[('identity',('penggugat','tergugat')),('posita',('posita','fundamentum','bahwa')),('petitum',('petitum','memohon'))]
-    elif doc_type=='CONTRACT':
+    elif doc_type in ('AGREEMENT','CONTRACT'):
         expected=[('parties',('para pihak','pihak pertama','pihak kedua')),('object',('objek','ruang lingkup')),('rights',('hak dan kewajiban','kewajiban')),('default',('wanprestasi','cidera janji')),('dispute',('penyelesaian perselisihan','sengketa'))]
     present=[]; missing=[]
     for key,terms in expected:
@@ -241,7 +261,10 @@ def _strengths(result: Dict[str,Any], doc_type: str) -> List[str]:
     if flags.get('fiduciary_nexus'):
         out.append('Isu agunan/fidusia teridentifikasi sebagai faktor recovery/kausalitas yang relevan, bukan sebagai penentu otomatis hasil perkara.')
     if flags.get('objection_context'):
-        out.append('Dokumen memiliki posisi prosedural keberatan/eksepsi yang dapat diuji terpisah antara cacat formil dan pembelaan pokok perkara.')
+        if doc_type=='RESPONSE_TO_COMPLAINT':
+            out.append('Dokumen memiliki posisi prosedural jawaban/keberatan yang dapat diuji terpisah antara tanggapan formil dan pembelaan pokok perkara.')
+        else:
+            out.append('Dokumen memiliki posisi prosedural keberatan/eksepsi yang dapat diuji terpisah antara cacat formil dan pembelaan pokok perkara.')
     facts=executive_fact_candidates(result.get('source_ledger') or [],5)
     if facts:
         out.append('Terdapat fakta perkara material yang dapat dijadikan titik awal matriks isu-versus-bukti.')
@@ -257,7 +280,28 @@ def _strategic_recommendation(result: Dict[str,Any], doc_type: str) -> Dict[str,
     boundaries={str(x.get('code')) for x in (guard.get('boundary_checks') or []) if isinstance(x,dict)}
     tempus=(guard.get('tempus') or {}).get('status')
     anomalies=guard.get('citation_anomalies') or []
-    if doc_type=='EKSEPSI_OR_OBJECTION':
+    posture=result.get('document_posture_profile') or resolve_document_posture(result.get('domain_classification') or {}, {'source_text': result.get('source_text') or ''})
+    if doc_type=='RESPONSE_TO_COMPLAINT':
+        issue_label=posture.get('issue_label') or 'pokok aduan / klaim'
+        remedy_label=posture.get('remedy_label') or 'petitum jawaban'
+        return {
+            'approach':'RESPONSE_ISSUE_FACT_EVIDENCE_RULE_ALIGNMENT',
+            'priorities':[
+                f'Susun jawaban per {issue_label.lower()} dan pisahkan dengan tegas tanggapan formil, fakta material, bukti primer, serta argumentasi hukum.',
+                'Untuk setiap bantahan, tunjukkan dalil yang dijawab, fakta sumber, bukti pendukung/kontra, serta akibat hukumnya tanpa menganggap mapping sebagai fakta terbukti.',
+                'Kunci kronologi status/tindakan dan uji nexus setiap peristiwa terhadap kewajiban yang benar-benar berlaku pada tempus sebelum menaikkan kesimpulan.',
+                f'Pastikan {remedy_label.lower()} merupakan konsekuensi logis dari jawaban dan dasar hukum yang telah diverifikasi, bukan template forum lain.',
+            ],
+            'recommended_outline':[
+                'I. Identitas, kedudukan, dan forum',
+                f'II. Ruang lingkup {issue_label.lower()} yang dijawab',
+                'III. Jawaban per isu: dalil → fakta → bukti → norma terverifikasi → analisis',
+                'IV. Kronologi dan audit tempus',
+                'V. Counter-argument, gap bukti, dan mitigasi',
+                f'VI. {remedy_label}',
+            ],
+        }
+    if doc_type in ('OBJECTION_OR_DEFENSE','EKSEPSI_OR_OBJECTION'):
         priorities=[
             'Utamakan keberatan yang benar-benar bersifat formil/prosedural dan tunjukkan secara spesifik bagian dakwaan yang dianggap tidak memenuhi syarat, bukan hanya menyimpulkan bahwa substansi perkara seharusnya dikualifikasikan lain.',
             'Pisahkan secara tegas: (a) kompetensi/forum, (b) cacat surat dakwaan, dan (c) pembelaan mengenai terbukti atau tidaknya unsur. Jangan memakai argumen merits sebagai pengganti dasar eksepsi formil.',
@@ -287,7 +331,7 @@ def _strategic_recommendation(result: Dict[str,Any], doc_type: str) -> Dict[str,
             'Pastikan petitum merupakan konsekuensi logis dari posita dan dasar hukum, bukan tuntutan yang berdiri sendiri.',
             'Audit kompetensi, para pihak, legal standing, tempus, dan hubungan hukum sebelum menyusun kesimpulan merits.',
         ],'recommended_outline':['Identitas & standing','Kronologi/fakta material','Isu hukum','Dasar hukum terverifikasi','Analisis per isu','Petitum primer/subsider']}
-    if doc_type=='CONTRACT':
+    if doc_type in ('AGREEMENT','CONTRACT'):
         return {'approach':'CLAUSE_RISK_REWRITE','priorities':[
             'Pisahkan kewajiban, kondisi pemicu, bukti pemenuhan, dan akibat wanprestasi untuk setiap klausul material.',
             'Cari konflik internal, istilah tidak konsisten, tanggal/angka yang tidak sinkron, dan klausul yang tidak memiliki mekanisme eksekusi.',
@@ -302,8 +346,23 @@ def _strategic_recommendation(result: Dict[str,Any], doc_type: str) -> Dict[str,
 
 def build_professional_review(result: Dict[str,Any], source_text: str | None = None) -> Dict[str,Any]:
     text=source_text if source_text is not None else result.get('source_text') or ''
-    doc_type=_document_type(text)
+    posture_profile=resolve_document_posture(result.get('domain_classification') or {}, {'source_text': text})
+    posture_code=posture_profile.get('posture') or 'GENERAL_LEGAL_DOCUMENT'
+    legacy_map={'OBJECTION_OR_DEFENSE':'EKSEPSI_OR_OBJECTION','AGREEMENT':'CONTRACT'}
+    doc_type = legacy_map.get(posture_code, posture_code) if posture_code in {'RESPONSE_TO_COMPLAINT','CLAIM_OR_COMPLAINT','OBJECTION_OR_DEFENSE','DECISION_OR_ORDER','AGREEMENT'} else _document_type(text)
     structure=_structural_review(text,doc_type)
+    # Presentation-only SSoT identity projection.  Never reclassify merits, law,
+    # elements, or evidence here; only replace the human-facing document label
+    # when the corpus fingerprint is positively resolved.
+    from services.contract_enforcer import LexiCoreContractEnforcer
+    resolved_identity = (result.get('adversarial_document_identity') or
+                         LexiCoreContractEnforcer.resolve_document_adversarial_identity(text))
+    display_type = posture_profile.get('document_type') or structure.get('document_type')
+    if resolved_identity.get('speaker_role') != 'UNKNOWN':
+        display_type = resolved_identity.get('document_posture') or display_type
+    structure['display_document_type']=display_type
+    structure['resolved_document_identity']=resolved_identity
+    structure['posture_profile']=posture_profile
 
     findings=[]
     findings.extend(_textual_typo_findings(text))

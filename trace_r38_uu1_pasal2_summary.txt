@@ -1,0 +1,47 @@
+================================================================================================
+R39 DIAGNOSTIC TRACE — UU 1/2015 PASAL 2 (R38 PRODUCTION PATH / NO STATE MUTATION)
+================================================================================================
+Expected identity : UU:1:2015
+Provision         : Pasal 2
+Detail URL        : https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015
+Candidate links   : 1
+
+PARENT CONTEXT (derived from official detail text)
+  parent_identity          : UU:1:2015
+  document_type            : ENACTMENT
+  incorporated_norm_ids    : ['PERPU:1:2014', 'PERPU:2:2020']
+  relationship_verified    : True
+  relationship_source      : OFFICIAL_PARENT_DETAIL_TEXT
+
+PRODUCTION RESOLVER (max_candidates=2)
+  status                    : ATTACHMENT_PDF_TEXT
+  resolved                  : True
+  source_url                : https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf
+  parent identity           : UU:1:2015
+  actual text identity      : UU:1:2015
+  legal_role                : UNKNOWN
+  identity_aligned          : True
+  incorporation_verified    : False
+  incorporated_identity     : None
+  text_length               : 210907
+  contains Pasal 2          : True pos=2610
+  attempted_urls            : 2
+
+ATTACHMENTS
+  #0 [TOP2/ATTEMPTED] score=224 order=0
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf
+    role          : UNKNOWN
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 812984
+    pdf_eof       : True
+    text_length   : 210907
+    primary_id    : UU:1:2015
+    identities    : ['UU:1:2015', 'PERPU:1:2014', 'UU:1:2014', 'UU:23:2014', 'UU:22:2014', 'UU:32:2004']
+    direct_match  : True
+    incorp_match  : False
+    contains P2   : True pos=2610
+
+CLASSIFICATION: F_DIRECT_PARENT_TEXT_HAS_PASAL2_CHECK_DOWNSTREAM_PROJECTION
+================================================================================================

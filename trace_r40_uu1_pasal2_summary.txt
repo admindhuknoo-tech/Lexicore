@@ -1,0 +1,79 @@
+================================================================================================
+R40 POST-FULLTEXT PROVISION STATE TRACE — UU 1/2015 PASAL 2
+================================================================================================
+Expected identity : UU:1:2015
+Provision         : Pasal 2
+
+CHECKPOINT 1 — INPUT_ROW
+  {"expected_identity_key": "UU:1:2015", "query_origin": "EXACT_CASE_REGULATION", "requested_provisions": ["Pasal 2"], "provision_binding_provenance": {"case_bound": true, "exact_case_text": ["Pasal 2"], "qualified_case_citation": ["Pasal 2 UU 1 Tahun 2015"], "instrument_key": "UU:1:2015"}, "case_nexus_status": "CASE_NEXUS_UNCERTAIN", "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015"}
+
+CHECKPOINT 2 — PRE_FULLTEXT_EXPECTED_GATE
+  {"expected_identity_key": "UU:1:2015", "requested_provisions": ["Pasal 2"], "note": "Observed next from production _verify_positive_law_results; no simulated verification result is injected."}
+
+CHECKPOINT 4 — VERIFY_DOCUMENT_CANDIDATE
+  identity_confirmed : True
+  case_nexus_status  : CASE_NEXUS_VERIFIED
+  provision status   : PROVISION_UNVERIFIED
+  verified/requested : 0/1
+  verified           : []
+  unverified         : ['Pasal 2']
+
+CHECKPOINT 3 — FULLTEXT_RESOLUTION
+  resolved               : True
+  resolver_status        : ATTACHMENT_PDF_TEXT
+  source_url             : https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf
+  resolved_identity_key  : UU:1:2015
+  text_identity_key      : UU:1:2015
+  identity_aligned       : True
+  legal_role             : UNKNOWN
+  text_length            : 210907
+  contains_literal_Pasal_2: True
+
+CHECKPOINT 4 — VERIFY_DOCUMENT_CANDIDATE
+  identity_confirmed : True
+  case_nexus_status  : CASE_NEXUS_VERIFIED
+  provision status   : PROVISION_VERIFIED
+  verified/requested : 1/1
+  verified           : ['Pasal 2']
+  unverified         : []
+
+CHECKPOINT 5 — POST_STATUS_SEMANTICS
+  identity_confirmed : True
+  case_nexus_status  : CASE_NEXUS_VERIFIED
+  provision status   : PROVISION_VERIFIED
+  verified/requested : 1/1
+  verified           : ['Pasal 2']
+  unverified         : []
+
+CHECKPOINT 6 — POSTFETCH_CONTRACT_OBSERVED_IN_RETURNED_ROW
+  identity_confirmed : True
+  case_nexus_status  : CASE_NEXUS_VERIFIED
+  provision status   : PROVISION_VERIFIED
+  verified/requested : 1/1
+  verified           : ['Pasal 2']
+  unverified         : []
+
+CHECKPOINT 7 — ENRICHED_BY_INDEX_RETURN
+  {"title": "Undang-Undang Nomor 1 Tahun 2015", "canonical_instrument_key": "UU:1:2015", "requested_provisions": ["Pasal 2"], "fulltext_resolution": {"resolved": true, "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf", "content_type": "application/octet-stream", "resolver_status": "ATTACHMENT_PDF_TEXT", "attempted_urls": ["https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015", "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf"], "candidate_links_found": 1, "cache_hit": false, "expected_identity_key": "UU:1:2015", "resolved_identity_key": "UU:1:2015", "identity_candidates": ["UU:1:2015", "PERPU:1:2014", "UU:1:2014", "UU:23:2014", "UU:22:2014", "UU:32:2004"], "identity_aligned": true, "text_identity_key": "UU:1:2015", "legal_role": "UNKNOWN", "incorporated_identity_key": null, "incorporation_parent_identity_key": null, "relationship_verified": false, "incorporated_identity_candidates": ["PERPU:1:2014", "PERPU:2:2020"]}, "positive_law_verification": {"identity_confirmed": true, "identity": {"type": "UU", "number": "1", "year": 2015, "key": "UU:1:2015", "expected_key": "UU:1:2015", "expected_identity": {"type": "UU", "number": "1", "year": 2015, "key": "UU:1:2015"}, "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY", "actual_identity_candidates": ["UU:1:2015", "UU:1:2014", "UU:22:2014", "UU:23:2014", "UU:32:2004"], "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"}, "case_nexus_status": "CASE_NEXUS_VERIFIED", "provision_text_location": {"status": "PROVISION_TEXT_LOCATED", "requested": ["Pasal 2"], "located": ["Pasal 2"], "not_located": [], "citations": [{"provision": "Pasal 2", "status": "LOCATED_IN_OFFICIAL_TEXT", "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tah
+
+CHECKPOINT 4 — VERIFY_DOCUMENT_CANDIDATE
+  identity_confirmed : True
+  case_nexus_status  : CASE_NEXUS_VERIFIED
+  provision status   : PROVISION_UNVERIFIED
+  verified/requested : 0/1
+  verified           : []
+  unverified         : ['Pasal 2']
+
+CHECKPOINT 8 — REAL_CASE_PIPELINE_ROWS_FOR_UU_1_2015
+  UU 1/2015 rows      : 3
+    row #1 | 0/1 | https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015
+    row #2 | 0/0 | https://peraturan.bpk.go.id/Details/37311/uu-no-10-tahun-2016
+    row #11 | 0/0 | https://peraturan.bpk.go.id/Details/38208/uu-no-8-tahun-2015
+
+DIAGNOSIS
+  classification               : E_SINGLE_CANDIDATE_IS_1_1_BUT_REAL_PIPELINE_ROWS_ARE_0_1_CHECK_BINDING_DEDUPE_OR_ROW_SELECTION
+  CP4 verified_count           : 1
+  CP5 verified_count           : 1
+  Phase A final verified_count : 1
+  Phase B row counts           : [0, 0, 0]
+================================================================================================

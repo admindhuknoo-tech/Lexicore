@@ -3,25 +3,24 @@
     "product_name": "LexiCore",
     "product_label": "LexiCore Assistant",
     "initiative": "Evidence-to-Action Legal Intelligence",
-    "firm_name": "ELF - Erfan's Law Firm",
+    "firm_name": "USER_CONFIGURED_PROFILE",
+    "sal_contract_version": "SAL-1.0",
     "public_version": "1.3.14",
     "release_channel": "RC",
-    "release_sequence": 17,
-    "version": "1.3.14-rc17",
+    "release_sequence": 18,
+    "version": "1.3.14-rc18",
     "build_id": "local",
-    "release_id": "1.3.14-rc17+local"
+    "release_id": "1.3.14-rc18+local"
   },
-  "file_count": 57,
+  "artifact_hygiene_revision": "v1.4.9",
+  "built_at_utc": "2026-09-12T21:51:08.541354+00:00",
+  "file_count": 276,
+  "manifest_self_entry": false,
   "files": [
     {
-      "path": ".env",
-      "sha256": "c1ff7e09ea865f1de8a603fcbaaa03d5b42541f8b32a58f6272d3a44094ff6cd",
-      "bytes": 251
-    },
-    {
       "path": ".env.example",
-      "sha256": "02c8225da069730372dabfeac93a1ba2cd82d187c4eeb9815ec0c7872e1ca886",
-      "bytes": 692
+      "sha256": "e50f0e7b7a6bdd5373628abb8cab67ef247bea666b4a93aed514e1ac136941e7",
+      "bytes": 1822
     },
     {
       "path": ".gitignore",
@@ -29,9 +28,299 @@
       "bytes": 93
     },
     {
-      "path": "AUDIT_REPORT_V1_3_14_RC17.md",
-      "sha256": "829bcf42afcb66c01be615b418b1141f13e6ca38646b7b868ceb0b7a6d900c66",
-      "bytes": 2323
+      "path": "APPLY_PATCH.bat",
+      "sha256": "eae6a47714387044d4b0f808e5dbeb947a631d571f3cfa9e0003a66cb94f40a4",
+      "bytes": 537
+    },
+    {
+      "path": "AUDIT_REPORT_ADVERSARIAL_VIEWPOINT_SPLITTER_UI_V1_1_20260910.md",
+      "sha256": "f821bc88089ef2a8886be79b54170878dbc97a74a7b1a8d77d997a6a3dfa84ed",
+      "bytes": 1823
+    },
+    {
+      "path": "AUDIT_REPORT_BACKLOG_A_B_SEMANTIC_TYPING_LAW_RELEVANCE_20260910.md",
+      "sha256": "ba887bc5ec888c7f89a84026549ee564db7c49e5ca3129852da3397cabc74d8a",
+      "bytes": 2830
+    },
+    {
+      "path": "AUDIT_REPORT_CASE_ANALYSIS_FLOW_HISTORY_V1_3_6_20260911.md",
+      "sha256": "2472e7e3edbb2d642702c4cfa3e65026f3dddda0c60d316472222f3389fc4329",
+      "bytes": 1211
+    },
+    {
+      "path": "AUDIT_REPORT_CASE_ANALYSIS_NEXT_UPLOAD_INDICATOR_V1_3_7_20260911.md",
+      "sha256": "e2861cccb770fbbd6b23efe57d844566492cb778692de36a8ae52818434bd1af",
+      "bytes": 775
+    },
+    {
+      "path": "AUDIT_REPORT_CASE_CONTEXT_DUDUK_PERKARA_SECTION_HIERARCHY_V1_3_4_20260911.md",
+      "sha256": "581a855a580f57a2992a617dc9fcbb60ec3928646d63c70f935b363b062ac566",
+      "bytes": 1688
+    },
+    {
+      "path": "AUDIT_REPORT_CLIENT_AUTHORITY_LIFECYCLE_V1_3_9_20260911.md",
+      "sha256": "9e9485fe1508d4b7ebfdf39897d17a9ef769084ec0b410cd0a0aebff959aabe9",
+      "bytes": 1773
+    },
+    {
+      "path": "AUDIT_REPORT_CLIENT_INTAKE_LEGAL_POSITION_DRAFT_LINK_V1_4_0_20260911.md",
+      "sha256": "a4e8369263ab7eca806aef4fbdaf6dd91d91649b3d0bbd6a66d90cf18318850e",
+      "bytes": 1890
+    },
+    {
+      "path": "AUDIT_REPORT_COMMERCIAL_RELEASE_ARTIFACT_HYGIENE_V1_4_9_20260911.md",
+      "sha256": "2a332148061363c78788af8bac961d60934698d8272aad31f9567ffc171537ca",
+      "bytes": 2663
+    },
+    {
+      "path": "AUDIT_REPORT_CONTRACT_MIGRATION_V2_1_20260910.md",
+      "sha256": "5d772d2620eee2ca6caed4b95d22ba9acf6de5e7fd0b677ee2c4b6cebb4572a5",
+      "bytes": 3571
+    },
+    {
+      "path": "AUDIT_REPORT_CONTRACT_MIGRATION_V2_20260910.md",
+      "sha256": "a5c5af657789bb40a45e12329bad520d2af5a1be3d4bb0fe6719c17f2b487602",
+      "bytes": 7982
+    },
+    {
+      "path": "AUDIT_REPORT_CONTRACT_MIGRATION_V2_2_SELECTIVE_INTEGRATION_20260910.md",
+      "sha256": "ba6e9834acdad420b7e4652925486ed5d3c9543a3d9faca2e7bb67e3779e913a",
+      "bytes": 4910
+    },
+    {
+      "path": "AUDIT_REPORT_DESKTOP_DEPLOYMENT_RUNTIME_V1_4_2_20260911.md",
+      "sha256": "54868545924556a854efa74acd8fd2dbc716c5dbaf8cb34a1e7915528f627732",
+      "bytes": 822
+    },
+    {
+      "path": "AUDIT_REPORT_DESKTOP_LAYOUT_BALANCE_V1_4_5_20260911.md",
+      "sha256": "bacdcea4a128b9de382ce21321c637b4f44f68c4416a9c874668537546846254",
+      "bytes": 1168
+    },
+    {
+      "path": "AUDIT_REPORT_DOCUMENT_IDENTITY_PROJECTION_SYNC_V1_1_20260910.md",
+      "sha256": "695639e67013dd481425169fc1ccfe0cc83f7ceb2eab4bf617a2d71682680e7c",
+      "bytes": 1744
+    },
+    {
+      "path": "AUDIT_REPORT_DYNAMIC_USER_FIRM_IDENTITY_V1_4_1_20260911.md",
+      "sha256": "da4fc85f7618e8b9643e51a730630c666ed937a98d4ff491adef268f41f63002",
+      "bytes": 2094
+    },
+    {
+      "path": "AUDIT_REPORT_FINAL_CANDIDATE_LAW_GOVERNOR_LOCK_20260910.md",
+      "sha256": "ce8451d2b2635d40c27bf29cedadc942b940b196742f4b9946f32d47d4f9a67d",
+      "bytes": 2886
+    },
+    {
+      "path": "AUDIT_REPORT_FINAL_CORRECTIVE_CONTRACT_MIGRATION_V2_3_1_20260910.md",
+      "sha256": "b797a762f51c4bc2e8a11a283b06423674c7eaf9f5e67f3b315b3257160644f4",
+      "bytes": 2453
+    },
+    {
+      "path": "AUDIT_REPORT_FIRST_RUN_PROFILE_ONBOARDING_V1_4_3_20260911.md",
+      "sha256": "deab8fb387d9ae68bef664ca1b413414fea4f804e01d3c471b1d89041bcc2b85",
+      "bytes": 1830
+    },
+    {
+      "path": "AUDIT_REPORT_LAW_WEIGHT_CONFIG_V1_2_1_20260910.md",
+      "sha256": "aa7e12e0b4300396f390be47477f85239b2d6e2c0bc9592893c1abd933be71ad",
+      "bytes": 2617
+    },
+    {
+      "path": "AUDIT_REPORT_LEGAL_LAYOUT_TYPOGRAPHY_PROFILE_V1_3_1_20260910.md",
+      "sha256": "2844d5115ad2a7c6deebb3fdc9ab9a9b31911ec2302fb7c6122e2b76df3951b2",
+      "bytes": 2120
+    },
+    {
+      "path": "AUDIT_REPORT_LICENSE_ACTIVATION_GATE_V1_4_4_20260911.md",
+      "sha256": "2b782ffc13e470864a48a376136b6619ab920f69b90267b5394c196b87dd6b94",
+      "bytes": 1051
+    },
+    {
+      "path": "AUDIT_REPORT_LICENSE_AUTHORITY_GUI_V1_4_12_20260911.md",
+      "sha256": "680bc8aa6b1fceb9b7c2208c847b3d28e4948ca6de74f1de0ca5aeedf40bd0a2",
+      "bytes": 1240
+    },
+    {
+      "path": "AUDIT_REPORT_LOW_LEVEL_RENDER_GOVERNOR_V1_2_8_20260910.md",
+      "sha256": "10fa3cec617508525e1e2cb79375039bd8c7626188f01aff67e96bc6dd2a2a22",
+      "bytes": 1774
+    },
+    {
+      "path": "AUDIT_REPORT_MATTER_CENTRIC_LIFECYCLE_NAVIGATION_V1_3_8_20260911.md",
+      "sha256": "6ee6999ce938d965c1a5b600d2c6653aeea7664b3bbb9e76789a9a8c15e0d296",
+      "bytes": 1386
+    },
+    {
+      "path": "AUDIT_REPORT_MOBILE_PROFILE_ONBOARDING_V1_4_6_20260911.md",
+      "sha256": "bbfed04b4a601ff27ed50aa62e5d139a4fdc3cf2d01830160464c720982a02f6",
+      "bytes": 1116
+    },
+    {
+      "path": "AUDIT_REPORT_OFFLINE_DEVICE_LOCKED_DESKTOP_LICENSE_V1_4_10_20260911.md",
+      "sha256": "7cba5086cd30fe674951c858bc41b6f72ec9f974bb3e3a316b24376e1439e8e0",
+      "bytes": 1639
+    },
+    {
+      "path": "AUDIT_REPORT_ORPHANED_EXPORT_CONTRACT_DUPLICATE_REMOVAL_V1_4_8_20260911.md",
+      "sha256": "4cb8f548856708ef3daf5097642be3085633e154a70cab0d8ca70a2adab93377",
+      "bytes": 6694
+    },
+    {
+      "path": "AUDIT_REPORT_PLEADING_SEMANTIC_CLEANER_TERMINOLOGY_V1_2_2_20260910.md",
+      "sha256": "cc856fd354ae8fa59ad8928fd253126e5e34d1b348f9b3b494844b4ffc6f3642",
+      "bytes": 2531
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_GENERALIZATION_MATRIX_IRAC_POSITIVE_LAW_GATE.md",
+      "sha256": "3bf8580a5b5d34b6323876edd7f3ac5a24e9170d781da2784aed1de0d7f272fb",
+      "bytes": 3029
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_GENERALIZED_CASE_ANALYSIS_ARCHITECTURAL_CLOSURE.md",
+      "sha256": "cf9653efb79136f62928085aca8b3755edc36c701e17cdb29b3cde2d93d47c13",
+      "bytes": 1585
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_INTEGRATED_TEMPUS_EXTRACTION_CLOSURE.md",
+      "sha256": "a16ba743b9aa2e8b84b203a1d17d0c4f5c0f0b524883175cdfbebf46474d1e1f",
+      "bytes": 3172
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_POSTURE_TEMPUS_NORM_SINGLE_SOURCE_CLOSURE.md",
+      "sha256": "369151a351c056e9d58d5e78795e02d0fb461840c5304b5432f3f0c8002a8a47",
+      "bytes": 3678
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_READER_EXPORT_CANONICALIZATION_FIX.md",
+      "sha256": "f678925b4009e21bae2a95b5f792e882731c7eefc613feb0ee0f4a1623155139",
+      "bytes": 1017
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_TEMPUS_CONTRACT_FINAL_CORRECTION.md",
+      "sha256": "711896db8ae9e6740cb33c3ffa432dd9f66a6c5ac67f5a0882af0adbe84311fc",
+      "bytes": 618
+    },
+    {
+      "path": "AUDIT_REPORT_RC18_TEMPUS_STATUTE_YEAR_PROCEDURAL_OWNERSHIP_FIX.md",
+      "sha256": "9b25c91c7bf8cda2997cee5e4b3dc88512cae6e6e577f65ac203ff37b365d747",
+      "bytes": 1751
+    },
+    {
+      "path": "AUDIT_REPORT_READER_EXPORT_FINAL_CLEANUP_V1_2_4_20260910.md",
+      "sha256": "5312bf801e6058eeead07566a06c0e735f4cddaf798b4d23953050fc53235413",
+      "bytes": 551
+    },
+    {
+      "path": "AUDIT_REPORT_READER_EXPORT_NATURAL_LANGUAGE_LOCK_V1_2_9_20260910.md",
+      "sha256": "3e338404c9165bc85c94e6d1544c4c89e5a56b20588c2d2f5d4c970760232e99",
+      "bytes": 972
+    },
+    {
+      "path": "AUDIT_REPORT_READER_EXPORT_RESIDUE_CLEANUP_V1_2_5_20260910.md",
+      "sha256": "7efed3cf9f216cbc803aadef223dab8dac005bd507aa6fd98e972b701869b53e",
+      "bytes": 573
+    },
+    {
+      "path": "AUDIT_REPORT_READER_FACING_LANGUAGE_CLEANUP_20260910.md",
+      "sha256": "3aa286051257b161116028ee2e4f47fe58d8bf3f7ff2b6048b15b64abca59c35",
+      "bytes": 1414
+    },
+    {
+      "path": "AUDIT_REPORT_READER_HIERARCHY_TYPO_REPAIR_V1_3_5_20260911.md",
+      "sha256": "96eaff8523d280ed224fc4591e6cb5b6e8ee233d9d854d39d3012383357c7bc1",
+      "bytes": 1336
+    },
+    {
+      "path": "AUDIT_REPORT_REFERENCE_STYLE_LEGAL_WORKING_PAPER_V1_3_2_20260910.md",
+      "sha256": "2d3627e45ba0c70469f7c2320009da9e5860a9aa4ac919f9883b7d03544ac46a",
+      "bytes": 2048
+    },
+    {
+      "path": "AUDIT_REPORT_REFERENCE_TABLE_PROJECTION_V1_3_3_20260910.md",
+      "sha256": "e57b6d5cce337804b9717e2ae5f638ecd85467fce5517bd03a3b2ce324029154",
+      "bytes": 2930
+    },
+    {
+      "path": "AUDIT_REPORT_RELEASE_AUDIT_VENV_ISOLATION_V1_4_9_1_20260911.md",
+      "sha256": "8a33ba30ed7c587a04383b3aa4ece8d9a057ed257bc34fe0346234380dea1b98",
+      "bytes": 1352
+    },
+    {
+      "path": "AUDIT_REPORT_SAL_V1_ADVERSARIAL_CONTEXT_ENVELOPE_20260910.md",
+      "sha256": "2515b6769983555095738f0c2bd32f8276b6f2ff44b1751fb2e1bf8df3f6c220",
+      "bytes": 1022
+    },
+    {
+      "path": "AUDIT_REPORT_SAL_V1_ELEMENT_TRACE_FINAL_LOCKDOWN_20260910.md",
+      "sha256": "9fb97c89d8489a47ad8d5c5fbe94033a07b1bc7c798495f57a62d222e9ad9203",
+      "bytes": 1914
+    },
+    {
+      "path": "AUDIT_REPORT_SAL_V1_POSITIVE_ALLOW_CONSUMER_LOCKDOWN_20260910.md",
+      "sha256": "e4a173b317d740863cbedb660c674d95baad8401217be230bf54a6764f27fcc4",
+      "bytes": 1853
+    },
+    {
+      "path": "AUDIT_REPORT_SAL_V1_ROBUST_SPEAKER_FINGERPRINTING_20260910.md",
+      "sha256": "c2f62a65e52ab5104f5de42b874b160e18e6cca3e8b1637aadc9c46e242b33d6",
+      "bytes": 2699
+    },
+    {
+      "path": "AUDIT_REPORT_SAL_V1_SINGLE_SOURCE_OF_TRUTH_20260910.md",
+      "sha256": "5eaaa2283b8b7fb128fda5f7892e1c7a6b1a3911895535439fb3a114fd28f5aa",
+      "bytes": 1350
+    },
+    {
+      "path": "AUDIT_REPORT_SAL_V1_UNIVERSAL_ADMISSION_CONTRACT_20260910.md",
+      "sha256": "15524290ea497dedbcb714e16e90f163c656df4301f6ff602075288e9c35e9d4",
+      "bytes": 3991
+    },
+    {
+      "path": "AUDIT_REPORT_SEMANTIC_CONTRACT_FREEZE_V2_3_20260910.md",
+      "sha256": "d56216be4068fe35eba91b56bb47b9062b9fc185c4c04743e848a791d3c8604e",
+      "bytes": 1856
+    },
+    {
+      "path": "AUDIT_REPORT_TEST_LICENSE_GATE_ISOLATION_V1_4_7_20260911.md",
+      "sha256": "761bcc9ad79f24a6e78ddcfddacb01ebed855fd19106b3cc195284a2160d7bbd",
+      "bytes": 2907
+    },
+    {
+      "path": "AUDIT_REPORT_UNIFIED_PRESENTATION_SANITIZER_V1_2_3_20260910.md",
+      "sha256": "10d5973a7c6d23cb85fba6ed823faa73876e25a058db3f7ecb18b1e0d9c5dca0",
+      "bytes": 882
+    },
+    {
+      "path": "AUDIT_REPORT_VISUAL_NORMALIZATION_GUARD_V1_2_10_20260910.md",
+      "sha256": "caea121fe06d2c04752783c3c5c6dfbbf7fa863be74aa42d0257a5ee673079ac",
+      "bytes": 816
+    },
+    {
+      "path": "AUDIT_REPORT_VISUAL_NORMALIZATION_GUARD_V1_2_11_20260910.md",
+      "sha256": "c06cf15e644d45da9bd1de01760cb4153c6cced68595c5dba5c9b86a2752de4e",
+      "bytes": 1177
+    },
+    {
+      "path": "AUDIT_REPORT_WINDOWS_INSTALLER_PACKAGING_V1_4_11_20260911.md",
+      "sha256": "7742e49c9ea7877b461e252a767977733f7302a91148cef2f1162b35eb348f0e",
+      "bytes": 1012
+    },
+    {
+      "path": "App",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "CONSOLIDATION_MANIFEST_RC18.md",
+      "sha256": "44ddf06dd2a601d7ce61fb6d40a2dae6cc6a59df77f7033165d6cbe0eac4ae44",
+      "bytes": 433
+    },
+    {
+      "path": "DEPLOYMENT_DESKTOP.md",
+      "sha256": "a908b1b4b11fefe8e18996347efe2d32fed7c164a42048ddacbe5eee25595a5a",
+      "bytes": 1870
     },
     {
       "path": "Hybrid Approach.txt",
@@ -39,24 +328,124 @@
       "bytes": 1115
     },
     {
+      "path": "LICENSE_DEPLOYMENT.md",
+      "sha256": "9a2e74ad617d506d2bdf5914b3c456117565e8cf0296b2c1bbdb4ef73f1e3f77",
+      "bytes": 2308
+    },
+    {
+      "path": "LexiCoreDesktop.spec",
+      "sha256": "583cae160b1b89fa52a68a74a6f9786687dda66577c41349b612fe0fdf4e7caa",
+      "bytes": 1261
+    },
+    {
       "path": "README.md",
-      "sha256": "68d8a1b8f11ce9bdb993bd94b90d5f0d47d69e0fdf8dd902aaad0756da29f85b",
-      "bytes": 8030
+      "sha256": "b4fce74f7604397911f2a20b98756c285c898d8dc36fc38b2c6535d547fcf224",
+      "bytes": 1488
+    },
+    {
+      "path": "README_HOTFIX.txt",
+      "sha256": "a6f7d1e1b6e8761c12e0ae7bcbd55ac43ff36594bbeeb10273189cf679a62e30",
+      "bytes": 498
     },
     {
       "path": "RELEASE_POLICY.md",
-      "sha256": "6363bfd5d4e36c735c9247bb1e8a6a8d3a6885008b5778cd461eddf7a6d88c7e",
-      "bytes": 1658
+      "sha256": "3b749b9a71223be631c917e1fffcc8f0c273606345444a8b9f36a110b85b3561",
+      "bytes": 1726
+    },
+    {
+      "path": "REMOVE_FILES.txt",
+      "sha256": "833be5d5dae8415220ab5168c6bded9c35551f8a0acce273f6cf058944b0ef2c",
+      "bytes": 200
+    },
+    {
+      "path": "SAMPLE_TRACE_CONTAINER_NETWORK_UNAVAILABLE.json",
+      "sha256": "edc79ec9d86e893dc95541a0a73de77b1aa534ee0daf07e79435a39a9799d735",
+      "bytes": 7369
+    },
+    {
+      "path": "SEMANTIC_CONTRACT_FREEZE.md",
+      "sha256": "aa219625a9f9d41c832cb4cce871f4ee06129b6d2ddf9b38c52e097e6c75dac1",
+      "bytes": 27398
     },
     {
       "path": "ai_engine.py",
-      "sha256": "0e14da45d6d003da0db517dbb6d0c8d6eb75ba1423ebec637efc00d9352b37bb",
-      "bytes": 20859
+      "sha256": "4036efdfcb3c04738255756e1a8b8759a26106c214e2f2070540650bbd2e7f60",
+      "bytes": 33414
     },
     {
       "path": "app.py",
-      "sha256": "926d1db7f455142b58bb2278347de35f531ff40d62f9d4b033ce8bb905cfb3b4",
-      "bytes": 89952
+      "sha256": "61b4aa030bd75d5cb0765e8068394b97b1379f769ce4e3e806abe77e0d646a25",
+      "bytes": 103161
+    },
+    {
+      "path": "benchmarks_elya_1815.json",
+      "sha256": "c8c03c2dfba0227c4ba0c24c17770453f5594e4db68dd9babd669c2c1e44200a",
+      "bytes": 943
+    },
+    {
+      "path": "build/LexiCoreDesktop/Analysis-00.toc",
+      "sha256": "f336b7de8cbac010954618d47a62ed971ef19c192991258d9386e953acfe5b30",
+      "bytes": 565426
+    },
+    {
+      "path": "build/LexiCoreDesktop/COLLECT-00.toc",
+      "sha256": "9ea4560cafa4134a19bed042ac16d157d7c919680c5818ee242c171a57aa9b69",
+      "bytes": 140908
+    },
+    {
+      "path": "build/LexiCoreDesktop/EXE-00.toc",
+      "sha256": "48108e893825b06331cc16e3b3f06705114b647b394019a80c1402857e917a18",
+      "bytes": 4292
+    },
+    {
+      "path": "build/LexiCoreDesktop/LexiCore.exe",
+      "sha256": "4c61c541b938a8e813ae2490b94576c31701fdc33c24eb2aaaf3f6b7a1904f96",
+      "bytes": 15964081
+    },
+    {
+      "path": "build/LexiCoreDesktop/LexiCore.pkg",
+      "sha256": "600a64183c6d79daab542b5abb021328b4172060b36a5507077f3155df8628ba",
+      "bytes": 15618481
+    },
+    {
+      "path": "build/LexiCoreDesktop/PKG-00.toc",
+      "sha256": "f586ff8d8803f1493ea17e154879885f74b3e0257a3805123a30376cad3528cb",
+      "bytes": 2490
+    },
+    {
+      "path": "build/LexiCoreDesktop/PYZ-00.pyz",
+      "sha256": "83c990a5500ee27ad7fa7cc7730086afdf52672cd0060e924a927c1e6c71bfc0",
+      "bytes": 15587099
+    },
+    {
+      "path": "build/LexiCoreDesktop/PYZ-00.toc",
+      "sha256": "1fd9c3a7243a03610f8fc4338e7c48ae9dec47030230286e9f47c0ebffab58d8",
+      "bytes": 294275
+    },
+    {
+      "path": "build/LexiCoreDesktop/base_library.zip",
+      "sha256": "26b33e02d10185ce2e25b5ac200116a38033434c64a01f39d9167bfbe5f17e84",
+      "bytes": 1394319
+    },
+    {
+      "path": "build/LexiCoreDesktop/warn-LexiCoreDesktop.txt",
+      "sha256": "6d6531b03dbf4e91247a0ed2e99145d14ccd6b0ab2b37fe0ad05cd2caaa7edbe",
+      "bytes": 81218
+    },
+    {
+      "path": "build/LexiCoreDesktop/xref-LexiCoreDesktop.html",
+      "sha256": "fd5d748e9c3e928e005e7a04e8679fc8b4d45e060e8be3ef9fd6ada9bb884889",
+      "bytes": 2850055
+    },
+    {
+      "path": "build_desktop.bat",
+      "sha256": "e7315869b0dace591d1e8022057d97db97e4b8be0640768f6eb1312267d81c44",
+      "bytes": 1107
+    },
+    {
+      "path": "build_installer.bat",
+      "sha256": "616a6e9c7d953cf9fb46650a8d3e54570d95614432833cb3d20b5cc47a38ee91",
+      "bytes": 1114
     },
     {
       "path": "build_release.bat",
@@ -70,18 +459,23 @@
     },
     {
       "path": "client_communication.py",
-      "sha256": "43e1ac5b7b8456a2e43a28a6687206f9d36dba02699e834921d6f2c5fb5f061a",
-      "bytes": 10105
+      "sha256": "361a50871d7d4d884fd7693faee552234fe002d0c918307ae772fa658813807d",
+      "bytes": 11733
     },
     {
       "path": "contract_review.py",
-      "sha256": "d99baf3faa0dea1045637a6a4dd016fe266f02131199f3811a975624bbcd9f51",
-      "bytes": 44639
+      "sha256": "71b8dbe77a02b91688bf269843f37c8c803854d74b0875d69b4003b0f0d2d371",
+      "bytes": 44871
     },
     {
       "path": "database.py",
-      "sha256": "acd92e691446d25c4bc951d5b9e3b0642cbac87acf04fc52007f2e2016893f30",
-      "bytes": 32836
+      "sha256": "b753d077797fd2df8dc87f1be0b4a356da0a34e886d55cc058501ebf6b3f1ada",
+      "bytes": 36412
+    },
+    {
+      "path": "desktop_launcher.py",
+      "sha256": "9854e1d4db462c3c6304360022dd8b96df5b84745f721155fe602cd90354f6dc",
+      "bytes": 4432
     },
     {
       "path": "env_loader.py",
@@ -95,38 +489,153 @@
     },
     {
       "path": "exporters/case_docx.py",
-      "sha256": "d2300416dbfda81838737e1be46676e58dc4dbec5773147d323afcfca40e2ad0",
-      "bytes": 8259
+      "sha256": "8c0b0d495c96ea7ade041a3e3cfa694b3e3db615a8c70c9e7e45eaa95db0c585",
+      "bytes": 20981
     },
     {
       "path": "exporters/case_pdf.py",
-      "sha256": "553b4e51188bbb228652ef8b70f47b7677149f02989192797db0712133c3c92d",
-      "bytes": 7603
+      "sha256": "b36b4136fcaefcd80e8596b3d4e0d01f3a52517b995bf7ccc4721c7a9495d643",
+      "bytes": 18821
     },
     {
       "path": "exporters/common.py",
-      "sha256": "587d2fdb7dc557ff2e46e7ea63f66e5e3d73345fb6579db28d94c21df58c5005",
-      "bytes": 41610
+      "sha256": "1002a06b379c433fdb28784783f7cfceea721f02dfb6dc1e261709d975193cc5",
+      "bytes": 108798
+    },
+    {
+      "path": "extractors/AUDIT_REPORT_READER_EXPORT_FINAL_SANITIZER_DEDUP_V1_2_6_20260910.md",
+      "sha256": "f3b816b2db368e9c50bca1be5bf981e099b2bc9bed6c542c3852428ffbc08f2c",
+      "bytes": 1427
+    },
+    {
+      "path": "extractors/SEMANTIC_CONTRACT_FREEZE.md",
+      "sha256": "6344f1bf17b78f701dc3adb4783919cb18a7effbd0ffab9c1cbc7fad97485c5e",
+      "bytes": 16849
+    },
+    {
+      "path": "extractors/__init__.py",
+      "sha256": "736bcbf344a619d4c329b49757ec89e02efdb69442d6eff178cb0ce9184d0c1a",
+      "bytes": 223
+    },
+    {
+      "path": "extractors/bap_noise_cleaner.py",
+      "sha256": "211e1d02a6ccd112e5ed756a83896d46de66135c55ccc3f15d113565eb69b6ea",
+      "bytes": 5036
+    },
+    {
+      "path": "extractors/pleading_cleaner.py",
+      "sha256": "f0870ca6415cc2caf2641facda487853a0e8662b38a8a6000be2ba451e8954c6",
+      "bytes": 5809
+    },
+    {
+      "path": "golden_datasets/AUDIT_REPORT_SAL_V1_CROSS_LAYER_ENFORCEMENT_20260910.md",
+      "sha256": "9ade08ee035829fe028ff1d170561a58c923c5067e47fb57b2e2a1ad46883578",
+      "bytes": 3373
+    },
+    {
+      "path": "golden_datasets/SAL-v1.0-edge-cases.json",
+      "sha256": "7ef9bb48b8992de76e47144f8069dcac04f3db306bd18c89e6d76e78c47bf448",
+      "bytes": 1642
+    },
+    {
+      "path": "golden_datasets/SEMANTIC_CONTRACT_FREEZE.md",
+      "sha256": "8b3bbc14932eb7d8e86e2c3c9cee10bddc5715f5f403544537de2cffb0259da0",
+      "bytes": 5327
+    },
+    {
+      "path": "golden_datasets/golden_datasets/SAL-v1.0-edge-cases.json",
+      "sha256": "4c13d490cc25687be5cd13348e19cbbb6454ba56c572255eccdec1cab7891061",
+      "bytes": 2330
+    },
+    {
+      "path": "golden_datasets/services/contract_enforcer.py",
+      "sha256": "b1b78567bd53a2cee63d674828473078a2178ffec06ed899def03dc0c4922f17",
+      "bytes": 7818
+    },
+    {
+      "path": "golden_datasets/services/legal_reasoning_chain.py",
+      "sha256": "f2499fbe161090dc22207819d390a14af4a5f65a884baf569a2d5003f25556de",
+      "bytes": 29745
+    },
+    {
+      "path": "golden_datasets/services/semantic_admission.py",
+      "sha256": "7057a77218d1c11f168f564a1d38ec75d4a29d3784b1acdf22d5126b9d438ab7",
+      "bytes": 21821
+    },
+    {
+      "path": "golden_datasets/tests/test_sal_v1_universal_contract.py",
+      "sha256": "8e0b8ef2c2a1d9c39e24893e83a0b9692def1d6a414c9d3cb51722f7c0de9ea8",
+      "bytes": 7817
+    },
+    {
+      "path": "identity_profile.py",
+      "sha256": "ef5d3dc6253c9fe1461edf49bf4502455bb1c4b36e97af1d776d5c9381118487",
+      "bytes": 1675
+    },
+    {
+      "path": "installer/LexiCore.iss",
+      "sha256": "e39989051a8d958b718f72b91e168565a70453a36b841f50d30ef554d8a7a899",
+      "bytes": 1385
     },
     {
       "path": "legal_drafting.py",
-      "sha256": "136ac8b1ba3e2f50e82d3014bcb068b91b58d988e2821c4142c9fef8d6e38f2b",
-      "bytes": 40483
+      "sha256": "b0e6199249d882691920553617999c54916a3e5de642cc4e7eb513b31a0b7e03",
+      "bytes": 40653
     },
     {
       "path": "legal_sources.py",
-      "sha256": "b57e7f64425b72116c67f52a02bdad50c5117dcb41ba997768a49df5974201b7",
-      "bytes": 28654
+      "sha256": "0d462cec3834830b436349bfb77868b97e9f0fe006faee58b674bbdb76277835",
+      "bytes": 49665
     },
     {
-      "path": "lexicore.db",
-      "sha256": "7692abd2aee4f880738d8db44f7c5acd2499e255e361f32a5add982c27bcd03e",
-      "bytes": 1650688
+      "path": "license_admin/README_OFFLINE_DESKTOP_LICENSE.txt",
+      "sha256": "708bc1faefb0537d0c9506491d318e375e36df7448e2a4bccfeb32b35fe536dc",
+      "bytes": 1651
+    },
+    {
+      "path": "license_admin/generate_keys.py",
+      "sha256": "c14781969835819d79c90a473dd2eeb706f83b798814f400297c0df5141847c0",
+      "bytes": 1615
+    },
+    {
+      "path": "license_admin/gui.py",
+      "sha256": "d0a500e45c65da339ad0ba8e685877aded0a8713326afa6a14f89c80dda1469e",
+      "bytes": 9615
+    },
+    {
+      "path": "license_admin/issue_license.py",
+      "sha256": "30bc898e0bc4671a383ca3065d9da8811d3b0c10b996418e757925085afacde2",
+      "bytes": 3948
+    },
+    {
+      "path": "license_public_key.pem",
+      "sha256": "fae0e4653e36c46a9b0758e4c07da79a80e1bbf8d0d5e180978051b38778e166",
+      "bytes": 113
+    },
+    {
+      "path": "license_server/__init__.py",
+      "sha256": "fa3730df2b04f3a6107cabf194d58f4f34d64ec4148f811f2ca13be98e8b33d1",
+      "bytes": 75
+    },
+    {
+      "path": "license_server/generate_keys.py",
+      "sha256": "d56b0508390caaedea1e98467a3c5060e174646fc6ff063ed1d23376174d8b85",
+      "bytes": 735
+    },
+    {
+      "path": "license_server/server.py",
+      "sha256": "cd832be6b32116dd4ca9a6e0e396cef113e34d6de4a34880c3b17276be06fe25",
+      "bytes": 7957
+    },
+    {
+      "path": "licensing.py",
+      "sha256": "1273afe4128e474962851ce3a271bc41cb646dee1151ed46b89415db4d16f342",
+      "bytes": 12655
     },
     {
       "path": "norm_conflict.py",
-      "sha256": "544ff4e808bfea326caeac7a3f8122a617d2d08f347c7a0aac8ef131bf16b845",
-      "bytes": 16373
+      "sha256": "59b6a913c858e3d473a298ddfac5ebe5c770496ce1251ae85098032cec432981",
+      "bytes": 18402
     },
     {
       "path": "ocr_check.bat",
@@ -134,9 +643,14 @@
       "bytes": 843
     },
     {
+      "path": "ocr_debug_summary.json",
+      "sha256": "ee20211c02cc004c25b35516b7f51f91ad666a5146532416d102ed64775c33f6",
+      "bytes": 14274
+    },
+    {
       "path": "regulatory_db.py",
-      "sha256": "b3de061d7e6e3f051d755aa6c09ae093824bb331d1cbee7d1ce0598e67e44fde",
-      "bytes": 65892
+      "sha256": "cbe018b3f896c025a5987fe4210d2225cc817f02004cf347bf0d9413213968fb",
+      "bytes": 75824
     },
     {
       "path": "regulatory_intelligence.py",
@@ -149,6 +663,11 @@
       "bytes": 454
     },
     {
+      "path": "requirements-desktop.txt",
+      "sha256": "56f58d99ec68b5cb72c1d8187ca81e43f64c8e49beceda14a233140f13cb23cd",
+      "bytes": 78
+    },
+    {
       "path": "requirements-dev.txt",
       "sha256": "c1815f938262f9a92e8442880be0ee5a53df890eca361e8101367cf621a0245a",
       "bytes": 34
@@ -159,14 +678,74 @@
       "bytes": 197
     },
     {
+      "path": "retrieval/AUDIT_REPORT_READER_EXPORT_FINAL_RENDER_LOCK_V1_2_7_20260910.md",
+      "sha256": "69c6656f26318958493fcc207a8b5cc56df6f522c656b819453eed1be8e4cd7b",
+      "bytes": 1791
+    },
+    {
+      "path": "retrieval/SEMANTIC_CONTRACT_FREEZE.md",
+      "sha256": "91f7f2d9475d18e436d45165c63e51bc9634138fbaa16518b8ad41c60c38dc72",
+      "bytes": 17305
+    },
+    {
+      "path": "retrieval/law_weight_config.json",
+      "sha256": "ef3260b814bf5b699e8d71d9c440ad8ae9451a6b0bf64a7f052e15c2b1380aa5",
+      "bytes": 5689
+    },
+    {
+      "path": "retrieval/search_router.py",
+      "sha256": "ee41e35f6622a25e0192664080afc67792ef0495d6ee6ff46dd26faef3ff7f5b",
+      "bytes": 7819
+    },
+    {
       "path": "routes/__init__.py",
       "sha256": "2ddf8ec262960e62bb938a07cc86bb19964ac3b440ff9ffc6dda8a11ca44023b",
       "bytes": 39
     },
     {
       "path": "routes/case_analysis.py",
-      "sha256": "ae28242fd1b82652ca9d7b18e5bcf0b9b42d0f8702e8334102cc7840f8069c6d",
-      "bytes": 18779
+      "sha256": "0d934884a309e008d6edd2078f3bbc75ab0ad65e22c3258942dfcae85b1466e8",
+      "bytes": 33192
+    },
+    {
+      "path": "run_license_authority.bat",
+      "sha256": "54222b679cd977d2e2d4fc0aad07580773096cb617a8b19b2a91f52ff119f602",
+      "bytes": 356
+    },
+    {
+      "path": "run_ocr_internal_telemetry.bat",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "run_trace.bat",
+      "sha256": "285fed4fd02b87ec5ae761b78ed3f529bd66f4588effb26f7d41fe69d0bf2fa2",
+      "bytes": 165
+    },
+    {
+      "path": "run_trace.py",
+      "sha256": "682aa1759bbd8be03be487689448103cd759d7c55ab0af72db85f4148af2660d",
+      "bytes": 2080
+    },
+    {
+      "path": "run_trace_r36_uu7_pasal3.bat",
+      "sha256": "3031dff5b95014f8ac526f0529107701cf9bef6282958ffb42d8ec5039c47eea",
+      "bytes": 393
+    },
+    {
+      "path": "run_trace_r38_uu1_pasal2.bat",
+      "sha256": "dc96127ed1ea24e0122656211541a25a615360a1bf0ca70ede826719c6157328",
+      "bytes": 877
+    },
+    {
+      "path": "run_trace_r40_uu1_pasal2.bat",
+      "sha256": "50314267dd75bcec3dc8d6366ea1889d540de6a8f2b4568a8686bb86c8ddb70f",
+      "bytes": 384
+    },
+    {
+      "path": "schemas/LexiCore-SAL-v1.0.json",
+      "sha256": "1fcd9ec6ee4e78e993f723ee6621a8cf9faab8e62eaeabb6dadea424f1701952",
+      "bytes": 2954
     },
     {
       "path": "services/__init__.py",
@@ -174,19 +753,34 @@
       "bytes": 37
     },
     {
+      "path": "services/adversarial_view.py",
+      "sha256": "a959448f7c3af96cca0c573d7d7f0ee8151448345f986fbdc89a0bbe0e2088f2",
+      "bytes": 5066
+    },
+    {
       "path": "services/backup_service.py",
       "sha256": "955f4ddb7b7665efd5eadaa13f1211207c53d47f34f4a5333e6eec36955c323e",
       "bytes": 3500
     },
     {
+      "path": "services/case_action_planner.py",
+      "sha256": "5bb2c18552c8518c7ee8e41438671adfc6358173151237f05499e8faab92b62d",
+      "bytes": 41226
+    },
+    {
+      "path": "services/case_benchmark.py",
+      "sha256": "55277705d210073d2d1ff590b459b826cfac5f659df4ff0f19664ad753680c32",
+      "bytes": 5727
+    },
+    {
       "path": "services/case_consistency_guard.py",
-      "sha256": "f708b722e6400e2f8d009dc94bd7467d237f61d7494df1a2ed79dfef88d069a8",
-      "bytes": 26858
+      "sha256": "cd198930bb7a7b7b40e8e7a1808011225fa35e52158fe40706dfa8f75f9887dc",
+      "bytes": 29807
     },
     {
       "path": "services/case_domain_classifier.py",
-      "sha256": "351c98dfefcefb012697ea5b9587cfe06dca36c8f3999548dbef69895cc2c74f",
-      "bytes": 10980
+      "sha256": "4fcc9dafa56ddbd0a46002b564dda1c89d2831181a103e8dc28d0170cb51bad9",
+      "bytes": 17434
     },
     {
       "path": "services/case_law_summary.py",
@@ -195,13 +789,18 @@
     },
     {
       "path": "services/case_reasoning_guard.py",
-      "sha256": "ae863043f5e24a11a9113fcd9f7844dc2098fa1c8db76b67851a06fec27a8f3c",
-      "bytes": 15903
+      "sha256": "87b3a5d6373a00053cfea9f91ef1d6a20d286a992c60ed8c9f8c7e54f6189cb9",
+      "bytes": 16706
+    },
+    {
+      "path": "services/case_role_detector.py",
+      "sha256": "01fd400d87e46943a9c4ecb0002dd730d0721499104f93d0d79a48fe1d13085b",
+      "bytes": 7701
     },
     {
       "path": "services/case_working_paper.py",
-      "sha256": "9ec16ed9a1c9cddcf5855ede46dbff698e9b943b967c2c899304f973ea4c967d",
-      "bytes": 18780
+      "sha256": "2539cae2baecab12a11752bb7de7f7127a71f4f10e898ca933fd4abf2303f54e",
+      "bytes": 29584
     },
     {
       "path": "services/compliance_risk.py",
@@ -209,14 +808,49 @@
       "bytes": 47803
     },
     {
+      "path": "services/contract_enforcer.py",
+      "sha256": "c24d05fee10b2c3c82ca8d2ac4a8c5dba8ddd1dfdadab6d415d42272e3376b0c",
+      "bytes": 17837
+    },
+    {
       "path": "services/document_ocr.py",
-      "sha256": "4e39a83d42713b0819417086161a4cdaaf9befd1fb89a5bd46b625a0fe839715",
-      "bytes": 22623
+      "sha256": "c5905b8654fcdbd27b2887c0d7842e254fa9f5a080bdfa3e6bcb7cd32ec50b4e",
+      "bytes": 41844
+    },
+    {
+      "path": "services/document_posture_resolver.py",
+      "sha256": "e1eae0c36c9bca55dedd02a245bd6cce7d94d505f1b3f21468a957dee4abc814",
+      "bytes": 14338
+    },
+    {
+      "path": "services/element_reasoning.py",
+      "sha256": "86fb124990c07163caaa055a2736ac158ef44855c9a146bda9e4cbea84a3aa2b",
+      "bytes": 40704
+    },
+    {
+      "path": "services/general_case_orchestrator.py",
+      "sha256": "ad18f97be2f2a47ea5598e86337b21618e61f51424edb8a2dc5d6a9ad2641057",
+      "bytes": 5815
+    },
+    {
+      "path": "services/instrument_identity_contract.py",
+      "sha256": "68aac18638c7bf063d914acb7f77d609c3387af6298e397eb311b7daf9c05592",
+      "bytes": 10112
+    },
+    {
+      "path": "services/legal_element_engine.py",
+      "sha256": "d07c660200167801565529a5fdfecdb3433bebbdd38d4d81f8034fe6deb0e63b",
+      "bytes": 8684
     },
     {
       "path": "services/legal_ocr_postprocess.py",
       "sha256": "fe5257372f0028b6b31496bdfad503c11a57e9cb2be742f2f253a1cb0d7eb6b4",
       "bytes": 9130
+    },
+    {
+      "path": "services/legal_reasoning_chain.py",
+      "sha256": "88b2cf8b4d0dd2c576843c19852afb8219aa4f3becc13a8c0b0904c3ea3199b5",
+      "bytes": 34317
     },
     {
       "path": "services/legal_research_service.py",
@@ -225,23 +859,63 @@
     },
     {
       "path": "services/legal_review_engine.py",
-      "sha256": "b6c1778f49a03b6c02000da8a3b4bf660a50d82542f26aa3c7f2aa5e330e46a4",
-      "bytes": 19212
+      "sha256": "52b9395b0d337ac6d7d5541a5585bdd323a25e347d782b7dde912dcf3ab4a2fb",
+      "bytes": 23525
+    },
+    {
+      "path": "services/living_analysis_orchestrator.py",
+      "sha256": "662cb0fa6e56f253861dbea5bb567fc1deb1284fb3d6b275431261685ea600c1",
+      "bytes": 18252
+    },
+    {
+      "path": "services/living_law_synthesis.py",
+      "sha256": "4a6eadc6c78806df5168eeabc906409246649cc076377e39adfc264b288e03a2",
+      "bytes": 8675
+    },
+    {
+      "path": "services/material_tempus_extractor.py",
+      "sha256": "0b5c454b9e6e444a478b31ec8041594ab90fae01264c6284a511ba644db8062a",
+      "bytes": 24475
+    },
+    {
+      "path": "services/official_identity_resolver.py",
+      "sha256": "9f308b5abf30c72e742285fa2ae64a457fb332d055db6ec27d8ee3eab8b8893f",
+      "bytes": 6580
+    },
+    {
+      "path": "services/official_verification_trace.py",
+      "sha256": "6812f829ad251a0640a4715bbc323a846956e31a137188d794f3264157935299",
+      "bytes": 2698
     },
     {
       "path": "services/positive_law_verification.py",
-      "sha256": "be7fbfc1b053f2cf9aedb76c6e570bc9a42b3b7e799c2d82eb9b77731dfea52f",
-      "bytes": 23016
+      "sha256": "b4295915a912cba2a606022639ea7f0b5cf6c6dbecfdfd1536f4695f9b02947b",
+      "bytes": 46941
+    },
+    {
+      "path": "services/reasoning_contract.py",
+      "sha256": "afd9dd7a74d9188d2bf06d1b60ce14f9eee5e6bbb6cac0197949d1d3d20af65b",
+      "bytes": 6046
     },
     {
       "path": "services/regulatory_retrieval.py",
-      "sha256": "b24bb5f94b0f0a69292ac15dd4b8f692e8c2c9c571d3d978f552ef92c55e288c",
-      "bytes": 48641
+      "sha256": "44b76c7301e4ddd97117a68dfb5c341b6e1492075cff12ffb35b1032754081b2",
+      "bytes": 137684
+    },
+    {
+      "path": "services/sal_source_of_truth.py",
+      "sha256": "4daea177e05af45894948d2423a28242e90cd8e1aa0f9f54f421c11f06fbf8f6",
+      "bytes": 27205
+    },
+    {
+      "path": "services/semantic_admission.py",
+      "sha256": "b963a5cc9b3bb2580a3508d9875b867277e59dc0fa1c36d2b96ba190d043aa1e",
+      "bytes": 24942
     },
     {
       "path": "static/index.html",
-      "sha256": "14553b25d27e3f182515acf1a919be646151ec805af3a048a7c3239f1bc1bf70",
-      "bytes": 185182
+      "sha256": "e0662b09266081f962171517266d7dcc3a175dfd9adea5bbe6b3c1ba16c09cf6",
+      "bytes": 232753
     },
     {
       "path": "tests/__init__.py",
@@ -250,8 +924,113 @@
     },
     {
       "path": "tests/conftest.py",
-      "sha256": "6e884bae9a160b5312f9ec8725f7eee869546f41662ca5537d1ead6c507b8826",
-      "bytes": 2687
+      "sha256": "3892cec8a54bcc73b844794f25ba13f2ddf81e9947c481b5e689c56fd30f5b01",
+      "bytes": 3098
+    },
+    {
+      "path": "tests/test_adversarial_viewpoint_splitter.py",
+      "sha256": "124d995dc525f8e6375dd7dc3af35fbeb2a0f9e7da0faa95ad9d47f85d3c701f",
+      "bytes": 3393
+    },
+    {
+      "path": "tests/test_backlog_semantic_typing_and_law_relevance.py",
+      "sha256": "189af5940df4a22cb74f515888c88d8cfb9b285e87d46693aae3d74b6d59eb76",
+      "bytes": 3328
+    },
+    {
+      "path": "tests/test_candidate_law_final_lock.py",
+      "sha256": "7b61664fbf1aaf664adbaa5916995c8f69a762d8f482ec92df8255cd4306f753",
+      "bytes": 3919
+    },
+    {
+      "path": "tests/test_case_analysis_flow_history_v136.py",
+      "sha256": "68a3ee4f7e90a173f18d6bbb5dc3b6807b81a3c69f16bb8c7c94b2e32f2c9690",
+      "bytes": 1837
+    },
+    {
+      "path": "tests/test_case_analysis_next_upload_indicator_v137.py",
+      "sha256": "d3e604d5b9ebdd5c7012cd602e428ef16444a6de82492760064df27a4c34654c",
+      "bytes": 1029
+    },
+    {
+      "path": "tests/test_case_context_and_section_hierarchy_v134.py",
+      "sha256": "152cb50170d95cb7e5cb934d27f29959b5bf0e7dc482a053512783b46b096fa6",
+      "bytes": 3619
+    },
+    {
+      "path": "tests/test_client_authority_lifecycle_v139.py",
+      "sha256": "3961d5e941f064655356f8fba80f841715b85d353a805996fb418bebf6045acf",
+      "bytes": 2673
+    },
+    {
+      "path": "tests/test_client_intake_legal_position_v140.py",
+      "sha256": "343fd0f2001cb6e4302d02100c3667270609e0c918739be228a098223f2f05e6",
+      "bytes": 2404
+    },
+    {
+      "path": "tests/test_contract_migration_v2_1_civil_evidence_hygiene.py",
+      "sha256": "551d6b6d843d07275fda60e02f7d5c1b90af3c8a006ffdd99a71f01fbd91fe8a",
+      "bytes": 2770
+    },
+    {
+      "path": "tests/test_contract_migration_v2_2_selective_semantic_binding.py",
+      "sha256": "1cdd0ca58171b3ac495428c9f07b3e5cb7361c55875a31b36e0be47e17e46eca",
+      "bytes": 3420
+    },
+    {
+      "path": "tests/test_desktop_deployment_runtime_v142.py",
+      "sha256": "b13b815c6676faff3e0dfac4dae30a9dfb5f5ae6b788cb5290cd9a47a4f70a77",
+      "bytes": 1703
+    },
+    {
+      "path": "tests/test_desktop_layout_balance_v145.py",
+      "sha256": "0707f00ef65a956e493a9e0097885a4607da354ac699560f446bef2835c84ee9",
+      "bytes": 864
+    },
+    {
+      "path": "tests/test_document_identity_projection_sync.py",
+      "sha256": "72159350e9d6c688708fc60d571217b3a548dbb9cadd11a8532b60ab1e47891c",
+      "bytes": 2080
+    },
+    {
+      "path": "tests/test_dynamic_identity_profile_v141.py",
+      "sha256": "eb542411630c77d329f04dc50763d5685f4639371fafabe5ef4be423d2b2d7da",
+      "bytes": 1952
+    },
+    {
+      "path": "tests/test_element_reasoning.py",
+      "sha256": "188e5eab06fe81b8bac13afe057aa864ae77704762a63f1fdabdc20665030abe",
+      "bytes": 1344
+    },
+    {
+      "path": "tests/test_final_corrective_contract_migration_v2_3_1.py",
+      "sha256": "aa70186c871c68c4af925cb69894c014538f74e70009597e157d9cebc9bb34cc",
+      "bytes": 3677
+    },
+    {
+      "path": "tests/test_first_run_profile_onboarding_v143.py",
+      "sha256": "621c9b388aeaa91535900bd4b906f85102c2ec29e53876de2fd4cc2f394fca4f",
+      "bytes": 1927
+    },
+    {
+      "path": "tests/test_generalized_case_analysis_closure.py",
+      "sha256": "dfcbc4a9ceb68e7ab8554d11e10748f4a8fd91a8723748cb4d6b038cecf81efe",
+      "bytes": 2462
+    },
+    {
+      "path": "tests/test_golden_benchmark_elya.py",
+      "sha256": "861f065f3d1a2979526f02c1ef5e040336ae7934fdf7b27957d1d4fbe6f5a9ee",
+      "bytes": 1268
+    },
+    {
+      "path": "tests/test_legal_layout_typography_v131.py",
+      "sha256": "3107756d41ff9ed7afecff9cc277bf5f3a0837eebd17e1ffd48b26c4152080bc",
+      "bytes": 3390
+    },
+    {
+      "path": "tests/test_legal_reasoning_chain.py",
+      "sha256": "fbfe0a4a6c1b50ee68324c7b79c2ac8840c8dcc2181019593f7b74aae88bf360",
+      "bytes": 3447
     },
     {
       "path": "tests/test_legal_research_case_summary.py",
@@ -259,14 +1038,74 @@
       "bytes": 2055
     },
     {
+      "path": "tests/test_license_activation_gate_v144.py",
+      "sha256": "7e0869b7e8035a38a4ad44489381895f3db63472d35e3cbca92b02ef81c52412",
+      "bytes": 6322
+    },
+    {
+      "path": "tests/test_license_authority_gui_v1412.py",
+      "sha256": "1e6d9313cc1828eb8d83b290058b4ce01339fedea21ae221462dc177fe851be8",
+      "bytes": 2883
+    },
+    {
+      "path": "tests/test_low_level_render_governor_v128.py",
+      "sha256": "7b3da5890b8c4a619dfd43284ff70a18ccdc7b95a246ca4e5a1a6a8bf103c4ce",
+      "bytes": 4936
+    },
+    {
+      "path": "tests/test_matter_centric_lifecycle_navigation_v138.py",
+      "sha256": "b8b363e1a9a59ce7f7a859d977d1c22a9518ca4db431735626d621f397f1bdb1",
+      "bytes": 2013
+    },
+    {
       "path": "tests/test_migrations.py",
-      "sha256": "f6345968510dd5307d4008f9aee59b582473d943eb8e1af6d6b7fb7f1a741102",
-      "bytes": 12152
+      "sha256": "10e810bb3468dede3bf761d786cd6038b00070705922d3ab5e5f852dc4b422b5",
+      "bytes": 12180
+    },
+    {
+      "path": "tests/test_mobile_profile_onboarding_v146.py",
+      "sha256": "3a40902d268fef1e0a5bffcd7a64cd424b5de84e66e43328d6746fc22a149f87",
+      "bytes": 913
+    },
+    {
+      "path": "tests/test_ocr_coverage_completion.py",
+      "sha256": "f95ce92c77b9019679de59e74ed061322c0da2e722c4c6ac2f1508152c551c07",
+      "bytes": 1180
+    },
+    {
+      "path": "tests/test_ocr_internal_telemetry.py",
+      "sha256": "fb0f27af99a147b4b5dad8b1e0ee085b76ad4b84a8ee61d14c97245d8af66731",
+      "bytes": 921
+    },
+    {
+      "path": "tests/test_ocr_runtime_recovery_guard.py",
+      "sha256": "1e67443b127dd7a79728510825ea27dd876f59ad39583c0196d529b71a8d5538",
+      "bytes": 6938
+    },
+    {
+      "path": "tests/test_ocr_tempus_integrated_closure.py",
+      "sha256": "6270b50e032352c5f5fe491f5f2c3c7c64b2e9270dd57e4205230f9a93daae09",
+      "bytes": 3200
+    },
+    {
+      "path": "tests/test_offline_desktop_license_v1410.py",
+      "sha256": "b53e2c4ca9b58e1245c4eca7006b51746b0d7679fcbd30964ae88d5936ebc2d6",
+      "bytes": 1119
+    },
+    {
+      "path": "tests/test_pleading_cleaner_and_terminology_v122.py",
+      "sha256": "52fc97cb9ceac5e7dcf529bc02f02071390c980e1d03ab9e9ab3a36e919f9a56",
+      "bytes": 3159
     },
     {
       "path": "tests/test_positive_law_verification.py",
-      "sha256": "769e7a25a99d5f4e50dedcd1c0b3907f24e9248b9c11a4dec87da81a24c7514f",
-      "bytes": 12933
+      "sha256": "00175e5410b50306bfc557be24cea61768030ef3575a2bc67b32602789c18052",
+      "bytes": 90789
+    },
+    {
+      "path": "tests/test_precision_action_plan.py",
+      "sha256": "da7efe484d1284582be1ff98c338d412e1a8a1f55df7098a78d39660045929f3",
+      "bytes": 3645
     },
     {
       "path": "tests/test_professional_review_engine.py",
@@ -274,14 +1113,219 @@
       "bytes": 3521
     },
     {
+      "path": "tests/test_r10_identity_diagnostics.py",
+      "sha256": "0553f88b87e999a663acdf3f8530943229898f763be08929ee972bc8098afa86",
+      "bytes": 7172
+    },
+    {
+      "path": "tests/test_r29_kpk_expansion.py",
+      "sha256": "b112be366c6642c6af1e15817d3063329eca6fc7aa52dce52a5d654216e54a67",
+      "bytes": 3822
+    },
+    {
+      "path": "tests/test_r30_scope_expansion_bundle.py",
+      "sha256": "e8fc2fe312b90c3848fabf1ec7d7f392043059b44f9b7beac337f5ad7642dfed",
+      "bytes": 5096
+    },
+    {
+      "path": "tests/test_r31_cross_domain_generalization.py",
+      "sha256": "8027461d4918a3fe45703093f37e462f29ac796909d7a602964923c478c9da4b",
+      "bytes": 5580
+    },
+    {
+      "path": "tests/test_r32_instrument_identity_contract.py",
+      "sha256": "a3a307f94eb11169ef23fa96181d7385da557a9db9afc62d94fa14f79ce944e6",
+      "bytes": 5892
+    },
+    {
+      "path": "tests/test_r34_1_adaptive_evidence_to_pleading.py",
+      "sha256": "98c2575717f59b4440bcab6b7a5648564824d68b2151c73955addb24a131d6b2",
+      "bytes": 4414
+    },
+    {
+      "path": "tests/test_r34_2_adaptive_report_projection.py",
+      "sha256": "bf80e6b274813e46ab773b932a03de5fffb33b0b8a52f6238149795ad8e73021",
+      "bytes": 4877
+    },
+    {
+      "path": "tests/test_r34_cross_domain_evidence_reasoning.py",
+      "sha256": "b14d4262f40beb8e126be0129efdb2df889f9e2bafbdfdcf723c63aef650a516",
+      "bytes": 3371
+    },
+    {
+      "path": "tests/test_r35_precision_and_two_stage_identity.py",
+      "sha256": "6e202cd42e3bcf39053c22a24be97a303bb575ca84e2d49d3d3a5bfe4d7fb549",
+      "bytes": 5091
+    },
+    {
+      "path": "tests/test_rc18_generalization_matrix_irac_gate.py",
+      "sha256": "a80505f6596486f90f5aa98a4ff1d5f786707d5f65660d70d19ec5921c5c595b",
+      "bytes": 3393
+    },
+    {
+      "path": "tests/test_rc18_posture_tempus_norm_integration.py",
+      "sha256": "f61979d7a947b0c9562fc136adab30fc0840174e5ff6b4978f36d90a360cf192",
+      "bytes": 3625
+    },
+    {
+      "path": "tests/test_rc18_reader_facing_integration_closure.py",
+      "sha256": "eaeb5517ff57f5bfa1014e5884f0bcfe3b5be030b34cfbca60e45d94361cf715",
+      "bytes": 3858
+    },
+    {
+      "path": "tests/test_reader_export_final_cleanup_v124.py",
+      "sha256": "46d6ad2b1954f8ab69029e00133b364e0c505ae3d4a4b69b28fc7346e78f4011",
+      "bytes": 2129
+    },
+    {
+      "path": "tests/test_reader_export_final_render_lock_v127.py",
+      "sha256": "4f8bfaa8186c728a619687f1a73304ef484970ec0f70f053718fcc99cf159a31",
+      "bytes": 3217
+    },
+    {
+      "path": "tests/test_reader_export_final_sanitizer_dedup_v126.py",
+      "sha256": "00a92cfe3570b81f50b810bc4aa36dc61c6110c8412265b5df6c233afdefaabc",
+      "bytes": 2542
+    },
+    {
+      "path": "tests/test_reader_export_natural_language_lock_v129.py",
+      "sha256": "594b376b59e50f391cf7e6533d2130b800730230ca00ff949d9f644c319ddd1a",
+      "bytes": 2812
+    },
+    {
+      "path": "tests/test_reader_export_residue_cleanup_v125.py",
+      "sha256": "d82822dc3d601195dccadb552bc048a944a0bc38bee8fb85a3597fd94a760165",
+      "bytes": 1697
+    },
+    {
+      "path": "tests/test_reader_hierarchy_and_typo_repair_v135.py",
+      "sha256": "e7945197aba07ca70ffa518358e63bc230afcc9949ecfc22be4969e64c606def",
+      "bytes": 2504
+    },
+    {
+      "path": "tests/test_reasoning_contract_migration_v2.py",
+      "sha256": "682d25c06dffc0d47ef03ae0dd29406074df00f57cc733df2b5c9b2f37c3651d",
+      "bytes": 2857
+    },
+    {
+      "path": "tests/test_reference_style_profile_v132.py",
+      "sha256": "41a00063652b30746fe24ae21c1c2085cf7f0a962eaa5d337d07536c9c6bbbe5",
+      "bytes": 1070
+    },
+    {
+      "path": "tests/test_reference_table_projection_v133.py",
+      "sha256": "05be6b16ad36de201d7a30ace1ee1b6a495bf9fbd95e70029397fd83e9e1a0c4",
+      "bytes": 2985
+    },
+    {
+      "path": "tests/test_regulatory_db_resolver.py",
+      "sha256": "44ef7100a6769cce26946d9e3e668ca11fe86ecb75ca46566ad71f56d2ea2969",
+      "bytes": 1755
+    },
+    {
+      "path": "tests/test_regulatory_verification_wiring.py",
+      "sha256": "6e081daa99c092f1af3798d4bcb72dea85a41f80915437323624a4fb245673fe",
+      "bytes": 22274
+    },
+    {
+      "path": "tests/test_release_artifact_hygiene_v149.py",
+      "sha256": "b0b988e6d018805f2e4e04a26d67262a854a78583c4de9ddf19f0ac8a172151b",
+      "bytes": 1787
+    },
+    {
+      "path": "tests/test_reliability_corrective.py",
+      "sha256": "464efc0aa52538269ff4f12f79f44bed6cf82344efec633e8b6746bcf7b4e4dd",
+      "bytes": 2888
+    },
+    {
+      "path": "tests/test_retrieval_law_weight_config_v121.py",
+      "sha256": "dd91ff76403a8fa48850adbcbffa165621a1cb09e85f73d5171da221cc23df08",
+      "bytes": 3558
+    },
+    {
+      "path": "tests/test_role_based_tactical_playbook.py",
+      "sha256": "b82c12fcd8d476f9088474976652dfefbe91b766e2a84a1eb7886d0e868db0c8",
+      "bytes": 7566
+    },
+    {
+      "path": "tests/test_sal_v1_adversarial_context.py",
+      "sha256": "65b794f382083e241caf422c7c8f3d289933e1a86699ad7803b132e902dc2ca1",
+      "bytes": 9248
+    },
+    {
+      "path": "tests/test_sal_v1_element_trace_lockdown.py",
+      "sha256": "eafe61d3872e4fe649546486c1e2e6e5165256aecee3637a531a33d2d390c906",
+      "bytes": 2064
+    },
+    {
+      "path": "tests/test_sal_v1_positive_allow_ssot.py",
+      "sha256": "54af7181d85c95fcdefbb606026c5f2ad751d4e14f59d6b1da554c4515ecfe34",
+      "bytes": 4788
+    },
+    {
+      "path": "tests/test_sal_v1_single_source_truth.py",
+      "sha256": "3e19a12e73162e66d1f84d0873498c16ea7753981ce7f9e7626e4320ab5eb3ca",
+      "bytes": 4302
+    },
+    {
+      "path": "tests/test_sal_v1_universal_contract.py",
+      "sha256": "6080f8de9d03737feed77cbe12d23f9246f8dd97f89270722e2f8c11dcdeed23",
+      "bytes": 5754
+    },
+    {
+      "path": "tests/test_semantic_contract_freeze_v2_3.py",
+      "sha256": "213b273f1d4d95d5afbde2824eba1c285accc17ed414884d0c87c4dc2b65f59b",
+      "bytes": 3998
+    },
+    {
       "path": "tests/test_smoke.py",
-      "sha256": "c6667ba3095c2fef30d4d788ed1027a81d7d0600d4c972075c080fa1a51767d9",
-      "bytes": 99180
+      "sha256": "988e3fb1a4cbb9deaa5573157f0ef8dfa4540fdb512517001dec4fe5b178b732",
+      "bytes": 101656
+    },
+    {
+      "path": "tests/test_tempus_contract_final.py",
+      "sha256": "d8cb5429e89b5686dcf5c7767bacd19c08de60144c95f183db73922c2db28354",
+      "bytes": 2086
+    },
+    {
+      "path": "tests/test_tempus_extraction_closure.py",
+      "sha256": "cd0c9349a9cc80b04cd30d3f85650838043178d90ab96a3ce98e739becd5b739",
+      "bytes": 4526
+    },
+    {
+      "path": "tests/test_unified_presentation_sanitizer_v123.py",
+      "sha256": "a67460941239be05957c0b5b5b7523dbb721d3ff771937241fc749310874a22b",
+      "bytes": 4157
+    },
+    {
+      "path": "tests/test_visual_normalization_guard_v130.py",
+      "sha256": "22e2f60a01063b6fb3b2f811ddd841f9070845fead1f1ea74f9907c7b8db7c42",
+      "bytes": 1516
+    },
+    {
+      "path": "tests/test_visual_normalization_guard_v131.py",
+      "sha256": "735f9bdc98efac5ee8b687244c039095d397c8f6283bbcbce4a18301e4784de4",
+      "bytes": 2444
+    },
+    {
+      "path": "tests/test_windows_installer_packaging_v1411.py",
+      "sha256": "eef30e335a4c06fbb236142b3734bd93d5d7539ded2a715283dd301892b5727b",
+      "bytes": 826
+    },
+    {
+      "path": "tools/analyze_ocr_debug.py",
+      "sha256": "5381317cc88972a74a4247afda17fd5adc5d15c0f1a649be3c4ed8317da64509",
+      "bytes": 7049
+    },
+    {
+      "path": "tools/audit_provision_location.py",
+      "sha256": "5968d8b6a2a89a81e9fe182d525774b06cbd000fbf7c0083f76ad03f9aee08c1",
+      "bytes": 1138
     },
     {
       "path": "tools/build_release.py",
-      "sha256": "54210512662acc2b50e722973f6c642ba7f41c1c58b125a07b7f5038efffb03e",
-      "bytes": 2575
+      "sha256": "9fb158270337e53a2a767efa0569831bc24f11fb72e25498c159d029b6712774",
+      "bytes": 3965
     },
     {
       "path": "tools/cleanup_artifact_hygiene.py",
@@ -290,13 +1334,68 @@
     },
     {
       "path": "tools/release_audit.py",
-      "sha256": "d82251cdbf593c8a0bf88318b5b2aa6e4a763339f9267b982416048ab514b48c",
-      "bytes": 24619
+      "sha256": "9ecd44c6d0a9e35e278e49402c9a1a3e418091f4fd99ca5e3f92ea33c432fa18",
+      "bytes": 28589
+    },
+    {
+      "path": "tools/run_r36_uu7_provision_trace.py",
+      "sha256": "aeb2504b5bbd0120b6432a7ce612783d34339ac6e6bd277a95028ad5c738e73b",
+      "bytes": 11183
+    },
+    {
+      "path": "tools/run_r38_uu1_provision_trace.py",
+      "sha256": "23a1be3fdff9bbff4f8f4252d346fd5fad6fb240e462776bd210c5c2bb102b86",
+      "bytes": 15833
+    },
+    {
+      "path": "tools/run_r40_uu1_pasal2_trace.py",
+      "sha256": "3797e286733be9f3c55e3d13122528ffd6953774dbab350a402499958966a064",
+      "bytes": 18834
+    },
+    {
+      "path": "trace_case_analysis_r22.json",
+      "sha256": "e163539a1fec216bed9db69a67ddc42ff4d65157e9bbafd4a16f09832d7fcc61",
+      "bytes": 2169
+    },
+    {
+      "path": "trace_r22_baseline.json",
+      "sha256": "b9a73da82961047278a5e24575f1a1bad20639264a8fa7380f17d66eeb3d750b",
+      "bytes": 16751
+    },
+    {
+      "path": "trace_r36_uu7_pasal3.json",
+      "sha256": "7955329bb30632ef9bae38b4815cb488e3676c1163231372a8d208986b8ca7ec",
+      "bytes": 16788
+    },
+    {
+      "path": "trace_r36_uu7_pasal3_summary.txt",
+      "sha256": "3966c2a144120b85698b1448caac2bfc0cf29d3f2ff568b52cc8e600daa464b7",
+      "bytes": 3836
+    },
+    {
+      "path": "trace_r38_uu1_pasal2.json",
+      "sha256": "57258029dd7f62405bee5e225ba5c3f175ec72c2cfa6fdda0eed09e8800c436d",
+      "bytes": 7969
+    },
+    {
+      "path": "trace_r38_uu1_pasal2_summary.txt",
+      "sha256": "f73890e779c2d8cbdb2d2332f409394b315d2f329906ec3b7ac1435af9507189",
+      "bytes": 2100
+    },
+    {
+      "path": "trace_r40_uu1_pasal2.json",
+      "sha256": "0641df8afb7cd1b6171a4ac69736f5662f4c37804622590d4e1a26a653427057",
+      "bytes": 58516
+    },
+    {
+      "path": "trace_r40_uu1_pasal2_summary.txt",
+      "sha256": "71351ae1ddcb6c7d390a65daf47e5861e5779bf21e95fadfd08605e381fd3936",
+      "bytes": 5295
     },
     {
       "path": "version.py",
-      "sha256": "970ff2c372f1a22a6d33e5a6ddf6df7c8c66adaacf2cad8e73ad2f5755facb13",
-      "bytes": 1508
+      "sha256": "0fdde2a96bb02b8fe851aa5a38d71143ee1a05a7a4a29ffacda9e5e803e8d67f",
+      "bytes": 1596
     }
   ]
 }

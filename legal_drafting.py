@@ -9,11 +9,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List
 
-WORKING_NOTE = (
-    "\n\nCATATAN LEXICORE by ELF (Erfan’s Law Firm)\n"
-    "DRAFT KERJA — Professional Verification: PENDING. Verifikasi identitas, kewenangan, fakta, bukti, "
-    "kompetensi absolut/relatif, hukum yang berlaku, tenggat, serta konsistensi posita/petitum atau dalil/permohonan sebelum digunakan."
-)
+def _working_note():
+    from identity_profile import get_identity_profile
+    profile=get_identity_profile()
+    return (
+        f"\n\nCATATAN LEXICORE | {profile['display_name']}\n"
+        "DRAFT KERJA — Professional Verification: PENDING. Verifikasi identitas, kewenangan, fakta, bukti, "
+        "kompetensi absolut/relatif, hukum yang berlaku, tenggat, serta konsistensi posita/petitum atau dalil/permohonan sebelum digunakan."
+    )
+
+WORKING_NOTE = _working_note()
 
 @dataclass(frozen=True)
 class TemplateSpec:
@@ -92,7 +97,7 @@ def _litigation(title, p1, p2, instruction, date, sections):
     body.append(f"\nINSTRUKSI / FAKTA MATTER\n{instruction}")
     body.append("\nDASAR HUKUM\n[Masukkan hanya peraturan/pasal/putusan yang telah diverifikasi melalui Regulatory Corpus/Legal Research.]")
     body.append("\nPENUTUP / PERMOHONAN\n[Sesuaikan secara konsisten dengan posisi, bukti, forum, dan hukum acara yang berlaku.]")
-    return "\n".join(body)+WORKING_NOTE
+    return "\n".join(body)+_working_note()
 
 
 CONTRACT_TYPES = {
@@ -235,11 +240,11 @@ def build_legal_draft(doc_type: str, p1: str, p2: str, date: str, duration: int|
         return _litigation(doc_type,p1,p2,instruction,date,sections), len(sections)
 
     if doc_type == "Surat Kuasa Khusus":
-        content=f"""SURAT KUASA KHUSUS\n\nTanggal: {date}\n\nPEMBERI KUASA\n{p1}\n[Identitas/alamat]\n\nPENERIMA KUASA\n{p2}\n[Identitas/profesi/alamat]\n\n-------------------------------- KHUSUS --------------------------------\n{instruction}\n\nLINGKUP KUASA\n1. Menghadap forum/instansi yang relevan sesuai ruang lingkup perkara;\n2. Mengajukan, menerima, menandatangani dan menanggapi dokumen yang secara sah diperlukan;\n3. Menghadiri mediasi, pemeriksaan, persidangan atau tindakan prosedural yang termasuk objek kuasa;\n4. [Rinci kewenangan khusus lain.]\n\nBATASAN / SUBSTITUSI / PERDAMAIAN / UPAYA HUKUM\n[Nyatakan secara tegas; jangan diasumsikan otomatis.]\n\nPemberi Kuasa,                         Penerima Kuasa,\n\n{p1}                                  {p2}"""+WORKING_NOTE
+        content=f"""SURAT KUASA KHUSUS\n\nTanggal: {date}\n\nPEMBERI KUASA\n{p1}\n[Identitas/alamat]\n\nPENERIMA KUASA\n{p2}\n[Identitas/profesi/alamat]\n\n-------------------------------- KHUSUS --------------------------------\n{instruction}\n\nLINGKUP KUASA\n1. Menghadap forum/instansi yang relevan sesuai ruang lingkup perkara;\n2. Mengajukan, menerima, menandatangani dan menanggapi dokumen yang secara sah diperlukan;\n3. Menghadiri mediasi, pemeriksaan, persidangan atau tindakan prosedural yang termasuk objek kuasa;\n4. [Rinci kewenangan khusus lain.]\n\nBATASAN / SUBSTITUSI / PERDAMAIAN / UPAYA HUKUM\n[Nyatakan secara tegas; jangan diasumsikan otomatis.]\n\nPemberi Kuasa,                         Penerima Kuasa,\n\n{p1}                                  {p2}"""+_working_note()
         return content,4
 
     if doc_type == "Somasi":
-        content=f"""SOMASI / TEGURAN HUKUM\n\nTanggal: {date}\nKepada Yth.\n{p2}\n\nDari / untuk kepentingan: {p1}\n\nI. KRONOLOGI & HUBUNGAN HUKUM\n{instruction}\n\nII. KEWAJIBAN / PELANGGARAN YANG DIPERSOALKAN\n[Uraikan prestasi, pelanggaran, tanggal dan bukti.]\n\nIII. TUNTUTAN\n1. [Tindakan konkret];\n2. [Pemulihan/pembayaran bila memiliki dasar];\n3. Jawaban tertulis dalam [___] hari sejak diterima.\n\nIV. RESERVASI HAK\nApabila tidak diselesaikan, pemberi somasi akan mempertimbangkan langkah hukum yang tersedia berdasarkan fakta, bukti, forum berwenang dan hukum yang berlaku."""+WORKING_NOTE
+        content=f"""SOMASI / TEGURAN HUKUM\n\nTanggal: {date}\nKepada Yth.\n{p2}\n\nDari / untuk kepentingan: {p1}\n\nI. KRONOLOGI & HUBUNGAN HUKUM\n{instruction}\n\nII. KEWAJIBAN / PELANGGARAN YANG DIPERSOALKAN\n[Uraikan prestasi, pelanggaran, tanggal dan bukti.]\n\nIII. TUNTUTAN\n1. [Tindakan konkret];\n2. [Pemulihan/pembayaran bila memiliki dasar];\n3. Jawaban tertulis dalam [___] hari sejak diterima.\n\nIV. RESERVASI HAK\nApabila tidak diselesaikan, pemberi somasi akan mempertimbangkan langkah hukum yang tersedia berdasarkan fakta, bukti, forum berwenang dan hukum yang berlaku."""+_working_note()
         return content,4
 
     if doc_type in {"Legal Opinion","Legal Memorandum"}:
@@ -252,7 +257,7 @@ def build_legal_draft(doc_type: str, p1: str, p2: str, date: str, duration: int|
         ]
         body=[_header(doc_type,date),f"Klien/Matter: {p1 or '[KLIEN / MATTER]'}\nPihak/Objek terkait: {p2 or '[PIHAK / OBJEK TERKAIT]'}"]
         for i,(h,t) in enumerate(sections,1): body.append(f"\n{i}. {h}\n{t}")
-        return "\n".join(body)+WORKING_NOTE, len(sections)
+        return "\n".join(body)+_working_note(), len(sections)
 
     if doc_type == "Perjanjian Perdamaian":
         clauses=[("LATAR BELAKANG SENGKETA",instruction),("RUANG LINGKUP PERDAMAIAN","Definisikan klaim/isu yang diselesaikan."),("KEWAJIBAN PARA PIHAK","Rinci tindakan, jumlah, tenggat dan bukti pemenuhan."),("PELEPASAN / RESERVASI KLAIM","Batasi secara spesifik; jangan menghapus hak yang tidak dimaksudkan."),("KERAHASIAAN BILA RELEVAN","Atur proporsional."),("WANPRESTASI ATAS PERDAMAIAN","Atur cure period dan konsekuensi."),("PENYELESAIAN SENGKETA","Tentukan forum setelah diverifikasi."),("PENUTUP","Kewenangan, perubahan, pemberitahuan dan tanda tangan.")]
@@ -347,4 +352,4 @@ def build_legal_draft(doc_type: str, p1: str, p2: str, date: str, duration: int|
     body=[_header(doc_type,date),f"Para pihak: {p1} dan {p2}"]
     for n,(h,t) in enumerate(clauses,1): body.append(f"\nPASAL {n}\n{h}\n{t}")
     body.append("\nTANDA TANGAN\n\n"+f"{p1 or 'Pihak Pertama'}                         {p2 or 'Pihak Kedua'}")
-    return "\n".join(body)+WORKING_NOTE, len(clauses)
+    return "\n".join(body)+_working_note(), len(clauses)

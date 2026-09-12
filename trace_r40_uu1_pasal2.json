@@ -1,0 +1,1602 @@
+{
+  "trace_version": "R40_POST_FULLTEXT_PROVISION_STATE_V1",
+  "started_at": "2026-09-07T11:01:07.283922+00:00",
+  "expected_identity": "UU:1:2015",
+  "provision": "Pasal 2",
+  "detail_url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+  "checkpoints": [
+    {
+      "checkpoint": 1,
+      "name": "INPUT_ROW",
+      "state": {
+        "expected_identity_key": "UU:1:2015",
+        "query_origin": "EXACT_CASE_REGULATION",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "provision_binding_provenance": {
+          "case_bound": true,
+          "exact_case_text": [
+            "Pasal 2"
+          ],
+          "qualified_case_citation": [
+            "Pasal 2 UU 1 Tahun 2015"
+          ],
+          "instrument_key": "UU:1:2015"
+        },
+        "case_nexus_status": "CASE_NEXUS_UNCERTAIN",
+        "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015"
+      }
+    },
+    {
+      "checkpoint": 2,
+      "name": "PRE_FULLTEXT_EXPECTED_GATE",
+      "state": {
+        "expected_identity_key": "UU:1:2015",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "note": "Observed next from production _verify_positive_law_results; no simulated verification result is injected."
+      }
+    },
+    {
+      "checkpoint": 4,
+      "name": "VERIFY_DOCUMENT_CANDIDATE",
+      "input": {
+        "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+        "query_origin": "EXACT_CASE_REGULATION",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "provision_binding_provenance": {
+          "case_bound": true,
+          "exact_case_text": [
+            "Pasal 2"
+          ],
+          "qualified_case_citation": [
+            "Pasal 2 UU 1 Tahun 2015"
+          ],
+          "instrument_key": "UU:1:2015"
+        },
+        "source_text_length": 16507,
+        "snapshot": {
+          "procedural_date_candidate": "2021-04-03"
+        }
+      },
+      "state": {
+        "identity_confirmed": true,
+        "identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015",
+          "expected_key": "UU:1:2015",
+          "expected_identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015"
+          },
+          "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+          "actual_identity_candidates": [
+            "UU:1:2015",
+            "UU:1:2014",
+            "UU:10:2016",
+            "UU:8:2015",
+            "UU:7:2017",
+            "UU:2:2020",
+            "UU:22:2014",
+            "UU:23:2014"
+          ],
+          "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+        },
+        "case_nexus_status": "CASE_NEXUS_VERIFIED",
+        "provision_text_location": {
+          "status": "PROVISION_TEXT_NOT_FOUND",
+          "requested": [
+            "Pasal 2"
+          ],
+          "located": [],
+          "not_located": [
+            "Pasal 2"
+          ],
+          "citations": [],
+          "located_count": 0,
+          "requested_count": 1
+        },
+        "provision_text_verification": {
+          "status": "PROVISION_UNVERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [],
+          "unverified": [
+            "Pasal 2"
+          ],
+          "citations": [],
+          "verified_count": 0,
+          "requested_count": 1
+        },
+        "provision_verification": {
+          "status": "PROVISION_UNVERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [],
+          "unverified": [
+            "Pasal 2"
+          ],
+          "citations": [],
+          "verified_count": 0,
+          "requested_count": 1
+        },
+        "legal_status": "AMENDED_IN_FORCE",
+        "tempus_status": "TEMPUS_UNVERIFIED",
+        "final_status": "VERIFICATION_REQUIRED",
+        "fulltext_reconciliation": null,
+        "provision_source_url": null,
+        "provision_source_status": null,
+        "diagnostic": null
+      }
+    },
+    {
+      "checkpoint": 3,
+      "name": "FULLTEXT_RESOLUTION",
+      "state": {
+        "resolved": true,
+        "resolver_status": "ATTACHMENT_PDF_TEXT",
+        "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+        "resolved_identity_key": "UU:1:2015",
+        "text_identity_key": "UU:1:2015",
+        "identity_aligned": true,
+        "legal_role": "UNKNOWN",
+        "relationship_verified": false,
+        "incorporated_identity_key": null,
+        "text_length": 210907,
+        "contains_literal_Pasal_2": true,
+        "attempted_urls": [
+          "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+          "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf"
+        ]
+      }
+    },
+    {
+      "checkpoint": 4,
+      "name": "VERIFY_DOCUMENT_CANDIDATE",
+      "input": {
+        "url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+        "query_origin": "EXACT_CASE_REGULATION",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "provision_binding_provenance": {
+          "case_bound": true,
+          "exact_case_text": [
+            "Pasal 2"
+          ],
+          "qualified_case_citation": [
+            "Pasal 2 UU 1 Tahun 2015"
+          ],
+          "instrument_key": "UU:1:2015"
+        },
+        "source_text_length": 210907,
+        "snapshot": {
+          "procedural_date_candidate": "2021-04-03"
+        }
+      },
+      "state": {
+        "identity_confirmed": true,
+        "identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015",
+          "expected_key": "UU:1:2015",
+          "expected_identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015"
+          },
+          "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+          "actual_identity_candidates": [
+            "UU:1:2015",
+            "UU:1:2014",
+            "UU:22:2014",
+            "UU:23:2014",
+            "UU:32:2004"
+          ],
+          "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+        },
+        "case_nexus_status": "CASE_NEXUS_VERIFIED",
+        "provision_text_location": {
+          "status": "PROVISION_TEXT_LOCATED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "located": [
+            "Pasal 2"
+          ],
+          "not_located": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "LOCATED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "located_count": 1,
+          "requested_count": 1
+        },
+        "provision_text_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "provision_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "legal_status": "REVOKED",
+        "tempus_status": "TEMPUS_UNVERIFIED",
+        "final_status": "VERIFICATION_REQUIRED",
+        "fulltext_reconciliation": null,
+        "provision_source_url": null,
+        "provision_source_status": null,
+        "diagnostic": null
+      }
+    },
+    {
+      "checkpoint": 5,
+      "name": "POST_STATUS_SEMANTICS",
+      "before": {
+        "identity_confirmed": true,
+        "identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015",
+          "expected_key": "UU:1:2015",
+          "expected_identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015"
+          },
+          "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+          "actual_identity_candidates": [
+            "UU:1:2015",
+            "UU:1:2014",
+            "UU:22:2014",
+            "UU:23:2014",
+            "UU:32:2004"
+          ],
+          "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+        },
+        "case_nexus_status": "CASE_NEXUS_VERIFIED",
+        "provision_text_location": {
+          "status": "PROVISION_TEXT_LOCATED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "located": [
+            "Pasal 2"
+          ],
+          "not_located": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "LOCATED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "located_count": 1,
+          "requested_count": 1
+        },
+        "provision_text_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "provision_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "legal_status": "REVOKED",
+        "tempus_status": "TEMPUS_UNVERIFIED",
+        "final_status": "VERIFICATION_REQUIRED",
+        "fulltext_reconciliation": null,
+        "provision_source_url": null,
+        "provision_source_status": null,
+        "diagnostic": null
+      },
+      "state": {
+        "identity_confirmed": true,
+        "identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015",
+          "expected_key": "UU:1:2015",
+          "expected_identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015"
+          },
+          "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+          "actual_identity_candidates": [
+            "UU:1:2015",
+            "UU:1:2014",
+            "UU:22:2014",
+            "UU:23:2014",
+            "UU:32:2004"
+          ],
+          "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+        },
+        "case_nexus_status": "CASE_NEXUS_VERIFIED",
+        "provision_text_location": {
+          "status": "PROVISION_TEXT_LOCATED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "located": [
+            "Pasal 2"
+          ],
+          "not_located": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "LOCATED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "located_count": 1,
+          "requested_count": 1
+        },
+        "provision_text_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "provision_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "legal_status": "AMENDED_IN_FORCE",
+        "tempus_status": "TEMPUS_UNVERIFIED",
+        "final_status": "VERIFICATION_REQUIRED",
+        "fulltext_reconciliation": null,
+        "provision_source_url": null,
+        "provision_source_status": null,
+        "diagnostic": null
+      }
+    },
+    {
+      "checkpoint": 6,
+      "name": "POSTFETCH_CONTRACT_OBSERVED_IN_RETURNED_ROW",
+      "state": {
+        "identity_confirmed": true,
+        "identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015",
+          "expected_key": "UU:1:2015",
+          "expected_identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015"
+          },
+          "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+          "actual_identity_candidates": [
+            "UU:1:2015",
+            "UU:1:2014",
+            "UU:22:2014",
+            "UU:23:2014",
+            "UU:32:2004"
+          ],
+          "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+        },
+        "case_nexus_status": "CASE_NEXUS_VERIFIED",
+        "provision_text_location": {
+          "status": "PROVISION_TEXT_LOCATED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "located": [
+            "Pasal 2"
+          ],
+          "not_located": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "LOCATED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "located_count": 1,
+          "requested_count": 1
+        },
+        "provision_text_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "provision_verification": {
+          "status": "PROVISION_VERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [
+            "Pasal 2"
+          ],
+          "unverified": [],
+          "citations": [
+            {
+              "provision": "Pasal 2",
+              "status": "VERIFIED_IN_OFFICIAL_TEXT",
+              "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+              "matched_text": "Pasal 2",
+              "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+            }
+          ],
+          "verified_count": 1,
+          "requested_count": 1
+        },
+        "legal_status": "AMENDED_IN_FORCE",
+        "tempus_status": "TEMPUS_UNVERIFIED",
+        "final_status": "VERIFICATION_REQUIRED",
+        "fulltext_reconciliation": {
+          "source_instrument_key": "UU:1:2015",
+          "resolved_instrument_key": "UU:1:2015",
+          "text_instrument_key": "UU:1:2015",
+          "legal_role": "UNKNOWN",
+          "identity_aligned": true,
+          "provision_binding_preserved": true,
+          "resolver_status": "ATTACHMENT_PDF_TEXT"
+        },
+        "provision_source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+        "provision_source_status": "ATTACHMENT_PDF_TEXT",
+        "diagnostic": null
+      }
+    },
+    {
+      "checkpoint": 7,
+      "name": "ENRICHED_BY_INDEX_RETURN",
+      "state": {
+        "title": "Undang-Undang Nomor 1 Tahun 2015",
+        "canonical_instrument_key": "UU:1:2015",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "fulltext_resolution": {
+          "resolved": true,
+          "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+          "content_type": "application/octet-stream",
+          "resolver_status": "ATTACHMENT_PDF_TEXT",
+          "attempted_urls": [
+            "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+            "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf"
+          ],
+          "candidate_links_found": 1,
+          "cache_hit": false,
+          "expected_identity_key": "UU:1:2015",
+          "resolved_identity_key": "UU:1:2015",
+          "identity_candidates": [
+            "UU:1:2015",
+            "PERPU:1:2014",
+            "UU:1:2014",
+            "UU:23:2014",
+            "UU:22:2014",
+            "UU:32:2004"
+          ],
+          "identity_aligned": true,
+          "text_identity_key": "UU:1:2015",
+          "legal_role": "UNKNOWN",
+          "incorporated_identity_key": null,
+          "incorporation_parent_identity_key": null,
+          "relationship_verified": false,
+          "incorporated_identity_candidates": [
+            "PERPU:1:2014",
+            "PERPU:2:2020"
+          ]
+        },
+        "positive_law_verification": {
+          "identity_confirmed": true,
+          "identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015",
+            "expected_key": "UU:1:2015",
+            "expected_identity": {
+              "type": "UU",
+              "number": "1",
+              "year": 2015,
+              "key": "UU:1:2015"
+            },
+            "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+            "actual_identity_candidates": [
+              "UU:1:2015",
+              "UU:1:2014",
+              "UU:22:2014",
+              "UU:23:2014",
+              "UU:32:2004"
+            ],
+            "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+          },
+          "case_nexus_status": "CASE_NEXUS_VERIFIED",
+          "provision_text_location": {
+            "status": "PROVISION_TEXT_LOCATED",
+            "requested": [
+              "Pasal 2"
+            ],
+            "located": [
+              "Pasal 2"
+            ],
+            "not_located": [],
+            "citations": [
+              {
+                "provision": "Pasal 2",
+                "status": "LOCATED_IN_OFFICIAL_TEXT",
+                "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+                "matched_text": "Pasal 2",
+                "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+              }
+            ],
+            "located_count": 1,
+            "requested_count": 1
+          },
+          "provision_text_verification": {
+            "status": "PROVISION_VERIFIED",
+            "requested": [
+              "Pasal 2"
+            ],
+            "verified": [
+              "Pasal 2"
+            ],
+            "unverified": [],
+            "citations": [
+              {
+                "provision": "Pasal 2",
+                "status": "VERIFIED_IN_OFFICIAL_TEXT",
+                "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+                "matched_text": "Pasal 2",
+                "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+              }
+            ],
+            "verified_count": 1,
+            "requested_count": 1
+          },
+          "provision_verification": {
+            "status": "PROVISION_VERIFIED",
+            "requested": [
+              "Pasal 2"
+            ],
+            "verified": [
+              "Pasal 2"
+            ],
+            "unverified": [],
+            "citations": [
+              {
+                "provision": "Pasal 2",
+                "status": "VERIFIED_IN_OFFICIAL_TEXT",
+                "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+                "matched_text": "Pasal 2",
+                "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+              }
+            ],
+            "verified_count": 1,
+            "requested_count": 1
+          },
+          "legal_status": "AMENDED_IN_FORCE",
+          "tempus_status": "TEMPUS_UNVERIFIED",
+          "final_status": "VERIFICATION_REQUIRED",
+          "fulltext_reconciliation": {
+            "source_instrument_key": "UU:1:2015",
+            "resolved_instrument_key": "UU:1:2015",
+            "text_instrument_key": "UU:1:2015",
+            "legal_role": "UNKNOWN",
+            "identity_aligned": true,
+            "provision_binding_preserved": true,
+            "resolver_status": "ATTACHMENT_PDF_TEXT"
+          },
+          "provision_source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+          "provision_source_status": "ATTACHMENT_PDF_TEXT",
+          "diagnostic": null
+        }
+      }
+    },
+    {
+      "checkpoint": 4,
+      "name": "VERIFY_DOCUMENT_CANDIDATE",
+      "input": {
+        "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+        "query_origin": "EXACT_CASE_REGULATION",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "provision_binding_provenance": {
+          "exact_case_text": [
+            "Pasal 2"
+          ],
+          "qualified_case_citation": [],
+          "generated_research_refs": [],
+          "case_bound": true,
+          "instrument_key": "UU:1:2015"
+        },
+        "source_text_length": 16507,
+        "snapshot": {
+          "event_year_candidate": null,
+          "event_date_candidate": null,
+          "procedural_date_candidate": null
+        }
+      },
+      "state": {
+        "identity_confirmed": true,
+        "identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015",
+          "expected_key": "UU:1:2015",
+          "expected_identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015"
+          },
+          "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+          "actual_identity_candidates": [
+            "UU:1:2015",
+            "UU:1:2014",
+            "UU:10:2016",
+            "UU:8:2015",
+            "UU:7:2017",
+            "UU:2:2020",
+            "UU:22:2014",
+            "UU:23:2014"
+          ],
+          "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+        },
+        "case_nexus_status": "CASE_NEXUS_VERIFIED",
+        "provision_text_location": {
+          "status": "PROVISION_TEXT_NOT_FOUND",
+          "requested": [
+            "Pasal 2"
+          ],
+          "located": [],
+          "not_located": [
+            "Pasal 2"
+          ],
+          "citations": [],
+          "located_count": 0,
+          "requested_count": 1
+        },
+        "provision_text_verification": {
+          "status": "PROVISION_UNVERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [],
+          "unverified": [
+            "Pasal 2"
+          ],
+          "citations": [],
+          "verified_count": 0,
+          "requested_count": 1
+        },
+        "provision_verification": {
+          "status": "PROVISION_UNVERIFIED",
+          "requested": [
+            "Pasal 2"
+          ],
+          "verified": [],
+          "unverified": [
+            "Pasal 2"
+          ],
+          "citations": [],
+          "verified_count": 0,
+          "requested_count": 1
+        },
+        "legal_status": "AMENDED_IN_FORCE",
+        "tempus_status": "TEMPUS_UNVERIFIED",
+        "final_status": "VERIFICATION_REQUIRED",
+        "fulltext_reconciliation": null,
+        "provision_source_url": null,
+        "provision_source_status": null,
+        "diagnostic": null
+      }
+    },
+    {
+      "checkpoint": 8,
+      "name": "REAL_CASE_PIPELINE_ROWS_FOR_UU_1_2015",
+      "state": {
+        "row_count": 3,
+        "rows": [
+          {
+            "index": 1,
+            "expected_identity_key": "UU:1:2015",
+            "title": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 Tentang Pemilihan Gubernur, Bupati, Dan Walikota Menjadi Undang-Undang",
+            "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+            "query_origin": "EXACT_CASE_REGULATION",
+            "requested_provisions": [
+              "Pasal 2"
+            ],
+            "provision_binding_provenance": {
+              "exact_case_text": [
+                "Pasal 2"
+              ],
+              "qualified_case_citation": [],
+              "generated_research_refs": [],
+              "case_bound": true,
+              "instrument_key": "UU:1:2015"
+            },
+            "fulltext_resolution": {
+              "resolved": false,
+              "resolver_status": "VERIFICATION_TIME_BUDGET_EXCEEDED",
+              "attempted_urls": []
+            },
+            "positive_law_verification": {
+              "identity_confirmed": true,
+              "identity": {
+                "type": "UU",
+                "number": "1",
+                "year": 2015,
+                "key": "UU:1:2015",
+                "expected_key": "UU:1:2015",
+                "expected_identity": {
+                  "type": "UU",
+                  "number": "1",
+                  "year": 2015,
+                  "key": "UU:1:2015"
+                },
+                "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+                "actual_identity_candidates": [
+                  "UU:1:2015",
+                  "UU:1:2014",
+                  "UU:10:2016",
+                  "UU:8:2015",
+                  "UU:7:2017",
+                  "UU:2:2020",
+                  "UU:22:2014",
+                  "UU:23:2014"
+                ],
+                "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+              },
+              "case_nexus_status": "CASE_NEXUS_VERIFIED",
+              "provision_text_location": {
+                "status": "PROVISION_TEXT_NOT_FOUND",
+                "requested": [
+                  "Pasal 2"
+                ],
+                "located": [],
+                "not_located": [
+                  "Pasal 2"
+                ],
+                "citations": [],
+                "located_count": 0,
+                "requested_count": 1
+              },
+              "provision_text_verification": {
+                "status": "PROVISION_UNVERIFIED",
+                "requested": [
+                  "Pasal 2"
+                ],
+                "verified": [],
+                "unverified": [
+                  "Pasal 2"
+                ],
+                "citations": [],
+                "verified_count": 0,
+                "requested_count": 1
+              },
+              "provision_verification": {
+                "status": "PROVISION_UNVERIFIED",
+                "requested": [
+                  "Pasal 2"
+                ],
+                "verified": [],
+                "unverified": [
+                  "Pasal 2"
+                ],
+                "citations": [],
+                "verified_count": 0,
+                "requested_count": 1
+              },
+              "legal_status": "AMENDED_IN_FORCE",
+              "tempus_status": "TEMPUS_UNVERIFIED",
+              "final_status": "VERIFICATION_REQUIRED",
+              "fulltext_reconciliation": null,
+              "provision_source_url": null,
+              "provision_source_status": null,
+              "diagnostic": null
+            }
+          },
+          {
+            "index": 2,
+            "expected_identity_key": "UU:10:2016",
+            "title": "Perubahan Kedua Atas Undang-Undang Nomor 1 Tahun 2015 Tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 Tentang Pemilihan Gubernur, Bupati, Dan Walikota Menjadi Undang-Undang",
+            "url": "https://peraturan.bpk.go.id/Details/37311/uu-no-10-tahun-2016",
+            "query_origin": "KNOWN_REGULATION",
+            "requested_provisions": [],
+            "provision_binding_provenance": {
+              "exact_case_text": [],
+              "qualified_case_citation": [],
+              "generated_research_refs": [],
+              "case_bound": false,
+              "instrument_key": "UU:10:2016"
+            },
+            "fulltext_resolution": null,
+            "positive_law_verification": {
+              "identity_confirmed": true,
+              "identity": {
+                "type": "UU",
+                "number": "10",
+                "year": 2016,
+                "key": "UU:10:2016",
+                "expected_key": "UU:10:2016",
+                "expected_identity": {
+                  "type": "UU",
+                  "number": "10",
+                  "year": 2016,
+                  "key": "UU:10:2016"
+                },
+                "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+                "actual_identity_candidates": [
+                  "UU:10:2016",
+                  "UU:1:2015",
+                  "UU:1:2014",
+                  "UU:2:2020",
+                  "UU:8:2015"
+                ],
+                "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+              },
+              "case_nexus_status": "CASE_NEXUS_VERIFIED",
+              "provision_text_location": {
+                "status": "PROVISION_TEXT_NOT_REQUESTED",
+                "requested": [],
+                "located": [],
+                "not_located": [],
+                "citations": [],
+                "located_count": 0,
+                "requested_count": 0
+              },
+              "provision_text_verification": {
+                "status": "PROVISION_NOT_REQUESTED",
+                "requested": [],
+                "verified": [],
+                "unverified": [],
+                "citations": [],
+                "verified_count": 0,
+                "requested_count": 0
+              },
+              "provision_verification": {
+                "status": "PROVISION_NOT_REQUESTED",
+                "requested": [],
+                "verified": [],
+                "unverified": [],
+                "citations": [],
+                "verified_count": 0,
+                "requested_count": 0
+              },
+              "legal_status": "AMENDED_IN_FORCE",
+              "tempus_status": "TEMPUS_UNVERIFIED",
+              "final_status": "VERIFICATION_REQUIRED",
+              "fulltext_reconciliation": null,
+              "provision_source_url": null,
+              "provision_source_status": null,
+              "diagnostic": null
+            }
+          },
+          {
+            "index": 11,
+            "expected_identity_key": "UU:1:2015",
+            "title": "Perubahan atas Undang-Undang Nomor 1 Tahun 2015 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 Tentang Pemilihan Gubernur, Bupati, dan Walikota Menjadi Undang-Undang",
+            "url": "https://peraturan.bpk.go.id/Details/38208/uu-no-8-tahun-2015",
+            "query_origin": "DISCOVERY",
+            "requested_provisions": [
+              "Pasal 2"
+            ],
+            "provision_binding_provenance": {
+              "exact_case_text": [
+                "Pasal 2"
+              ],
+              "qualified_case_citation": [],
+              "generated_research_refs": [],
+              "case_bound": true,
+              "instrument_key": "UU:1:2015"
+            },
+            "fulltext_resolution": null,
+            "positive_law_verification": {
+              "identity_confirmed": false,
+              "identity": null,
+              "case_nexus_status": "CASE_NEXUS_UNCERTAIN",
+              "provision_text_location": null,
+              "provision_text_verification": null,
+              "provision_verification": null,
+              "legal_status": "UNVERIFIED",
+              "tempus_status": "TEMPUS_UNVERIFIED",
+              "final_status": "REJECTED_INSTRUMENT_IDENTITY_CONTRACT",
+              "fulltext_reconciliation": null,
+              "provision_source_url": null,
+              "provision_source_status": null,
+              "diagnostic": "NUMBER_YEAR_MISMATCH"
+            }
+          }
+        ],
+        "retrieval_funnel": {
+          "discovered": 32,
+          "unique_discovered": 18,
+          "candidate": 12,
+          "materially_relevant": 12,
+          "temporal_not_excluded": 12,
+          "authoritative_source_located": 12,
+          "legal_document_candidates": 5,
+          "rejected_non_legal_content": 7,
+          "positive_law_verified": 3,
+          "tempus_verified": 0,
+          "verified_applicable": 0,
+          "temporal_verified_applicable": 0,
+          "provision_requested": 2,
+          "provision_verified": 1,
+          "provision_documents_verified": 1,
+          "provision_located": 1,
+          "fetch_attempted": 3,
+          "fetch_reachable": 3,
+          "text_located": 3,
+          "instrument_identity_verified": 3,
+          "provision_text_verified": 1,
+          "not_attempted_budget_exceeded": 0
+        },
+        "verification_diagnostics": []
+      }
+    }
+  ],
+  "errors": [],
+  "phase_a_single_exact_candidate": {
+    "title": "Undang-Undang Nomor 1 Tahun 2015",
+    "url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+    "source_id": "bpk",
+    "source_name": "BPK",
+    "authoritative": true,
+    "query": "Undang-Undang Nomor 1 Tahun 2015 tentang Pemilihan Gubernur, Bupati, dan Walikota",
+    "query_origin": "EXACT_CASE_REGULATION",
+    "case_nexus_domains": [
+      "electoral_ethics"
+    ],
+    "case_nexus_status": "CASE_NEXUS_UNCERTAIN",
+    "relevance_score": 1.0,
+    "requested_provisions": [
+      "Pasal 2"
+    ],
+    "provision_binding_provenance": {
+      "case_bound": true,
+      "exact_case_text": [
+        "Pasal 2"
+      ],
+      "qualified_case_citation": [
+        "Pasal 2 UU 1 Tahun 2015"
+      ],
+      "instrument_key": "UU:1:2015"
+    },
+    "document_classification": {
+      "document_class": "LEGAL_INSTRUMENT",
+      "legal_instrument_candidate": true,
+      "reason": "regulation identity present in result title",
+      "expected_identity": {
+        "type": "UU",
+        "number": "1",
+        "year": 2015,
+        "key": "UU:1:2015"
+      }
+    },
+    "instrument_identity_contract": {
+      "passed": true,
+      "phase": "PREFETCH",
+      "status": "PASS",
+      "reason": "no explicit identity-contract contradiction",
+      "semantic_warnings": [],
+      "expected_key": "UU:1:2015",
+      "candidate_primary_key": "UU:1:2015",
+      "expected_type": "UU",
+      "candidate_type": "UU",
+      "type_match": true,
+      "number_year_match": true,
+      "expected_families": [
+        "electoral_ethics"
+      ],
+      "candidate_families": [
+        "electoral_ethics"
+      ],
+      "subject_family_match": true,
+      "active_domains": [
+        "electoral_ethics"
+      ],
+      "domain_compatible": true
+    },
+    "positive_law_verification": {
+      "official_source_confirmed": true,
+      "text_retrieved": true,
+      "identity_confirmed": true,
+      "identity": {
+        "type": "UU",
+        "number": "1",
+        "year": 2015,
+        "key": "UU:1:2015",
+        "expected_key": "UU:1:2015",
+        "expected_identity": {
+          "type": "UU",
+          "number": "1",
+          "year": 2015,
+          "key": "UU:1:2015"
+        },
+        "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+        "actual_identity_candidates": [
+          "UU:1:2015",
+          "UU:1:2014",
+          "UU:22:2014",
+          "UU:23:2014",
+          "UU:32:2004"
+        ],
+        "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+      },
+      "case_nexus_status": "CASE_NEXUS_VERIFIED",
+      "provision_text_location": {
+        "status": "PROVISION_TEXT_LOCATED",
+        "requested": [
+          "Pasal 2"
+        ],
+        "located": [
+          "Pasal 2"
+        ],
+        "not_located": [],
+        "citations": [
+          {
+            "provision": "Pasal 2",
+            "status": "LOCATED_IN_OFFICIAL_TEXT",
+            "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+            "matched_text": "Pasal 2",
+            "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+          }
+        ],
+        "located_count": 1,
+        "requested_count": 1
+      },
+      "provision_text_verification": {
+        "status": "PROVISION_VERIFIED",
+        "requested": [
+          "Pasal 2"
+        ],
+        "verified": [
+          "Pasal 2"
+        ],
+        "unverified": [],
+        "citations": [
+          {
+            "provision": "Pasal 2",
+            "status": "VERIFIED_IN_OFFICIAL_TEXT",
+            "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+            "matched_text": "Pasal 2",
+            "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+          }
+        ],
+        "verified_count": 1,
+        "requested_count": 1
+      },
+      "provision_verification": {
+        "status": "PROVISION_VERIFIED",
+        "requested": [
+          "Pasal 2"
+        ],
+        "verified": [
+          "Pasal 2"
+        ],
+        "unverified": [],
+        "citations": [
+          {
+            "provision": "Pasal 2",
+            "status": "VERIFIED_IN_OFFICIAL_TEXT",
+            "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+            "matched_text": "Pasal 2",
+            "source_excerpt": "-Undang dan melampirkannya sebagai bag ian yang tidak terpisahkan dari Undang-Undang ini. Pasal 2 Undang-Undang ini mulai berlaku pada tanggal diundangkan. Agar . . . - 3 - Agar setiap orang mengetahuinya, me merintahkan pengundangan Und"
+          }
+        ],
+        "verified_count": 1,
+        "requested_count": 1
+      },
+      "legal_status": "AMENDED_IN_FORCE",
+      "effective_date": null,
+      "promulgation_date": null,
+      "enactment_date": null,
+      "repeal_date": null,
+      "repeal_dates": [],
+      "amendment_dates": [],
+      "repeal_years": [],
+      "amendment_years": [],
+      "amended": true,
+      "amends_other_instrument": false,
+      "revoked": false,
+      "transitional_rule_found": true,
+      "explicit_in_force_marker": false,
+      "tempus_anchor": null,
+      "tempus_anchor_type": "UNKNOWN_DATE",
+      "tempus_status": "TEMPUS_UNVERIFIED",
+      "tempus_applicable": null,
+      "status_at_tempus": "UNKNOWN",
+      "tempus_reason": "case temporal anchor not established",
+      "provision_temporal_version": {
+        "status": "VERSION_CURRENT_SOURCE_ACCEPTED",
+        "reason": "official source does not expose an amendment marker"
+      },
+      "final_status": "VERIFICATION_REQUIRED",
+      "professional_verification": "PENDING",
+      "status_semantics_source": "LOCAL_CORPUS_METADATA_POST_VERIFICATION",
+      "registry_status_raw": "BERLAKU_DENGAN_PERUBAHAN",
+      "provision_source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+      "provision_source_status": "ATTACHMENT_PDF_TEXT",
+      "fulltext_reconciliation": {
+        "source_instrument_key": "UU:1:2015",
+        "resolved_instrument_key": "UU:1:2015",
+        "text_instrument_key": "UU:1:2015",
+        "legal_role": "UNKNOWN",
+        "identity_aligned": true,
+        "provision_binding_preserved": true,
+        "resolver_status": "ATTACHMENT_PDF_TEXT"
+      },
+      "legal_status_source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+      "fetch_attempted": true,
+      "fetch_reachable": true
+    },
+    "document_fetch": {
+      "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+      "reachable": true,
+      "official_host": true,
+      "connectivity_status": "REACHABLE",
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+      "content_type": "text/html; charset=utf-8",
+      "checked_at": "2026-09-07T11:01:07.297364+00:00",
+      "error": null,
+      "cache_hit": false
+    },
+    "instrument_identity_contract_postfetch": {
+      "passed": true,
+      "phase": "POSTFETCH",
+      "status": "PASS",
+      "reason": "no explicit identity-contract contradiction",
+      "semantic_warnings": [],
+      "expected_key": "UU:1:2015",
+      "candidate_primary_key": "UU:1:2015",
+      "expected_type": "UU",
+      "candidate_type": "UU",
+      "type_match": true,
+      "number_year_match": true,
+      "expected_families": [
+        "electoral_ethics"
+      ],
+      "candidate_families": [
+        "electoral_ethics"
+      ],
+      "subject_family_match": true,
+      "active_domains": [
+        "electoral_ethics"
+      ],
+      "domain_compatible": true
+    },
+    "fulltext_resolution": {
+      "resolved": true,
+      "source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf",
+      "content_type": "application/octet-stream",
+      "resolver_status": "ATTACHMENT_PDF_TEXT",
+      "attempted_urls": [
+        "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+        "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf"
+      ],
+      "candidate_links_found": 1,
+      "cache_hit": false,
+      "expected_identity_key": "UU:1:2015",
+      "resolved_identity_key": "UU:1:2015",
+      "identity_candidates": [
+        "UU:1:2015",
+        "PERPU:1:2014",
+        "UU:1:2014",
+        "UU:23:2014",
+        "UU:22:2014",
+        "UU:32:2004"
+      ],
+      "identity_aligned": true,
+      "text_identity_key": "UU:1:2015",
+      "legal_role": "UNKNOWN",
+      "incorporated_identity_key": null,
+      "incorporation_parent_identity_key": null,
+      "relationship_verified": false,
+      "incorporated_identity_candidates": [
+        "PERPU:1:2014",
+        "PERPU:2:2020"
+      ]
+    },
+    "discovery_title": "UU No. 1 Tahun 2015 tentang Pemilihan Gubernur, Bupati, dan Walikota",
+    "discovery_url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+    "canonical_instrument_key": "UU:1:2015",
+    "canonical_title": "Undang-Undang Nomor 1 Tahun 2015",
+    "resolved_source_url": "https://peraturan.bpk.go.id/Download/26438/UU%20Nomor%201%20Tahun%202015.pdf"
+  },
+  "phase_b_dynamic_retrieval": {
+    "official_results_count": 12,
+    "rows_for_expected": [
+      {
+        "index": 1,
+        "expected_identity_key": "UU:1:2015",
+        "title": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 Tentang Pemilihan Gubernur, Bupati, Dan Walikota Menjadi Undang-Undang",
+        "url": "https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015",
+        "query_origin": "EXACT_CASE_REGULATION",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "provision_binding_provenance": {
+          "exact_case_text": [
+            "Pasal 2"
+          ],
+          "qualified_case_citation": [],
+          "generated_research_refs": [],
+          "case_bound": true,
+          "instrument_key": "UU:1:2015"
+        },
+        "fulltext_resolution": {
+          "resolved": false,
+          "resolver_status": "VERIFICATION_TIME_BUDGET_EXCEEDED",
+          "attempted_urls": []
+        },
+        "positive_law_verification": {
+          "identity_confirmed": true,
+          "identity": {
+            "type": "UU",
+            "number": "1",
+            "year": 2015,
+            "key": "UU:1:2015",
+            "expected_key": "UU:1:2015",
+            "expected_identity": {
+              "type": "UU",
+              "number": "1",
+              "year": 2015,
+              "key": "UU:1:2015"
+            },
+            "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+            "actual_identity_candidates": [
+              "UU:1:2015",
+              "UU:1:2014",
+              "UU:10:2016",
+              "UU:8:2015",
+              "UU:7:2017",
+              "UU:2:2020",
+              "UU:22:2014",
+              "UU:23:2014"
+            ],
+            "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+          },
+          "case_nexus_status": "CASE_NEXUS_VERIFIED",
+          "provision_text_location": {
+            "status": "PROVISION_TEXT_NOT_FOUND",
+            "requested": [
+              "Pasal 2"
+            ],
+            "located": [],
+            "not_located": [
+              "Pasal 2"
+            ],
+            "citations": [],
+            "located_count": 0,
+            "requested_count": 1
+          },
+          "provision_text_verification": {
+            "status": "PROVISION_UNVERIFIED",
+            "requested": [
+              "Pasal 2"
+            ],
+            "verified": [],
+            "unverified": [
+              "Pasal 2"
+            ],
+            "citations": [],
+            "verified_count": 0,
+            "requested_count": 1
+          },
+          "provision_verification": {
+            "status": "PROVISION_UNVERIFIED",
+            "requested": [
+              "Pasal 2"
+            ],
+            "verified": [],
+            "unverified": [
+              "Pasal 2"
+            ],
+            "citations": [],
+            "verified_count": 0,
+            "requested_count": 1
+          },
+          "legal_status": "AMENDED_IN_FORCE",
+          "tempus_status": "TEMPUS_UNVERIFIED",
+          "final_status": "VERIFICATION_REQUIRED",
+          "fulltext_reconciliation": null,
+          "provision_source_url": null,
+          "provision_source_status": null,
+          "diagnostic": null
+        }
+      },
+      {
+        "index": 2,
+        "expected_identity_key": "UU:10:2016",
+        "title": "Perubahan Kedua Atas Undang-Undang Nomor 1 Tahun 2015 Tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 Tentang Pemilihan Gubernur, Bupati, Dan Walikota Menjadi Undang-Undang",
+        "url": "https://peraturan.bpk.go.id/Details/37311/uu-no-10-tahun-2016",
+        "query_origin": "KNOWN_REGULATION",
+        "requested_provisions": [],
+        "provision_binding_provenance": {
+          "exact_case_text": [],
+          "qualified_case_citation": [],
+          "generated_research_refs": [],
+          "case_bound": false,
+          "instrument_key": "UU:10:2016"
+        },
+        "fulltext_resolution": null,
+        "positive_law_verification": {
+          "identity_confirmed": true,
+          "identity": {
+            "type": "UU",
+            "number": "10",
+            "year": 2016,
+            "key": "UU:10:2016",
+            "expected_key": "UU:10:2016",
+            "expected_identity": {
+              "type": "UU",
+              "number": "10",
+              "year": 2016,
+              "key": "UU:10:2016"
+            },
+            "expected_identity_source": "CASE_BOUND_INSTRUMENT_KEY",
+            "actual_identity_candidates": [
+              "UU:10:2016",
+              "UU:1:2015",
+              "UU:1:2014",
+              "UU:2:2020",
+              "UU:8:2015"
+            ],
+            "match_reason": "CANONICAL_TYPE_NUMBER_YEAR_MATCH"
+          },
+          "case_nexus_status": "CASE_NEXUS_VERIFIED",
+          "provision_text_location": {
+            "status": "PROVISION_TEXT_NOT_REQUESTED",
+            "requested": [],
+            "located": [],
+            "not_located": [],
+            "citations": [],
+            "located_count": 0,
+            "requested_count": 0
+          },
+          "provision_text_verification": {
+            "status": "PROVISION_NOT_REQUESTED",
+            "requested": [],
+            "verified": [],
+            "unverified": [],
+            "citations": [],
+            "verified_count": 0,
+            "requested_count": 0
+          },
+          "provision_verification": {
+            "status": "PROVISION_NOT_REQUESTED",
+            "requested": [],
+            "verified": [],
+            "unverified": [],
+            "citations": [],
+            "verified_count": 0,
+            "requested_count": 0
+          },
+          "legal_status": "AMENDED_IN_FORCE",
+          "tempus_status": "TEMPUS_UNVERIFIED",
+          "final_status": "VERIFICATION_REQUIRED",
+          "fulltext_reconciliation": null,
+          "provision_source_url": null,
+          "provision_source_status": null,
+          "diagnostic": null
+        }
+      },
+      {
+        "index": 11,
+        "expected_identity_key": "UU:1:2015",
+        "title": "Perubahan atas Undang-Undang Nomor 1 Tahun 2015 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 Tentang Pemilihan Gubernur, Bupati, dan Walikota Menjadi Undang-Undang",
+        "url": "https://peraturan.bpk.go.id/Details/38208/uu-no-8-tahun-2015",
+        "query_origin": "DISCOVERY",
+        "requested_provisions": [
+          "Pasal 2"
+        ],
+        "provision_binding_provenance": {
+          "exact_case_text": [
+            "Pasal 2"
+          ],
+          "qualified_case_citation": [],
+          "generated_research_refs": [],
+          "case_bound": true,
+          "instrument_key": "UU:1:2015"
+        },
+        "fulltext_resolution": null,
+        "positive_law_verification": {
+          "identity_confirmed": false,
+          "identity": null,
+          "case_nexus_status": "CASE_NEXUS_UNCERTAIN",
+          "provision_text_location": null,
+          "provision_text_verification": null,
+          "provision_verification": null,
+          "legal_status": "UNVERIFIED",
+          "tempus_status": "TEMPUS_UNVERIFIED",
+          "final_status": "REJECTED_INSTRUMENT_IDENTITY_CONTRACT",
+          "fulltext_reconciliation": null,
+          "provision_source_url": null,
+          "provision_source_status": null,
+          "diagnostic": "NUMBER_YEAR_MISMATCH"
+        }
+      }
+    ],
+    "retrieval_funnel": {
+      "discovered": 32,
+      "unique_discovered": 18,
+      "candidate": 12,
+      "materially_relevant": 12,
+      "temporal_not_excluded": 12,
+      "authoritative_source_located": 12,
+      "legal_document_candidates": 5,
+      "rejected_non_legal_content": 7,
+      "positive_law_verified": 3,
+      "tempus_verified": 0,
+      "verified_applicable": 0,
+      "temporal_verified_applicable": 0,
+      "provision_requested": 2,
+      "provision_verified": 1,
+      "provision_documents_verified": 1,
+      "provision_located": 1,
+      "fetch_attempted": 3,
+      "fetch_reachable": 3,
+      "text_located": 3,
+      "instrument_identity_verified": 3,
+      "provision_text_verified": 1,
+      "not_attempted_budget_exceeded": 0
+    }
+  },
+  "diagnosis": {
+    "classification": "E_SINGLE_CANDIDATE_IS_1_1_BUT_REAL_PIPELINE_ROWS_ARE_0_1_CHECK_BINDING_DEDUPE_OR_ROW_SELECTION",
+    "phase_a_cp4_verified_count": 1,
+    "phase_a_cp5_verified_count": 1,
+    "phase_a_final_verified_count": 1,
+    "phase_b_expected_row_verified_counts": [
+      0,
+      0,
+      0
+    ],
+    "phase_b_expected_row_count": 3
+  },
+  "finished_at": "2026-09-07T11:01:48.731246+00:00"
+}

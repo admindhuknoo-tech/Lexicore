@@ -813,7 +813,10 @@ def test_case_analysis_accepts_scanned_image_upload(client, monkeypatch):
     assert r.status_code == 200
     x = r.get_json()['data']
     assert x['document_ingestion']['mode'] == 'OCR_IMAGE'
-    assert x['domain_classification']['primary_domain'] in {'civil_procedure', 'land_property', 'civil_contract'}
+    assert x['domain_classification']['primary_domain'] == 'inheritance'
+    assert x['domain_classification']['posture'] == 'PERDATA_LITIGASI'
+    assert 'civil_procedure' in set(x['domain_classification']['domain_contract'])
+    assert 'land_property' in set(x['domain_classification']['domain_contract'])
 
 
 def test_ocr_status_endpoint_is_local_only(client):
@@ -903,7 +906,9 @@ def test_embedded_ocr_timeout_returns_control_and_allows_fallback(monkeypatch):
 
     assert text == 'TESSERACT FALLBACK'
     assert elapsed < 0.7
-    assert ocr._RAPID_CIRCUIT_OPEN is True
+    # RC18 OCR runtime recovery contract: one timeout must return control
+    # and allow fallback, but must NOT open the RapidOCR circuit yet.
+    assert ocr._RAPID_CIRCUIT_OPEN is False
     assert ocr._RAPID_TIMEOUT_COUNT == 1
     assert any('timeout' in str(w).lower() for w in d.warnings)
 
@@ -928,10 +933,19 @@ def test_pdf_scan_total_ocr_budget_stops_remaining_pages(monkeypatch, tmp_path):
     pdf = tmp_path / 'multi-scan.pdf'
     pages[0].save(pdf, 'PDF', save_all=True, append_images=pages[1:], resolution=120.0)
 
-    monkeypatch.setattr(ocr, '_ocr_total_timeout_seconds', lambda: 0.15)
+    monkeypatch.setattr(ocr, '_ocr_total_timeout_seconds', lambda scan_pages: 0.15)
 
-    def slow_page(_image, _diagnostics):
-        time.sleep(0.20)
+    call_count = 0
+
+    def slow_page(_image, _diagnostics, allow_tesseract=True):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            # First page completes before the global budget is exhausted.
+            time.sleep(0.05)
+        else:
+            # Second page starts within the remaining budget, then overruns it.
+            time.sleep(0.20)
         return 'OCR PAGE'
 
     monkeypatch.setattr(ocr, '_ocr_pil_image', slow_page)
@@ -939,11 +953,18 @@ def test_pdf_scan_total_ocr_budget_stops_remaining_pages(monkeypatch, tmp_path):
     text, diag = ocr.extract_pdf_text(str(pdf))
     elapsed = time.monotonic() - started
 
+    # Successful OCR completed before the deadline must be preserved.
     assert 'OCR PAGE' in text
     assert diag['total_timeout_exceeded'] is True
-    assert diag['pages_ocr'] == 1
-    assert diag['pages_failed'] >= 2
-    assert elapsed < 1.0
+    assert diag['pages_ocr'] >= 1
+
+    # The second page may already be in-flight when the soft deadline expires,
+    # but the third page must not be processed after exhaustion is known.
+    assert call_count == 2
+    assert diag['pages_failed'] >= 1
+    # Guard against a hung OCR loop without making the test flaky on slower
+    # Windows schedulers/filesystems. Behavioral invariants above remain strict.
+    assert elapsed < 0.50
     assert any('anggaran waktu total ocr' in str(w).lower() for w in diag['warnings'])
 
 
@@ -1092,7 +1113,7 @@ def test_version_metadata_runtime_contract():
     assert version.PRODUCT_NAME == "LexiCore"
     assert version.PRODUCT_LABEL == "LexiCore Assistant"
     assert version.INITIATIVE == "Evidence-to-Action Legal Intelligence"
-    assert version.FIRM_NAME == "ELF - Erfan's Law Firm"
+    assert version.FIRM_NAME == "USER_CONFIGURED_PROFILE"
     assert re.fullmatch(r"\d+\.\d+\.\d+-rc\d+", version.LEXICORE_VERSION)
     assert version.LEXICORE_VERSION.startswith(version.PUBLIC_VERSION + "-rc")
     assert version.release_metadata()["product_label"] == version.PRODUCT_LABEL
@@ -1356,7 +1377,7 @@ def test_client_update_professional_structure(client):
     assert "Status saat ini" in msg
     assert "Makna bagi posisi hukum Anda" in msg
     assert "Langkah berikutnya" in msg
-    assert "ELF - Erfan's Law Firm" in msg
+    assert "Pengguna LexiCore" in msg or "LexiCore" in msg
     assert data["professional_status"] == "DRAFT_FOR_LAWYER_REVIEW"
 
 

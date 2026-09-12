@@ -75,6 +75,11 @@ def _canonical_identity_matches_from_text(text: str | None) -> list[tuple[int,st
     """
     value=re.sub(r"\s+", " ", str(text or "")).strip()
     patterns=(
+        # PERPU/PERPPU must be recognized as its own instrument type.  The
+        # embedded words "Undang-Undang" inside the long-form PERPU label
+        # are not an outer UU identity; global source-position ordering below
+        # decides the primary identity fail-closed.
+        ('PERPU', r"(?:PERATURAN\s+PEMERINTAH\s+PENGGANTI\s+UNDANG[ -]?UNDANG|PERPPU|PERPU)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
         ('UU', r"(?:UNDANG[ -]?UNDANG|UU)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
         ('PP', r"(?:PERATURAN\s+PEMERINTAH|PP)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
         ('PERPRES', r"(?:PERATURAN\s+PRESIDEN|PERPRES)(?:\s+REPUBLIK\s+INDONESIA)?\s+(?:NOMOR|NO\.?)\s*([0-9]+[A-Za-z]?)\s+TAHUN\s+(19\d{2}|20\d{2})"),
@@ -105,6 +110,11 @@ def _canonical_identity_key_from_text(text: str | None) -> str | None:
 
 DEFAULT_TIMEOUT = 5
 MAX_BODY = 1_500_000
+# R36: official statute PDFs can be split into large body parts (for example
+# UU 7/2017 on BPK). Keep HTML/search responses at the original cap while
+# allowing a larger, still-bounded read for official PDFs. This changes no
+# verification timeout/budget and is used only by the existing official fetcher.
+MAX_PDF_BODY = 16_000_000
 
 # Primary sources are first-party JDIH or official institutional repositories.
 # JDIHN is retained only as a directory/discovery helper and is excluded from
@@ -235,8 +245,17 @@ def _request(url: str, timeout: int=DEFAULT_TIMEOUT):
     req=Request(url,headers={"User-Agent":UA,"Accept":"text/html,application/xhtml+xml,application/pdf;q=0.8,*/*;q=0.5"})
     ctx=ssl.create_default_context(cafile=certifi.where()) if certifi else ssl.create_default_context()
     with urlopen(req,timeout=timeout,context=ctx) as r:
-        body=r.read(MAX_BODY)
-        return r.status, r.geturl(), r.headers.get("Content-Type",""), body
+        content_type=r.headers.get("Content-Type","")
+        # R36 — do not truncate large official statute PDFs at the generic
+        # 1.5 MB HTML/search cap. A truncated PDF has no usable xref/%%EOF and
+        # therefore silently falls back to detail-page metadata, which can
+        # confirm identity while making early provisions such as Pasal 3
+        # impossible to locate. The network timeout is unchanged.
+        path=str(r.geturl() or url).lower().split("?",1)[0]
+        is_pdf=("pdf" in str(content_type).lower()) or path.endswith(".pdf")
+        read_cap=MAX_PDF_BODY if is_pdf else MAX_BODY
+        body=r.read(read_cap)
+        return r.status, r.geturl(), content_type, body
 
 
 def _official_url(url: str) -> bool:
@@ -583,12 +602,111 @@ def _extract_pdf_text(body: bytes, max_pages: int=400, max_chars: int=2_500_000)
 def _fulltext_link_score(url: str, label: str, requested_provisions=()) -> int:
     low=(str(url or "")+" "+str(label or "")).lower()
     score=0
-    if str(url or "").lower().split("?",1)[0].endswith(".pdf"): score += 40
+    url_low=str(url or "").lower()
+    path=url_low.split("?",1)[0]
+    if path.endswith(".pdf"): score += 40
     for marker,weight in (("download",24),("unduh",24),("lampiran",22),("attachment",22),("dokumen",18),("naskah",18),("fulltext",30),("full text",30),("lihat file",18),("file",10)):
         if marker in low: score += weight
     if any(str(x or "").lower() in low for x in requested_provisions or ()): score += 8
+
+    # R37: body-before-annex ordering for split official statutes.  BPK may expose
+    # multiple PDFs with identical generic labels (for example four Lampiran PDFs
+    # followed by Batang Tubuh parts).  With max_candidates intentionally kept
+    # small, annexes must not consume the candidate slots needed to verify an
+    # article in the statute body.  This is only attachment ordering: identity,
+    # fetch budget, max_candidates, status/tempus and provision verification gates
+    # remain unchanged.
+    if re.search(r"batang(?:_|%20|[ -])+tubuh", low, re.I) or "body" in low:
+        score += 100
+    if re.search(r"lampiran(?:_|%20|[ -]|$)", low, re.I) or "annex" in low:
+        score -= 10
+
+    # R26: prefer the statute's own official PDF over judicial-review / auxiliary
+    # attachments.  BPK detail pages may expose several DownloadUjiMateri PDFs
+    # whose article numbers overlap the requested provisions.  They are useful
+    # research material but must not consume the small fulltext candidate cap
+    # ahead of the instrument PDF itself.  This affects only attachment ordering;
+    # identity, scheduler, status semantics, tempus gates and budgets are untouched.
+    if "/downloadujimateri/" in path or "uji materi" in low or "putusan_mkri" in low:
+        score -= 200
+    if re.search(r"/download/\d+/.*(?:uu|undang)[%20 _-]*(?:nomor|no)[%20 _-]*\d+", path, re.I):
+        score += 160
     return score
 
+
+
+def _incorporated_instrument_keys_from_detail_text(detail_text: str | None, expected_identity_key: str | None) -> list[str]:
+    """Return instruments expressly enacted/incorporated by the expected parent law.
+
+    Fail-closed: the official detail text must first identify the expected parent
+    as its primary instrument.  Only the explicit Indonesian enactment formula
+    "Penetapan Peraturan Pemerintah Pengganti Undang-Undang ... Menjadi
+    Undang-Undang" creates an incorporation relationship here.  Generic mentions,
+    amendments, citations and related-instrument lists do not qualify.
+    """
+    text=re.sub(r"\s+", " ", str(detail_text or "")).strip()
+    if not text or not expected_identity_key:
+        return []
+    parent=_canonical_identity_key_from_text(text)
+    if parent != expected_identity_key:
+        return []
+    if not str(expected_identity_key).upper().startswith("UU:"):
+        return []
+    pattern=re.compile(
+        r"Penetapan\s+(?:Peraturan\s+Pemerintah\s+Pengganti\s+Undang[ -]?Undang|PERPPU|PERPU)"
+        r"(?:\s+Republik\s+Indonesia)?\s+(?:Nomor|No\.?)\s*([0-9]+[A-Za-z]?)\s+Tahun\s+((?:19|20)\d{2})"
+        r"(?:(?!Menjadi\s+Undang[ -]?Undang).){0,900}?Menjadi\s+Undang[ -]?Undang",
+        re.I,
+    )
+    out=[]
+    for m in pattern.finditer(text):
+        key=f"PERPU:{m.group(1)}:{m.group(2)}"
+        if key not in out:
+            out.append(key)
+    return out
+
+
+def _attachment_legal_role(url: str | None, label: str | None) -> str:
+    low=(str(url or "")+" "+str(label or "")).lower()
+    if re.search(r"batang(?:_|%20|[ -])+tubuh", low, re.I) or re.search(r"\bbody\b", low, re.I):
+        return "BODY"
+    if re.search(r"lampiran(?:_|%20|[ -]|$)", low, re.I) or re.search(r"\bannex\b", low, re.I):
+        return "ANNEX"
+    if "/downloadujimateri/" in low or "uji materi" in low or "putusan_mkri" in low:
+        return "JUDICIAL_REVIEW_AUXILIARY"
+    return "UNKNOWN"
+
+
+def _contextual_candidate_order(candidates, *, incorporated_keys=(), max_candidates: int = 3):
+    """Order attachment candidates by legal role without globally suppressing annexes.
+
+    For ordinary split statutes, BODY remains first (R37).  For an enactment law
+    that expressly incorporates a PERPU, reserve one bounded slot for an ANNEX so
+    the operative incorporated text can be checked.  This keeps max_candidates
+    unchanged and avoids turning file naming into a universal legal rule.
+    """
+    ranked=sorted(candidates, key=lambda x:x[0], reverse=True)
+    cap=max(0, int(max_candidates or 0))
+    if cap <= 0 or not ranked:
+        return []
+    if not incorporated_keys:
+        return ranked[:cap]
+    bodies=[x for x in ranked if _attachment_legal_role(x[1],x[2]) == "BODY"]
+    annexes=[x for x in ranked if _attachment_legal_role(x[1],x[2]) == "ANNEX"]
+    chosen=[]
+    # Parent body first when present: an article in the enactment law itself must
+    # not be displaced by the incorporated instrument.
+    if bodies:
+        chosen.append(bodies[0])
+    # The annex can be the operative incorporated instrument; keep one slot for it.
+    if annexes and len(chosen) < cap:
+        chosen.append(annexes[0])
+    for row in ranked:
+        if len(chosen) >= cap:
+            break
+        if row not in chosen:
+            chosen.append(row)
+    return chosen[:cap]
 
 def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_content_type: str,
                               requested_provisions=(), timeout: int=DEFAULT_TIMEOUT, max_candidates: int=3,
@@ -645,9 +763,12 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
         candidates.append((score,url,label))
     candidates.sort(key=lambda x:x[0], reverse=True)
     attempted=[detail_url]
-    best={"score":-1,"text":"","url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_ONLY","identity_key":None}
+    best={"score":-1,"text":"","url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_ONLY","identity_key":None,"text_identity_key":None,"legal_role":"DETAIL"}
     # Include detail-page text as fallback/provenance, but prefer attachments.
     detail_text=re.sub(r"\s+"," ",re.sub(r"<[^>]+>"," ",raw)).strip()
+    incorporated_keys=_incorporated_instrument_keys_from_detail_text(detail_text, expected_identity_key)
+    selected_candidates=_contextual_candidate_order(
+        candidates, incorporated_keys=incorporated_keys, max_candidates=max_candidates)
     if detail_text:
         prov_hits=sum(1 for ref in requested if re.search(r"\b"+re.escape(ref)+r"\b", detail_text, re.I))
         detail_identities=_canonical_identity_keys_from_text(detail_text)
@@ -656,8 +777,8 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
         # With an expected identity, mismatched detail text is diagnostics only;
         # it must never win merely because common Pasal numbers are present.
         if not expected_identity_key or identity_bonus:
-            best={"score":identity_bonus+prov_hits*50,"text":detail_text,"url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_TEXT","identity_key":detail_identity,"identity_candidates":detail_identities}
-    for _,url,_label in candidates[:max_candidates]:
+            best={"score":identity_bonus+prov_hits*50,"text":detail_text,"url":detail_url,"content_type":detail_content_type,"status":"DETAIL_HTML_TEXT","identity_key":detail_identity,"text_identity_key":detail_identity,"identity_candidates":detail_identities,"legal_role":"DETAIL"}
+    for _,url,_label in selected_candidates:
         attempted.append(url)
         fetched=fetch_official_document(url,timeout=timeout)
         if not (fetched.get("reachable") and fetched.get("official_host")): continue
@@ -680,14 +801,31 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
         # 3/Pasal 18 can exist in unrelated instruments.
         identity_candidates=_canonical_identity_keys_from_text(text)
         actual_identity=(identity_candidates[0] if identity_candidates else None)
-        identity_bonus=10000000 if expected_identity_key and actual_identity == expected_identity_key else 0
-        # If an expected identity exists, unrelated official instruments are not
-        # eligible fulltext resolutions even when they contain Pasal 3/18.
-        if expected_identity_key and not identity_bonus:
+        role=_attachment_legal_role(url,_label)
+        direct_match=bool(expected_identity_key and actual_identity == expected_identity_key)
+        incorporated_match=bool(
+            expected_identity_key and role == "ANNEX" and actual_identity in incorporated_keys)
+        # Only two legal paths are admissible: the attachment is the expected
+        # instrument itself, or it is an expressly incorporated instrument of a
+        # parent detail page whose identity was independently confirmed above.
+        if expected_identity_key and not (direct_match or incorporated_match):
             continue
-        score=identity_bonus + prov_hits*100000 + min(len(text),90000)
+        identity_bonus=10000000 if expected_identity_key and (direct_match or incorporated_match) else 0
+        # Prefer a direct parent-body hit when both direct and incorporated texts
+        # contain the same article number; otherwise a provision hit in the
+        # incorporated instrument can beat a direct body that lacks the provision.
+        direct_role_bonus=10000 if direct_match else 0
+        score=identity_bonus + prov_hits*100000 + direct_role_bonus + min(len(text),90000)
         if score > best["score"]:
-            best={"score":score,"text":text,"url":fetched.get("final_url") or url,"content_type":fetched.get("content_type") or "","status":status,"identity_key":actual_identity,"identity_candidates":identity_candidates}
+            best={
+                "score":score,"text":text,"url":fetched.get("final_url") or url,
+                "content_type":fetched.get("content_type") or "","status":status,
+                "identity_key": expected_identity_key if incorporated_match else actual_identity,
+                "text_identity_key":actual_identity,"identity_candidates":identity_candidates,
+                "legal_role":"INCORPORATED_INSTRUMENT" if incorporated_match else role,
+                "incorporated_identity_key":actual_identity if incorporated_match else None,
+                "relationship_verified":bool(incorporated_match),
+            }
     out={
         "resolved": bool(best.get("text")), "source_url": best.get("url") or detail_url,
         "content_type": best.get("content_type") or detail_content_type, "text": best.get("text") or "",
@@ -697,6 +835,12 @@ def resolve_official_fulltext(detail_url: str, detail_body: bytes, detail_conten
         "resolved_identity_key": best.get("identity_key"),
         "identity_candidates": list(best.get("identity_candidates") or []),
         "identity_aligned": bool(expected_identity_key and best.get("identity_key") == expected_identity_key),
+        "text_identity_key": best.get("text_identity_key"),
+        "legal_role": best.get("legal_role") or "UNKNOWN",
+        "incorporated_identity_key": best.get("incorporated_identity_key"),
+        "incorporation_parent_identity_key": expected_identity_key if best.get("relationship_verified") else None,
+        "relationship_verified": bool(best.get("relationship_verified")),
+        "incorporated_identity_candidates": incorporated_keys,
     }
     if expected_identity_key and not out["identity_aligned"]:
         out["resolved"]=False

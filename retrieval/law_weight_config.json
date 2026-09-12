@@ -1,0 +1,96 @@
+{
+  "config_version": "1.2.1_frozen",
+  "contract_version": "LAW-RETRIEVAL-WEIGHT-1.2.1",
+  "policy": "POSITIVE_ALLOW_SUBJECT_MATTER_WITH_INSTITUTIONAL_MISMATCH_PENALTY",
+  "target_domain": "criminal_corruption_banking_bumd",
+  "activation": {
+    "require_any_domains": ["corruption", "financial_services", "regional_government", "criminal"],
+    "prefer_combination": ["corruption", "financial_services"]
+  },
+  "thresholds": {
+    "candidate_min_score": 0.75,
+    "minimum_positive_anchors": 2,
+    "max_final_score": 1.0,
+    "generic_material_min_score": 0.38
+  },
+  "positive_allow_rules": {
+    "banking_governance": {
+      "domains": ["financial_services", "corruption", "regional_government"],
+      "keywords": ["perbankan", "bpr", "bank perkreditan rakyat", "bank perekonomian rakyat", "ojk", "pojk", "seojk", "kredit", "perkreditan", "kehati-hatian", "prinsip kehati-hatian"],
+      "weight": 0.25
+    },
+    "corruption_substantive": {
+      "domains": ["corruption", "criminal"],
+      "keywords": ["pemberantasan tindak pidana korupsi", "tindak pidana korupsi", "kerugian keuangan negara", "kerugian negara", "penyalahgunaan kewenangan", "melawan hukum", "menguntungkan diri sendiri", "gratifikasi", "suap"],
+      "weight": 0.30
+    },
+    "bumd_public_finance": {
+      "domains": ["regional_government", "corruption", "financial_services"],
+      "keywords": ["bumd", "badan usaha milik daerah", "perusahaan umum daerah", "perumda", "keuangan daerah", "kekayaan daerah", "modal daerah"],
+      "weight": 0.20
+    },
+    "underlying_private_relationship": {
+      "domains": ["financial_services", "civil_contract", "corruption"],
+      "keywords": ["perjanjian kredit", "jaminan", "fidusia", "agunan", "perikatan", "kredit macet"],
+      "weight": 0.15,
+      "candidate_role": "CONTEXTUAL_LAW"
+    }
+  },
+  "institutional_mismatch_rules": {
+    "kpk_internal_personnel_governance": {
+      "issuer_keywords": ["komisi pemberantasan korupsi", "peraturan kpk", "kpk"],
+      "subject_keywords": ["kinerja pegawai", "penasihat dan pegawai", "kode etik pegawai", "kepegawaian", "penilaian kinerja individu", "tunjangan kinerja", "organisasi dan tata kerja"],
+      "action": "HARD_DROP",
+      "reason": "INTERNAL_INSTITUTIONAL_GOVERNANCE_NO_CASE_NEXUS"
+    },
+    "cross_domain_mismatch": {
+      "keywords": ["pertambangan", "izin usaha pertambangan", "iup", "energi", "amdal", "ketenagakerjaan", "pemutusan hubungan kerja", "alih daya"],
+      "penalty": 0.65,
+      "action": "DEGRADE",
+      "reason": "CROSS_DOMAIN_SUBJECT_MATTER_MISMATCH"
+    }
+  },
+  "protected_candidate_laws": [
+    {"pattern": "uu no. 31 tahun 1999", "aliases": ["undang-undang nomor 31 tahun 1999"], "role": "SUBSTANTIVE_CANDIDATE", "effect": "BYPASS_RETRIEVAL_DROP_ONLY"},
+    {"pattern": "uu no. 20 tahun 2001", "aliases": ["undang-undang nomor 20 tahun 2001"], "role": "SUBSTANTIVE_CANDIDATE", "effect": "BYPASS_RETRIEVAL_DROP_ONLY"},
+    {"pattern": "uu no. 1 tahun 2023", "aliases": ["undang-undang nomor 1 tahun 2023"], "role": "TEMPUS_SENSITIVE_CANDIDATE", "effect": "BYPASS_RETRIEVAL_DROP_ONLY"}
+  ],
+  "generic_domain_profiles": {
+    "corruption": {
+      "positive_terms": ["pemberantasan tindak pidana korupsi", "tindak pidana korupsi", "kerugian keuangan negara", "penyalahgunaan kewenangan", "suap", "gratifikasi"],
+      "strong_positive_terms": ["undang-undang nomor 31 tahun 1999", "undang-undang nomor 20 tahun 2001"]
+    },
+    "financial_services": {
+      "positive_terms": ["perbankan", "bank perkreditan rakyat", "bank perekonomian rakyat", "bpr", "otoritas jasa keuangan", "perkreditan", "kredit"],
+      "strong_positive_terms": ["undang-undang nomor 7 tahun 1992", "undang-undang nomor 10 tahun 1998", "undang-undang nomor 4 tahun 2023"]
+    },
+    "criminal": {
+      "positive_terms": ["kitab undang-undang hukum pidana", "kitab undang-undang hukum acara pidana", "hukum acara pidana", "penyesuaian pidana", "pidana"],
+      "strong_positive_terms": ["undang-undang nomor 1 tahun 2023", "undang-undang nomor 20 tahun 2025", "undang-undang nomor 1 tahun 2026"]
+    },
+    "civil_contract": {
+      "positive_terms": ["perjanjian", "perikatan", "wanprestasi", "cidera janji", "ganti rugi", "kitab undang-undang hukum perdata", "kuhperdata", "fidusia", "agunan"],
+      "strong_positive_terms": ["pasal 1238", "pasal 1243", "burgerlijk wetboek"]
+    },
+    "land_property": {
+      "positive_terms": ["agraria", "pendaftaran tanah", "hak atas tanah", "sertipikat", "sertifikat"],
+      "strong_positive_terms": ["undang-undang nomor 5 tahun 1960", "peraturan pemerintah nomor 24 tahun 1997"]
+    },
+    "employment": {
+      "positive_terms": ["ketenagakerjaan", "hubungan industrial", "pemutusan hubungan kerja", "pekerja", "buruh", "upah", "phk", "pkwt"],
+      "strong_positive_terms": ["undang-undang nomor 13 tahun 2003", "undang-undang nomor 2 tahun 2004", "peraturan pemerintah nomor 35 tahun 2021"]
+    },
+    "regional_government": {
+      "positive_terms": ["pemerintahan daerah", "badan usaha milik daerah", "bumd", "perumda", "keuangan daerah", "kekayaan daerah"],
+      "strong_positive_terms": ["undang-undang nomor 23 tahun 2014"]
+    }
+  },
+  "invariants": {
+    "retriever_may_mark_applicable_law": false,
+    "retriever_may_override_tempus": false,
+    "retriever_may_override_positive_law_verifier": false,
+    "contextual_law_may_become_governing_without_verification": false,
+    "protected_candidate_law_effect_is_retrieval_only": true
+  },
+  "comment": "Frozen retrieval-only relevance policy. Candidate admission is not legal applicability. All governing-law, tempus, provision and case-applicability decisions remain downstream fail-closed."
+}

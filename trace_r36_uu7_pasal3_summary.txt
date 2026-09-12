@@ -1,0 +1,99 @@
+========================================================================================
+R36 DIAGNOSTIC TRACE — UU 7/2017 PASAL 3 (NO PATCH / NO STATE MUTATION)
+========================================================================================
+Expected identity : UU:7:2017
+Provision         : Pasal 3
+Detail URL        : https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017
+Candidate links   : 7
+
+PRODUCTION RESOLVER (max_candidates=2)
+  status          : DETAIL_HTML_TEXT
+  resolved        : True
+  source_url      : https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017
+  identity        : UU:7:2017
+  aligned         : True
+  text_length     : 22460
+  contains Pasal3 : False
+  attempted_urls  : 3
+
+ATTACHMENTS
+  #0 [TOP2] score=246
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26741/UU_Nomor_7_Tahun_2017_-_Lampiran_I.pdf
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 3154237
+    pdf_eof       : True
+    text_length   : 12318
+    primary_id    : None
+    identities    : []
+    contains P3   : False pos=None
+  #1 [TOP2] score=246
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26742/UU_Nomor_7_Tahun_2017_-_Lampiran_II.pdf
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 3206528
+    pdf_eof       : True
+    text_length   : 12285
+    primary_id    : None
+    identities    : []
+    contains P3   : False pos=None
+  #2 [later] score=246
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26743/UU_Nomor_7_Tahun_2017_-_Lampiran_III.pdf
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 2398057
+    pdf_eof       : True
+    text_length   : 11920
+    primary_id    : None
+    identities    : []
+    contains P3   : False pos=None
+  #3 [later] score=246
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26744/UU_Nomor_7_Tahun_2017_-_Lampiran_IV.pdf
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 5067954
+    pdf_eof       : True
+    text_length   : 20910
+    primary_id    : None
+    identities    : []
+    contains P3   : False pos=None
+  #4 [later] score=224
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26738/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._1-150.pdf
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 12857468
+    pdf_eof       : True
+    text_length   : 206211
+    primary_id    : UU:7:2017
+    identities    : ['UU:7:2017']
+    contains P3   : True pos=9663
+  #5 [later] score=224
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26739/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._151-317.pdf
+    reachable     : True status=200
+    content_type  : application/octet-stream
+    bytes         : 14847090
+    pdf_eof       : True
+    text_length   : 241533
+    primary_id    : UU:8:1981
+    identities    : ['UU:8:1981', 'UU:15:2011', 'UU:42:2008', 'UU:11:2006']
+    contains P3   : False pos=None
+  #6 [later] score=224
+    label         : Download
+    url           : https://peraturan.bpk.go.id/Download/26740/UU_Nomor_7_Tahun_2017_-_Penjelasan.pdf
+    reachable     : False status=None
+    content_type  : 
+    bytes         : 0
+    pdf_eof       : False
+    text_length   : 0
+    primary_id    : None
+    identities    : []
+    contains P3   : False pos=None
+
+CLASSIFICATION: B_CORRECT_ATTACHMENT_OUTSIDE_TOP2
+========================================================================================

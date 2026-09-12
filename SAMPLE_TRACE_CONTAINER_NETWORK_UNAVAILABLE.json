@@ -1,0 +1,265 @@
+[
+  {
+    "timestamp": "2026-09-06T23:22:34.961923+00:00",
+    "step": "5_recovery_start",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "requested_provisions": [
+        "Pasal 9",
+        "Pasal 2 ayat (1)",
+        "Pasal 3",
+        "Pasal 18"
+      ],
+      "preferred_source_id": "bpk",
+      "query_variants": [
+        "Undang-Undang Nomor 31 Tahun 1999",
+        "UU 31/1999",
+        "UU:31:1999"
+      ],
+      "time_budget_seconds": 8.0
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:34.968817+00:00",
+    "step": "1_canonical_seed_candidates",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "count": 1,
+      "rows": [
+        {
+          "source_id": "local_corpus",
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+          "query": "Undang-Undang Nomor 31 Tahun 1999"
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:34.969056+00:00",
+    "step": "1_search_raw",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "queries": [
+        "Undang-Undang Nomor 31 Tahun 1999",
+        "UU 31/1999",
+        "UU:31:1999"
+      ],
+      "source_ids": [
+        "bpk",
+        "kemenkum",
+        "dpr",
+        "setneg"
+      ],
+      "search_budget_seconds": 2.5
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:37.470924+00:00",
+    "step": "1_search_results",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "queries": {
+        "Undang-Undang Nomor 31 Tahun 1999": [
+          {
+            "source_id": "bpk",
+            "source_name": "Database Peraturan / JDIH BPK",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "setneg",
+            "source_name": "JDIH Kementerian Sekretariat Negara",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "dpr",
+            "source_name": "JDIH DPR RI",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "kemenkum",
+            "source_name": "JDIH Kementerian Hukum",
+            "result_count": 0,
+            "samples": []
+          }
+        ],
+        "UU 31/1999": [
+          {
+            "source_id": "bpk",
+            "source_name": "Database Peraturan / JDIH BPK",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "setneg",
+            "source_name": "JDIH Kementerian Sekretariat Negara",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "dpr",
+            "source_name": "JDIH DPR RI",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "kemenkum",
+            "source_name": "JDIH Kementerian Hukum",
+            "result_count": 0,
+            "samples": []
+          }
+        ],
+        "UU:31:1999": [
+          {
+            "source_id": "bpk",
+            "source_name": "Database Peraturan / JDIH BPK",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "setneg",
+            "source_name": "JDIH Kementerian Sekretariat Negara",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "dpr",
+            "source_name": "JDIH DPR RI",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "kemenkum",
+            "source_name": "JDIH Kementerian Hukum",
+            "result_count": 0,
+            "samples": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:37.471335+00:00",
+    "step": "2_candidates_extracted",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "total": 1,
+      "candidates": [
+        {
+          "source_id": "local_corpus",
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+          "query": "Undang-Undang Nomor 31 Tahun 1999",
+          "relevance_score": 99.0
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:37.472335+00:00",
+    "step": "3_candidates_ranked",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "ranked_count": 1,
+      "ranked": [
+        {
+          "rank": 0,
+          "source_id": "local_corpus",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "title_identity": "UU:31:1999",
+          "score": 999,
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:37.472601+00:00",
+    "step": "4_pre_recovery",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "exact_lock": true,
+      "exact_count": 1,
+      "recovery_pool_count": 1,
+      "exact_candidates": [
+        {
+          "source_id": "local_corpus",
+          "title_identity": "UU:31:1999",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "score": 999,
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+        }
+      ],
+      "top_recovery_pool": [
+        {
+          "source_id": "local_corpus",
+          "title_identity": "UU:31:1999",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "score": 999,
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:37.472881+00:00",
+    "step": "5_fetch_attempt",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 0,
+      "source_id": "local_corpus",
+      "reason": "EXACT_TITLE_IDENTITY",
+      "title_identity": "UU:31:1999",
+      "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+      "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "timeout": 4,
+      "remaining_before_fetch": 5.489276066999992
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:42.484789+00:00",
+    "step": "5_fetch_result",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 0,
+      "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "reachable": false,
+      "official_host": true,
+      "final_url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "content_type": "",
+      "body_bytes": 0,
+      "status_code": null,
+      "error": "<urlopen error [Errno -3] Temporary failure in name resolution>"
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:22:42.485288+00:00",
+    "step": "5_recovery_failed",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "exact_lock": true,
+      "exact_candidate_count": 1,
+      "attempted_urls": [
+        "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+      ],
+      "budget_exhausted": false,
+      "status": "EXPECTED_IDENTITY_EXACT_CANDIDATE_FAILED"
+    }
+  }
+]

@@ -13,7 +13,7 @@ load_project_env()
 from contract_review import ContractReviewEngine
 from database import (init_database, DraftManager, AnalysisManager, ResearchManager,
                       RiskAssessmentManager, CommunicationManager, AuditLogger, RegulatoryCorpusManager,
-                      get_db_connection, SCHEMA_VERSION)
+                      get_db_connection, SCHEMA_VERSION, AppProfileManager)
 from legal_sources import source_health, federated_search, public_source_registry, public_secondary_source_registry, supplementary_search_many
 from ai_engine import status as ai_status
 from regulatory_db import get_all_regulations, search_regulations, retrieve_for_case
@@ -29,6 +29,8 @@ from services.case_law_summary import summarize_case_source, summarize_doctrine_
 from services.compliance_risk import build_risk_matrix, question_set, normalize_category
 from services.case_consistency_guard import executive_fact_candidates, classify_source_item
 from client_communication import build_client_communication
+from identity_profile import get_identity_profile, identity_brand_line
+from licensing import get_license_manager, licensing_required
 
 BASE_DIR=os.path.dirname(os.path.abspath(__file__))
 app=Flask(__name__, static_folder='static')
@@ -51,14 +53,80 @@ _cors_origins = [o.strip() for o in os.environ.get('LEXICORE_CORS_ORIGINS', '').
 if _cors_origins:
     CORS(app, origins=_cors_origins)
     print(f'LexiCore: CORS diaktifkan untuk origin: {_cors_origins}')
-app.config.update(MAX_CONTENT_LENGTH=50*1024*1024, UPLOAD_FOLDER=os.path.join(BASE_DIR,'uploads'), ALLOWED_EXTENSIONS={'pdf','docx','png','jpg','jpeg','webp','tif','tiff'})
+_configured_upload_dir = os.environ.get('LEXICORE_UPLOAD_DIR', '').strip()
+if _configured_upload_dir:
+    _upload_folder = os.path.abspath(os.path.expanduser(_configured_upload_dir))
+elif os.environ.get('LEXICORE_DATA_DIR', '').strip():
+    _upload_folder = os.path.join(os.path.abspath(os.path.expanduser(os.environ['LEXICORE_DATA_DIR'])), 'uploads')
+else:
+    _upload_folder = os.path.join(BASE_DIR, 'uploads')
+app.config.update(MAX_CONTENT_LENGTH=50*1024*1024, UPLOAD_FOLDER=_upload_folder, ALLOWED_EXTENSIONS={'pdf','docx','png','jpg','jpeg','webp','tif','tiff'})
 os.makedirs(app.config['UPLOAD_FOLDER'],exist_ok=True)
 init_database()
+
+
+@app.before_request
+def commercial_license_gate():
+    """Fail closed for commercial desktop API calls while keeping activation UI reachable."""
+    if not licensing_required():
+        return None
+    path = request.path or ''
+    if not path.startswith('/api/'):
+        return None
+    if path == '/api/health' or path.startswith('/api/license/'):
+        return None
+    state = get_license_manager().status()
+    if state.allowed:
+        return None
+    return jsonify(success=False, error='LICENSE_REQUIRED', license=state.as_dict()), 403
+
+
+@app.route('/api/license/status', methods=['GET'])
+def license_status_endpoint():
+    if not licensing_required():
+        return jsonify(success=True, data={'status':'DEVELOPMENT_MODE','allowed':True,'message':'LICENSE_GATE_DISABLED','needs_activation':False})
+    return jsonify(success=True, data=get_license_manager().status().as_dict())
+
+
+@app.route('/api/license/install', methods=['POST'])
+def license_install_endpoint():
+    if not licensing_required():
+        return jsonify(success=True, data={'status':'DEVELOPMENT_MODE','allowed':True,'message':'LICENSE_GATE_DISABLED','needs_activation':False})
+    data=request.get_json(silent=True) or {}
+    envelope=data.get('license') if isinstance(data.get('license'),dict) else data
+    try:
+        state=get_license_manager().install_license(envelope)
+        return jsonify(success=state.allowed,data=state.as_dict()), (200 if state.allowed else 403)
+    except Exception as exc:
+        return jsonify(success=False,error=str(exc),data=get_license_manager().local_status().as_dict()), 403
+
+
+@app.route('/api/license/remove', methods=['POST'])
+def license_remove_endpoint():
+    if not licensing_required():
+        return jsonify(success=False,error='LICENSE_GATE_DISABLED'), 409
+    try:
+        state=get_license_manager().remove_local_license()
+        return jsonify(success=True,data=state.as_dict())
+    except Exception as exc:
+        return jsonify(success=False,error=str(exc)), 409
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+
+
+@app.route('/api/profile', methods=['GET','PUT','POST'])
+def app_profile_endpoint():
+    if request.method == 'POST':
+        AppProfileManager.mark_onboarding_seen()
+        return jsonify(success=True,data=get_identity_profile(),message='Onboarding profil ditandai sudah ditampilkan')
+    if request.method == 'PUT':
+        data=request.get_json(silent=True) or {}
+        saved=AppProfileManager.save(data)
+        return jsonify(success=True,data=get_identity_profile(),message='Profil pengguna/firma tersimpan')
+    return jsonify(success=True,data=get_identity_profile())
 
 @app.route('/api/ocr/status', methods=['GET'])
 def ocr_status_endpoint():
@@ -110,10 +178,10 @@ def _history_row(kind, item_id):
         'contract_reviews': ('parties','risks'),
         'research_notes': ('keywords',),
         'risk_assessments': ('answers','findings','recommendations'),
-        'case_analyses': ('facts','legal_issues','applicable_law','arguments_for','arguments_against','evidence_needed','risks','recommendations','domain_classification','analysis_provenance','case_readiness'),
+        'case_analyses': ('facts','legal_issues','applicable_law','arguments_for','arguments_against','evidence_needed','risks','recommendations','domain_classification','analysis_provenance','case_readiness','case_working_paper'),
     }.get(kind,())
     import json as _json
-    dict_json_fields={'answers','domain_classification','analysis_provenance','case_readiness'}
+    dict_json_fields={'answers','domain_classification','analysis_provenance','case_readiness','case_working_paper'}
     for key in json_fields:
         try: d[key]=_json.loads(d.get(key) or ('{}' if key in dict_json_fields else '[]'))
         except Exception: d[key] = {} if key in dict_json_fields else []
@@ -240,9 +308,15 @@ def generate_draft():
 def export_docx(draft_id):
     d=DraftManager.get_draft(draft_id)
     if not d: return jsonify(success=False,error='Draft tidak ditemukan'),404
+    profile=get_identity_profile()
     doc=Document(); doc.add_heading(d['title'],0)
     for block in d['content'].split('\n\n'):
         if block.strip(): doc.add_paragraph(block.strip())
+    doc.add_paragraph('')
+    fp=doc.add_paragraph(f"LexiCore | {profile['display_name']} | Dokumen kerja — verifikasi profesional diperlukan sebelum penggunaan hukum.")
+    try: fp.style='Caption'
+    except Exception: pass
+    doc.core_properties.author=profile['signatory_name']
     bio=BytesIO(); doc.save(bio); bio.seek(0); safe=secure_filename(d['title']) or 'lexicore-draft'
     return send_file(bio,as_attachment=True,download_name=f'{safe}.docx',mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
@@ -302,7 +376,9 @@ def export_workspace_docx():
             if text: doc.add_paragraph(text)
 
     doc.add_paragraph('')
-    footer=doc.add_paragraph('LexiCore Assistant by ELF — Erfan’s Law Firm | Working document — professional verification required before legal use.')
+    profile=get_identity_profile()
+    footer=doc.add_paragraph(f"LexiCore | {profile['display_name']} | Working document — professional verification required before legal use.")
+    doc.core_properties.author=profile['signatory_name']
     try: footer.style='Caption'
     except Exception: pass
     bio=BytesIO(); doc.save(bio); bio.seek(0)
@@ -470,6 +546,7 @@ CASE_LAW_REGISTRY = [
     {'domain':'Keluarga & Peradilan Agama','keywords':['perkawinan','cerai','talak','nafkah','hak asuh','waris islam','wakaf','pengadilan agama','peradilan agama','pasal 49 undang-undang nomor 3 tahun 2006','pasal 49 uu'],'sources':['UU Peradilan Agama beserta perubahan yang relevan','Peraturan perkawinan/keluarga jika materi sengketa memerlukannya','PERMA/SEMA dan putusan peradilan agama yang relevan']},
     {'domain':'Konsumen','keywords':['konsumen','pelaku usaha','garansi','produk','jasa','kerugian konsumen'],'sources':['Undang-undang perlindungan konsumen dan peraturan pelaksananya']},
     {'domain':'Teknologi, ITE & Data','keywords':['data pribadi','privasi','elektronik','internet','digital','sistem elektronik','informasi elektronik'],'sources':['Peraturan perlindungan data pribadi yang berlaku','Peraturan informasi dan transaksi elektronik yang berlaku beserta perubahannya','Peraturan pelaksana sektor digital yang relevan']},
+    {'domain':'Pemilu, Pilkada & Etik Penyelenggara','keywords':['dkpp','dewan kehormatan penyelenggara pemilu','kode etik penyelenggara pemilu','pelanggaran kode etik','kpu','bawaslu','pemilihan umum','pemilu','pilkada','pengadu','teradu'],'sources':['UU No. 7 Tahun 2017 tentang Pemilihan Umum beserta perubahan yang berlaku','UU No. 1 Tahun 2015 tentang Pemilihan Gubernur, Bupati, dan Walikota beserta perubahan yang berlaku','Peraturan DKPP/KPU/Bawaslu yang disebut dan relevan dengan perkara']},
     {'domain':'Administrasi Pemerintahan','keywords':['keputusan tata usaha','pejabat','izin','perizinan','administrasi pemerintahan','ptun'],'sources':['Peraturan administrasi pemerintahan dan peradilan tata usaha negara yang berlaku','Peraturan sektoral pemberi kewenangan']},
 ]
 
@@ -544,6 +621,7 @@ def _deep_case_profile(text):
     is_civil_procedure='civil_procedure' in active
     is_religious='religious_court' in active
     is_employment='employment' in active
+    is_electoral='electoral_ethics' in active
 
     incr_markers=['mengakui','benar','saya setujui','saya menyetujui','pemutus kredit','menyimpang','menyimpangi','tidak membuat justifikasi','tanpa survey','tanpa survei','tidak memeriksa','tidak sesuai ketentuan','bertentangan dengan ketentuan','memiliki kewenangan untuk menolak','saya acc','saya memutuskan']
     mitig_markers=['tidak pernah memerintah','tidak pernah melarang','percaya kepada','berdasarkan pertimbangan','komite kredit','kredit sebelumnya','riwayat pembayaran lancar','bpkb','agunan','fidusia','dokumen fiat','dokumen analisa','tidak menerima','tidak mengetahui','tidak ikut langsung','bagian marketing','kewenangan bagian kredit']
@@ -553,7 +631,7 @@ def _deep_case_profile(text):
     facts=[]
     for s in ss:
         l=s.lower()
-        if any(k in l for k in ['rp.','rp ','tanggal','tahun 20','direktur','debitur','perjanjian kredit','pemutus kredit','agunan','survei','survey']): facts.append(s[:700])
+        if any(k in l for k in ['rp.','rp ','tanggal','tahun 20','direktur','debitur','perjanjian kredit','pemutus kredit','agunan','survei','survey','dkpp','kpu','bawaslu','pengadu','teradu','kode etik','pemilu','pilkada']): facts.append(s[:700])
     facts=_unique(facts,12) or ss[:8]
 
     issues=[]
@@ -581,6 +659,12 @@ def _deep_case_profile(text):
         issues += ['Apakah materi sengketa termasuk kompetensi absolut Peradilan Agama berdasarkan status para pihak dan objek sengketa yang sebenarnya?']
     if is_employment:
         issues += ['Apakah hubungan kerja, jenis perjanjian, alasan tindakan perusahaan, prosedur bipartit/PHI, dan hak normatif pekerja telah dipetakan berdasarkan ketentuan yang berlaku?']
+    if is_electoral:
+        issues += [
+          'Apakah pokok aduan benar-benar menyangkut pelanggaran kode etik penyelenggara Pemilu/Pemilihan dan norma etik apa yang secara spesifik dirujuk?',
+          'Apakah status, jabatan, tindakan, serta tanggal pengunduran diri/penetapan organisasi yang dipersoalkan dapat dibuktikan dengan dokumen primer?',
+          'Apakah kewenangan dan prosedur DKPP/KPU/Bawaslu yang digunakan sesuai dengan jenis perkara dan tempus peristiwa yang diperiksa?'
+        ]
 
     years=sorted(set(int(x) for x in re.findall(r'\b(20\d{2})\b',text)))
     temporal=False
@@ -613,6 +697,8 @@ def _deep_case_profile(text):
         gaps += ['Dokumen status para pihak dan objek hubungan hukum yang menentukan kewenangan Peradilan Agama']
     if is_employment:
         gaps += ['Perjanjian kerja, peraturan perusahaan/PKB, slip upah, surat peringatan/pemberitahuan, risalah bipartit, dan dokumen dasar PHK/tindakan perusahaan']
+    if is_electoral:
+        gaps += ['Salinan lengkap pengaduan dan jawaban DKPP, bukti T/P yang dirujuk, SK pengangkatan/pengunduran diri, serta regulasi DKPP/KPU/Bawaslu yang berlaku pada tempus perkara']
 
     strategy=[]
     if is_corruption:
@@ -635,6 +721,8 @@ def _deep_case_profile(text):
         strategy += ['Uji kompetensi absolut berdasarkan substansi hubungan hukum, bukan sekadar label gugatan, dan verifikasi Pasal 49 UU Peradilan Agama beserta perkembangan putusan yang relevan.']
     if is_employment:
         strategy += ['Petakan hubungan kerja, proses bipartit dan hak normatif; jangan mengandalkan klausul kontrak untuk meniadakan hak yang bersifat wajib.']
+    if is_electoral:
+        strategy += ['Susun matriks aduan → fakta → bukti → norma etik/kelembagaan → kewenangan → tempus. Jangan mengubah sengketa etik penyelenggara menjadi perkara pidana tanpa anchor proses pidana yang eksplisit.']
 
     # Fail-closed base synthesis.  Domain-specific narrative is applied later by
     # services.case_reasoning_guard only when the source itself supports the
@@ -668,6 +756,7 @@ def _case_domain_allowed_registry_labels(domain_contract):
       'data_privacy':{'Teknologi, ITE & Data'},
       'bankruptcy':{'Perdata & Perikatan'},
       'arbitration':{'Perdata & Perikatan'},
+      'electoral_ethics':{'Pemilu, Pilkada & Etik Penyelenggara'},
     }
     out=set()
     for did in active: out |= mapping.get(did,set())
@@ -928,6 +1017,7 @@ def _clean_applicable_law(result):
         'administrative': {'Administrasi Pemerintahan','Hukum Acara TUN'},
         'public_information': {'Keterbukaan Informasi Publik','Administrasi Pemerintahan'},
         'investment': {'Penanaman Modal','Perusahaan & Komersial'},
+        'electoral_ethics': {'Pemilu, Pilkada & Etik Penyelenggara'},
     }
     allowed_labels={'Norma disebut dalam dokumen'}
     for did in domain_ids:
@@ -935,11 +1025,18 @@ def _clean_applicable_law(result):
     out=[]; seen=set()
     orphan=re.compile(r'^Pasal\s+\d+[A-Za-z]?(?:\s+ayat\s*\([^)]*\))?(?:\s+huruf\s+[a-z])?$',re.I)
     noisy=re.compile(r'^Pasal\s+\d+[A-Za-z]$',re.I)
+    from services.semantic_admission import law_subject_matter_admissible
+    case_domains=[str(d.get('id')) for d in (snapshot.get('domains') or []) if isinstance(d,dict)]
+    case_context=' '.join([str(x) for x in (result.get('legal_issues') or [])])+' '+str(result.get('source_text') or '')[:12000]
     for item in raw:
         if not isinstance(item,dict): continue
         domain=str(item.get('domain') or '')
         source=str(item.get('source') or '').strip()
         if allowed_labels and domain not in allowed_labels: continue
+        sal_ok,sal_reason=law_subject_matter_admissible(source, case_domains=case_domains, case_text=case_context)
+        if not sal_ok:
+            item=dict(item); item['sal_admission']='REJECTED'; item['sal_rejection_reason']=sal_reason
+            continue
         if not source or orphan.fullmatch(source) or noisy.fullmatch(source): continue
         key=(domain.lower(),source.lower())
         if key in seen: continue
@@ -986,6 +1083,55 @@ def _ensure_evidence_to_action(result):
                 ledger.append({'label':'SOURCE FACT','statement':statement,'evidence':statement,'segment':None,'source':'DETERMINISTIC_FACT'})
                 existing.add(key)
     result['source_ledger']=ledger[:160]
+    # SAL v1.0 upstream contract migration: every ledger statement receives a
+    # semantic envelope and restricted routing before any evidence/readiness or
+    # element projection consumes it. The original statement text remains
+    # untouched for auditability.
+    from services.semantic_admission import enrich_source_ledger_with_sal
+    _posture=(result.get('document_posture_profile') or {}).get('posture') or result.get('case_posture') or ''
+    result['source_ledger']=enrich_source_ledger_with_sal(
+        result['source_ledger'],
+        domain_contract=result.get('domain_contract') or result.get('domain_classification') or {},
+        posture=_posture,
+        raw_document_header=((result.get('document_type') or '') + "\n" + (result.get('source_text') or '')[:3500]),
+        raw_extracted_text=(result.get('source_text') or ''),
+    )
+    # Adversarial identity is resolved once from the full available extracted
+    # corpus and exposed as a provenance/presentation contract. It does not
+    # alter evidence, law, or merits reasoning.
+    from services.contract_enforcer import LexiCoreContractEnforcer
+    _adv_identity=LexiCoreContractEnforcer.resolve_document_adversarial_identity(result.get('source_text') or '')
+    result['adversarial_document_identity']=_adv_identity
+    if _adv_identity.get('speaker_role') != 'UNKNOWN':
+        _profile=dict(result.get('document_posture_profile') or {})
+        _profile['document_type']=_adv_identity.get('document_posture')
+        _profile['adversarial_speaker_role']=_adv_identity.get('speaker_role')
+        _profile['adversarial_position']=_adv_identity.get('position')
+        _profile['adversarial_identity_status']=_adv_identity.get('identity_status')
+        result['document_posture_profile']=_profile
+
+    _sal_counts={}
+    _sal_state_counts={}
+    for _row in result['source_ledger']:
+        _stype=_row.get('sal_semantic_type') or 'UNCLASSIFIED'
+        _state=_row.get('sal_admissibility_state') or 'UNCLASSIFIED'
+        _sal_counts[_stype]=_sal_counts.get(_stype,0)+1
+        _sal_state_counts[_state]=_sal_state_counts.get(_state,0)+1
+    result['semantic_admission_ledger']={
+        'contract_version':'SAL-1.0',
+        'contract_status':'PASS',
+        'semantic_type_counts':_sal_counts,
+        'admissibility_counts':_sal_state_counts,
+        'air_gap_policy':'FAIL_CLOSED_DOCUMENT_AUDIT_ONLY',
+        'statements_processed':len(result['source_ledger']),
+    }
+    # SAL v1.0 Single Source of Truth: material reasoning consumers receive
+    # closed governed pools only. Raw source_ledger remains audit-only.
+    from services.sal_source_of_truth import build_governed_pools, pool_for_consumer, enforce_governed_consumers
+    build_governed_pools(result)
+    enforce_governed_consumers(result)
+    from services.adversarial_view import build_adversarial_viewpoint_splitter
+    build_adversarial_viewpoint_splitter(result)
     # Keep the raw ledger for internal traceability, but create a separate
     # user-facing projection that contains only case-material source items.
     # Identity/contact/procedural metadata must never masquerade as evidence.
@@ -1012,6 +1158,41 @@ def _ensure_evidence_to_action(result):
     from services.legal_ocr_postprocess import group_source_ledger
     result['evidence_groups']=group_source_ledger(result['source_ledger'])
 
+    # R34 — element-by-element / evidence-to-element reasoning is a post-ledger
+    # projection only. It does not alter domain routing, identity verification,
+    # status semantics, tempus gates, scheduler, or official-source budgets.
+    from services.element_reasoning import build_element_reasoning
+    # No raw-ledger fallback: element/evidence mapping consumes only rows that
+    # possess a valid route token for Alleged Act or Evidence Map.
+    _governed_reasoning_rows=[]
+    _seen_sids=set()
+    for _consumer in ('Alleged Act','Evidence Map'):
+        for _row in pool_for_consumer(result, _consumer):
+            _sid=_row.get('statement_id') or (_row.get('sal_contract') or {}).get('statement_id')
+            if _sid and _sid not in _seen_sids:
+                _seen_sids.add(_sid); _governed_reasoning_rows.append(_row)
+    _element_reasoning=build_element_reasoning(
+        domain_contract=result.get('domain_contract') or result.get('domain_classification') or {},
+        ledger=_governed_reasoning_rows,
+        existing_matrix=result.get('element_matrix') or [],
+    )
+    if _element_reasoning.get('element_matrix'):
+        result['element_matrix']=_element_reasoning['element_matrix']
+    result['evidence_to_element_mapping']=_element_reasoning.get('evidence_to_element_mapping') or []
+    result['element_test_summary']=_element_reasoning.get('element_test_summary') or {}
+    if result.get('current_issue_gate') == 'BLOCKED_ROUTE_CONTRACT':
+        result['issue_element_tests']=[]
+        result['risk_assessment']=[]
+    else:
+        result['issue_element_tests']=_element_reasoning.get('issue_element_tests') or []
+        result['risk_assessment']=_element_reasoning.get('risk_assessment') or []
+    result['mitigation_strategy']=_element_reasoning.get('mitigation_strategy') or {}
+    result['pleading_strategy']=_element_reasoning.get('pleading_strategy') or {}
+    # Preserve any stronger specialized causation analysis. Otherwise expose the
+    # fail-closed cross-domain nexus/impact assessment produced from the ledger.
+    if not result.get('causation_analysis'):
+        result['causation_analysis']=_element_reasoning.get('causation_analysis') or {}
+
     gaps=_unique(result.get('evidentiary_gaps') or [],18)
     established=_unique(result.get('facts') or [],12)
     if result.get('incriminating_facts'):
@@ -1034,6 +1215,12 @@ def _ensure_evidence_to_action(result):
     ds=result.get('decision_summary') if isinstance(result.get('decision_summary'),dict) else {}
     result['executive_summary']=_compact_executive_summary(result)
     result['applicable_law']=_clean_applicable_law(result)
+    # Refresh law pool after the normal law engine has produced/cleaned its
+    # candidates. The canonical chain will consume this post-admission pool only.
+    build_governed_pools(result)
+    enforce_governed_consumers(result)
+    from services.adversarial_view import build_adversarial_viewpoint_splitter
+    build_adversarial_viewpoint_splitter(result)
     result['decision_summary']={
         'already_established':_unique(ds.get('already_established') or established,14),
         'not_yet_established':_unique(ds.get('not_yet_established') or not_established,14),
@@ -1048,6 +1235,26 @@ def _ensure_evidence_to_action(result):
         for ev in (result.get('evidence_needed') or [])[:4]:
             action.append({'priority':'P2','issue':'Kelengkapan bukti','current_status':'PERLU DIKUMPULKAN','action':ev,'why_it_matters':'Diperlukan untuk menguji fakta, unsur, kausalitas, atau tanggung jawab personal.','source_segments':[]})
         action.append({'priority':'P3','issue':'Verifikasi hukum positif','current_status':result.get('legal_status','BELUM TERVERIFIKASI'),'action':'Verifikasi pasal, perubahan/pencabutan, ketentuan peralihan, dan putusan relevan pada sumber resmi.','why_it_matters':'Mencegah penggunaan norma yang salah tempus atau sudah berubah.','source_segments':[]})
+
+    # Deterministic procedural/tactical guardrail (HIR/RBg/KUHAP-based
+    # playbook keyed by ranah_hukum x posisi_pengguna). Prepended ahead of the
+    # dedup pass below so it wins on overlap; runs regardless of whether the
+    # action_plan above came from AI free text or the deterministic gap
+    # fallback, so tactical next-steps are never sourced only from unguarded
+    # LLM narrative generation.
+    try:
+        from services.case_action_planner import build_case_action_plan
+        _deterministic_plan=build_case_action_plan(result)
+        _procedural=[
+            {'priority':a.get('priority') or 'P2','issue':a.get('issue') or '','current_status':'PERLU DIUJI',
+             'action':a.get('action') or '','why_it_matters':a.get('why_it_matters') or '','source_segments':[]}
+            for a in (_deterministic_plan.get('actions') or [])
+            if a.get('category') in ('PROCEDURAL','LEGAL_VERIFY','PRIMARY_DOC')
+        ]
+        action=_procedural+action
+    except Exception:
+        pass
+
     # Normalize priorities and cap.
     normalized=[]; seen_actions=set(); seen_issues=set()
     for a in action[:24]:
@@ -1434,7 +1641,7 @@ def audit(): return jsonify(success=True,data=AuditLogger.get_recent_logs(reques
 def ai_status_endpoint(): return jsonify(success=True,**ai_status())
 
 @app.route('/api/health')
-def health(): return jsonify(status='online',timestamp=datetime.now().isoformat(),version=LEXICORE_VERSION,schema_version=SCHEMA_VERSION,product={'name':PRODUCT_NAME,'label':PRODUCT_LABEL,'initiative':INITIATIVE,'firm':FIRM_NAME,'release':release_metadata()},modules=['legal_drafting','contract_review','legal_research','compliance_risk','case_analysis','full_document_ai_reasoning','official_jdih_federation','dynamic_case_regulatory_retrieval','offline_regulatory_database','hybrid_legal_research','regulatory_corpus','regulatory_intelligence','legal_relationship_graph','legal_timeline','norm_conflict_detector','evidence_to_action','client_communication'],ai=ai_status())
+def health(): return jsonify(status='online',timestamp=datetime.now().isoformat(),version=LEXICORE_VERSION,schema_version=SCHEMA_VERSION,product={'name':PRODUCT_NAME,'label':PRODUCT_LABEL,'initiative':INITIATIVE,'firm':get_identity_profile()['display_name'],'profile_configured':get_identity_profile()['configured'],'release':release_metadata()},modules=['legal_drafting','contract_review','legal_research','compliance_risk','case_analysis','full_document_ai_reasoning','official_jdih_federation','dynamic_case_regulatory_retrieval','offline_regulatory_database','hybrid_legal_research','regulatory_corpus','regulatory_intelligence','legal_relationship_graph','legal_timeline','norm_conflict_detector','evidence_to_action','client_communication'],ai=ai_status())
 
 if __name__=='__main__':
     # Security fix (v1.3.3.14): this app has zero authentication and stores

@@ -1,7 +1,7 @@
 """LexiCore Local Regulatory Corpus.
 
-v1.3.5 expands the curated working corpus and strengthens domain-aware
-retrieval.  The corpus is intentionally *not* treated as final legal
+v2.1.1 integrates the R17 curated corpus with a fail-closed norm resolver
+and explicit PP support while preserving domain-aware retrieval.  The corpus is intentionally *not* treated as final legal
 authority.  Every record/article remains subject to official-source and
 professional verification before it is used as a legal basis.
 
@@ -13,14 +13,17 @@ Design rules:
   local summary text is exhaustive or verbatim.
 """
 from __future__ import annotations
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 import re
+import logging
 
 REGULATION_HIERARCHY_WEIGHTS = {
     'UUD': 1, 'TAP_MPR': 2, 'UU': 3, 'PERPPU': 3, 'PP': 4, 'PERPRES': 5,
     'POJK': 6, 'PER_MENTERI': 6, 'PER_LEMBAGA': 6,
     'PERDA_PROV': 7, 'PERDA_KAB': 8, 'PERMA': 90, 'SEMA': 91,
 }
+
+logger = logging.getLogger(__name__)
 
 
 def _art(aid: str, rid: str, pasal: str, content: str, topic: str, keywords: List[str], **extra) -> Dict[str, Any]:
@@ -90,6 +93,38 @@ INITIAL_REGULATORY_CORPUS: List[Dict[str, Any]] = [
             _art('tipikor_3','uu_tipikor_31_1999','Pasal 3','Korpus kerja: tujuan menguntungkan, penyalahgunaan kewenangan/kesempatan/sarana karena jabatan atau kedudukan, dan kerugian negara; status temporal wajib diverifikasi.','Korupsi Penyalahgunaan Wewenang',['penyalahgunaan wewenang','mens rea','jabatan','bpr','direksi']),
             _art('tipikor_9','uu_tipikor_31_1999','Pasal 9','Korpus kerja mengenai tindak pidana terkait pemalsuan/rekayasa buku atau daftar yang secara khusus diatur UU Tipikor; bunyi unsur wajib diverifikasi.','Tipikor - Buku/Daftar Administratif',['pasal 9','buku','daftar','administrasi','tipikor']),
             _art('tipikor_18','uu_tipikor_31_1999','Pasal 18','Korpus kerja mengenai pidana tambahan/pemulihan aset, termasuk isu uang pengganti dan perampasan; penerapan wajib diverifikasi pada naskah resmi dan putusan.','Pidana Tambahan & Pemulihan Aset',['pasal 18','uang pengganti','perampasan','pemulihan aset']),
+        ],
+    },
+    {
+        'id':'uu_pilkada_1_2015','nomor':'UU No. 1 Tahun 2015','tahun':2015,
+        'tentang':'Penetapan Perppu No. 1 Tahun 2014 tentang Pemilihan Gubernur, Bupati, dan Walikota Menjadi Undang-Undang','jenis':'UU','hierarchy_rank':3,
+        'status':'BERLAKU_DENGAN_PERUBAHAN','effective_date':'2015-02-02','promulgation_date':'2015-02-02',
+        'jdih_source':'JDIH BPK RI / Kemenkum','official_url':'https://peraturan.bpk.go.id/Details/37341/uu-no-1-tahun-2015',
+        'domain_tags':['pilkada','pemilihan gubernur','pemilihan bupati','pemilihan walikota','pemilu daerah'],
+        'articles':[
+            _art('pilkada_1_2015_p2','uu_pilkada_1_2015','Pasal 2','Korpus kerja untuk ketentuan penetapan Perppu Pilkada menjadi undang-undang; bunyi dan relevansi pasal wajib diverifikasi pada naskah resmi.','Penetapan Perppu Pilkada',['pasal 2','pilkada','pemilihan gubernur','pemilihan bupati','pemilihan walikota']),
+        ],
+    },
+    {
+        'id':'uu_pemilu_7_2017','nomor':'UU No. 7 Tahun 2017','tahun':2017,
+        'tentang':'Pemilihan Umum','jenis':'UU','hierarchy_rank':3,
+        'status':'BERLAKU_DENGAN_PERUBAHAN','effective_date':'2017-08-16','promulgation_date':'2017-08-16',
+        'jdih_source':'JDIH BPK RI / KPU / Bawaslu','official_url':'https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017',
+        'domain_tags':['pemilu','pemilihan umum','kpu','bawaslu','dkpp','penyelenggara pemilu','kode etik'],
+        'articles':[
+            _art('pemilu_7_2017_p3','uu_pemilu_7_2017','Pasal 3','Korpus kerja mengenai prinsip penyelenggaraan Pemilu; bunyi, struktur, dan status pasal wajib diverifikasi pada teks resmi.','Prinsip Penyelenggaraan Pemilu',['pasal 3','pemilu','kpu','bawaslu','penyelenggara pemilu']),
+        ],
+    },
+    {
+        'id':'uu_kpk_30_2002','nomor':'UU No. 30 Tahun 2002','tahun':2002,
+        'tentang':'Komisi Pemberantasan Tindak Pidana Korupsi','jenis':'UU','hierarchy_rank':3,
+        'status':'BERLAKU_DENGAN_PERUBAHAN','effective_date':'2002-12-27','promulgation_date':'2002-12-27',
+        'jdih_source':'JDIH BPK RI / KPK RI','official_url':'https://peraturan.bpk.go.id/Details/44493/Undang-Undang-no-30-tahun-2002',
+        'temporal_note':'Instrumen kelembagaan KPK. Berbeda dari UU Tipikor 31/1999; perubahan dan status pasal wajib diverifikasi ke sumber resmi.',
+        'domain_tags':['kpk','korupsi','pemberantasan korupsi','komisi pemberantasan'],
+        'articles':[
+            _art('kpk_6','uu_kpk_30_2002','Pasal 6','Korpus kerja mengenai tugas KPK; bunyi dan struktur pasal berlaku wajib diverifikasi pada naskah resmi.','Tugas KPK',['kpk','pencegahan','koordinasi','monitoring']),
+            _art('kpk_7','uu_kpk_30_2002','Pasal 7','Korpus kerja mengenai pelaksanaan fungsi pencegahan/koordinasi KPK; status pasal dan perubahan wajib diverifikasi.','Pelaksanaan Tugas KPK',['kpk','koordinasi','pencegahan','pemberantasan korupsi']),
         ],
     },
     {
@@ -524,7 +559,7 @@ def corpus_stats() -> Dict[str, Any]:
     regs = INITIAL_REGULATORY_CORPUS
     articles = sum(len(r.get('articles', [])) for r in regs)
     domains = sorted({d for r in regs for d in (r.get('domain_tags') or [])})
-    return {'regulations': len(regs), 'articles': articles, 'domains': len(domains), 'domain_tags': domains}
+    return {'regulations': len(regs), 'articles': articles, 'domains': len(domains), 'domain_tags': domains, 'version': '2.1.1'}
 
 
 def _query_terms(text: str) -> List[str]:
@@ -587,6 +622,140 @@ def search_regulations(query: str, limit: int = 8) -> List[Dict[str, Any]]:
     return results[:max(1,limit)]
 
 
+
+class NormResolver:
+    """Fail-closed resolver for canonical UU/PP norm identifiers.
+
+    The resolver never silently repairs a malformed number/year into another
+    regulation. Suspicious combinations are preserved as diagnostic candidates
+    and must be verified manually against the source document and official text.
+    """
+
+    EXPLICIT_MAP = {
+        "UU:31:1999": "UU:31:1999",
+        "UU 31/1999": "UU:31:1999",
+        "UU NO. 31 TAHUN 1999": "UU:31:1999",
+        "UU NO 31 TAHUN 1999": "UU:31:1999",
+        "UU TIPIKOR": "UU:31:1999",
+        "UU TINDAK PIDANA KORUPSI": "UU:31:1999",
+        "UU PEMBERANTASAN KORUPSI": "UU:31:1999",
+        "UU:30:2002": "UU:30:2002",
+        "UU 30/2002": "UU:30:2002",
+        "UU KPK": "UU:30:2002",
+    }
+
+    @classmethod
+    def resolve(cls, norm_id: str) -> Tuple[str, float, str, List[str]]:
+        input_clean = (norm_id or "").strip().upper()
+        if not input_clean:
+            return "", 0.0, "no_resolution", ["Norm ID kosong"]
+        if input_clean in cls.EXPLICIT_MAP:
+            return cls.EXPLICIT_MAP[input_clean], 1.0, "explicit_match", []
+
+        pattern_result, diagnostics = cls._resolve_by_pattern(input_clean)
+        if pattern_result:
+            if diagnostics:
+                return pattern_result, 0.40, "pattern_diagnostic_candidate", diagnostics
+            return pattern_result, 0.85, "pattern_match", []
+
+        semantic_result, diagnostics = cls._resolve_by_semantic(input_clean)
+        if semantic_result:
+            return semantic_result, 0.75, "semantic_match", diagnostics
+
+        fuzzy_result, diagnostics = cls._resolve_by_fuzzy(input_clean)
+        if fuzzy_result:
+            if diagnostics:
+                return fuzzy_result, 0.40, "fuzzy_diagnostic_candidate", diagnostics
+            return fuzzy_result, 0.50, "fuzzy_fallback", []
+
+        return input_clean, 0.0, "no_resolution", [f"Tidak ada resolusi untuk '{norm_id}'"]
+
+    @classmethod
+    def _resolve_by_pattern(cls, text: str) -> Tuple[Optional[str], List[str]]:
+        diagnostics: List[str] = []
+        patterns = [
+            (r'UU:(\d{1,3}):(\d{4})', lambda m: cls._validate_norm_no_autocorrect(m.group(1), m.group(2), diagnostics)),
+            (r'UU\s*(\d{1,3})\s*[/-]\s*(\d{4})', lambda m: cls._validate_norm_no_autocorrect(m.group(1), m.group(2), diagnostics)),
+            (r'UU\s*(?:NO\.?|NOMOR)?\s*(\d{1,3})\s*(?:TAHUN|THN|TH\.?)?\s*(\d{4})', lambda m: cls._validate_norm_no_autocorrect(m.group(1), m.group(2), diagnostics)),
+            (r'PP:(\d{1,3}):(\d{4})', lambda m: cls._validate_pp_no_autocorrect(m.group(1), m.group(2), diagnostics)),
+            (r'PP\s*(\d{1,3})\s*[/-]\s*(\d{4})', lambda m: cls._validate_pp_no_autocorrect(m.group(1), m.group(2), diagnostics)),
+            (r'PP\s*(?:NO\.?|NOMOR)?\s*(\d{1,3})\s*(?:TAHUN|THN|TH\.?)?\s*(\d{4})', lambda m: cls._validate_pp_no_autocorrect(m.group(1), m.group(2), diagnostics)),
+            (r'\b(KUHP|KUHAP)\b', lambda m: m.group(1).upper()),
+        ]
+        for pattern, resolver in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result = resolver(match)
+                if result:
+                    return result, diagnostics
+        return None, diagnostics
+
+    @classmethod
+    def _validate_norm_no_autocorrect(cls, number: str, year: str, diagnostics: List[str]) -> Optional[str]:
+        try:
+            num = int(number); year_int = int(year)
+        except ValueError:
+            return None
+        valid_uu = {
+            (31, 1999): "UU:31:1999", (20, 2001): "UU:20:2001", (30, 2002): "UU:30:2002",
+            (8, 1981): "KUHAP", (11, 2008): "UU:11:2008", (19, 2016): "UU:19:2016",
+            (5, 2017): "UU:5:2017", (48, 2009): "UU:48:2009", (2, 1986): "UU:2:1986",
+            (5, 1986): "UU:5:1986", (17, 2003): "UU:17:2003", (1, 2004): "UU:1:2004",
+            (15, 2004): "UU:15:2004", (15, 2006): "UU:15:2006", (23, 2014): "UU:23:2014",
+            (25, 2009): "UU:25:2009",
+        }
+        key = (num, year_int)
+        if key in valid_uu:
+            return valid_uu[key]
+        if num == 31 and year_int != 1999:
+            if year_int == 2017:
+                diagnostics.append("DIAGNOSTIC: 31/2017 tidak boleh dikoreksi otomatis. Kandidat yang perlu diperiksa: UU 31/1999 (Tipikor) atau UU 5/2017 (Kebudayaan). PERLU VERIFIKASI MANUAL.")
+            else:
+                diagnostics.append(f"DIAGNOSTIC: UU No. 31 Tahun {year_int} belum dikenali sebagai identitas yang diharapkan. PERLU VERIFIKASI MANUAL.")
+        if 1 <= num <= 100 and 1945 <= year_int <= 2026:
+            return f"UU:{num}:{year_int}"
+        return None
+
+    @classmethod
+    def _validate_pp_no_autocorrect(cls, number: str, year: str, diagnostics: List[str]) -> Optional[str]:
+        try:
+            num = int(number); year_int = int(year)
+        except ValueError:
+            return None
+        valid_pp = {(35, 2021): "PP:35:2021", (54, 2017): "PP:54:2017", (24, 1997): "PP:24:1997"}
+        key = (num, year_int)
+        if key in valid_pp:
+            return valid_pp[key]
+        if num == 54 and year_int != 2017:
+            diagnostics.append(f"DIAGNOSTIC: PP No. 54 Tahun {year_int} tidak cocok dengan corpus yang dikenal. PP 54/2017 adalah kandidat berbeda dan tidak boleh dipilih otomatis. PERLU VERIFIKASI MANUAL.")
+        if 1 <= num <= 100 and 1945 <= year_int <= 2026:
+            return f"PP:{num}:{year_int}"
+        return None
+
+    @classmethod
+    def _resolve_by_semantic(cls, text: str) -> Tuple[Optional[str], List[str]]:
+        diagnostics: List[str] = []
+        low = text.lower()
+        if 'kpk' in low or 'komisi pemberantasan korupsi' in low:
+            return "UU:30:2002", diagnostics
+        if any(k in low for k in ('tipikor', 'pemberantasan tindak pidana korupsi', 'uu pemberantasan korupsi')):
+            return "UU:31:1999", diagnostics
+        if 'kuhap' in low or 'hukum acara pidana' in low:
+            return "KUHAP", diagnostics
+        if 'kuhp' in low or 'kitab undang-undang hukum pidana' in low:
+            return "KUHP", diagnostics
+        return None, diagnostics
+
+    @classmethod
+    def _resolve_by_fuzzy(cls, text: str) -> Tuple[Optional[str], List[str]]:
+        diagnostics: List[str] = []
+        match = re.search(r'(?<!\d)(\d{1,3})\s*[/-]\s*(\d{4})(?!\d)', text)
+        if match:
+            result = cls._validate_norm_no_autocorrect(match.group(1), match.group(2), diagnostics)
+            if result:
+                return result, diagnostics
+        return None, diagnostics
+
 def retrieve_for_case(text: str, provision_refs: List[str] | None = None, limit: int = 10,
                       allowed_domains: List[str] | None = None) -> List[Dict[str, Any]]:
     """Local corpus retrieval constrained by the case-domain contract."""
@@ -609,6 +778,7 @@ def retrieve_for_case(text: str, provision_refs: List[str] | None = None, limit:
         'administrative':['ptun keputusan tata usaha negara administrasi pemerintahan aaupb','upaya administratif peradilan tata usaha negara'],
         'public_information':['keterbukaan informasi publik badan publik komisi informasi'],
         'investment':['penanaman modal investasi perizinan berusaha'],
+        'electoral_ethics':['pemilu kpu bawaslu dkpp kode etik penyelenggara pemilu','pilkada pemilihan gubernur bupati walikota'],
     }
     if not allowed:
         try:
@@ -650,6 +820,7 @@ def retrieve_for_case(text: str, provision_refs: List[str] | None = None, limit:
                 'administrative':('tata usaha negara','administrasi pemerintahan','ptun','aaupb'),
                 'public_information':('keterbukaan informasi publik','komisi informasi','badan publik'),
                 'investment':('penanaman modal','investasi','perizinan berusaha'),
+                'electoral_ethics':('pemilu','pemilihan umum','pilkada','kpu','bawaslu','dkpp','kode etik','penyelenggara pemilu'),
             }
             hay=title+' '+tags
             if allowed and not any(any(k in hay for k in vocab.get(d,())) for d in allowed):

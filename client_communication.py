@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from typing import Iterable
 
 
-FIRM_SIGNOFF = "ELF - Erfan's Law Firm"
+def _firm_signoff():
+    from identity_profile import get_identity_profile
+    return get_identity_profile()["signatory_name"]
 
 
 def _clean(value, fallback=""):
@@ -84,10 +86,30 @@ def _requested_items(matter: str, requested_docs) -> list[tuple[str, str]]:
 def build_client_communication(payload: dict) -> dict:
     kind = _clean(payload.get("document_type"), "client_update")
     client = _clean(payload.get("client_name"), "Bapak/Ibu Klien")
+    client_address = _clean(payload.get("client_address"), "")
+    legal_position_code = _clean(payload.get("legal_position"), "")
+    legal_position = {"suspect": "Tersangka", "defendant": "Terdakwa", "plaintiff": "Penggugat", "respondent": "Tergugat"}.get(legal_position_code, legal_position_code)
     matter = _clean(payload.get("matter"), "perkara/pekerjaan hukum yang sedang kami tangani")
     next_step = _clean(payload.get("next_step"), "melanjutkan penelaahan dan menentukan langkah hukum berikutnya berdasarkan fakta serta dokumen yang terverifikasi")
     progress = _clean(payload.get("progress"), "penanganan masih berada pada tahap penelaahan dan verifikasi fakta/dokumen yang tersedia")
     deadline = _clean(payload.get("deadline"), "[TANGGAL / JAM YANG DISEPAKATI]")
+
+    if kind == "legal_service_consultation":
+        subject = f"Konfirmasi Konsultasi Hukum — {matter}"
+        message = (
+            f"Yth. {client},\n\n"
+            f"Kami mengonfirmasi permintaan konseling/konsultasi hukum terkait {matter}.\n"
+            + (f"Kedudukan hukum yang dicatat: {legal_position}.\n" if legal_position else "")
+            + (f"Alamat/domisili yang dicatat: {client_address}.\n" if client_address else "")
+            + "\n"
+            "Ruang layanan pada tahap ini\n"
+            "Layanan berada pada tahap konsultasi dan penelaahan awal. Status ini tidak dengan sendirinya merupakan pemberian kuasa untuk bertindak, menghadap, menandatangani, atau mengambil tindakan hukum atas nama klien.\n\n"
+            f"Konteks yang perlu dibahas\n{progress}.\n\n"
+            f"Langkah berikutnya\n{next_step}.\n\n"
+            "Apabila setelah konsultasi diperlukan penunjukan sebagai kuasa hukum, hubungan kewenangan harus dituangkan secara tegas dalam Surat Kuasa sesuai ruang lingkup tindakan yang diminta.\n\n"
+            f"Hormat kami,\n{_firm_signoff()}"
+        )
+        return {"subject": subject, "message": message, "document_items": [], "professional_status": "DRAFT_FOR_LAWYER_REVIEW"}
 
     if kind == "client_update":
         subject = f"Pembaruan Perkara — {matter}"
@@ -103,7 +125,7 @@ def build_client_communication(payload: dict) -> dict:
             "Mohon menjaga seluruh dokumen asli, komunikasi, dan bukti elektronik terkait perkara serta tidak mengubah atau menghapus data yang mungkin relevan. "
             "Apabila terdapat perkembangan baru, mohon informasikan kepada kami sebelum mengambil tindakan atau memberikan tanggapan substantif kepada pihak lain.\n\n"
             "Kami akan menjaga komunikasi tetap terukur dan akan menyampaikan segera apabila terdapat perkembangan yang memerlukan keputusan Anda.\n\n"
-            f"Hormat kami,\n{FIRM_SIGNOFF}"
+            f"Hormat kami,\n{_firm_signoff()}"
         )
         return {"subject": subject, "message": message, "document_items": [], "professional_status": "DRAFT_FOR_LAWYER_REVIEW"}
 
@@ -124,7 +146,7 @@ def build_client_communication(payload: dict) -> dict:
               "Apabila salah satu dokumen belum tersedia, cukup informasikan kepada kami dokumen mana yang belum dapat diperoleh dan alasannya. Hal tersebut akan kami masukkan sebagai gap pembuktian, bukan diasumsikan telah ada.\n\n"
             f"Setelah dokumen diterima\n{next_step}.\n\n"
             "Dokumen akan digunakan terbatas untuk kepentingan penanganan hukum dan penelaahan profesional perkara.\n\n"
-            f"Hormat kami,\n{FIRM_SIGNOFF}"
+            f"Hormat kami,\n{_firm_signoff()}"
         )
         return {"subject": subject, "message": message, "document_items": structured, "professional_status": "DRAFT_FOR_LAWYER_REVIEW"}
 
@@ -133,6 +155,6 @@ def build_client_communication(payload: dict) -> dict:
         f"Yth. {client},\n\n"
         f"Kami menyampaikan pemberitahuan terkait {matter}. {next_step}.\n\n"
         "Dokumen ini masih berupa draf komunikasi klien. Fakta, dasar hukum, tenggat, pihak tujuan, dan konsekuensi hukum harus diverifikasi lawyer sebelum dikirim atau dipergunakan secara eksternal.\n\n"
-        f"Hormat kami,\n{FIRM_SIGNOFF}"
+        f"Hormat kami,\n{_firm_signoff()}"
     )
     return {"subject": subject, "message": message, "document_items": [], "professional_status": "DRAFT_FOR_LAWYER_REVIEW"}

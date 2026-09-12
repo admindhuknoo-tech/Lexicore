@@ -1,0 +1,32 @@
+{
+  "benchmark_id": "ELYADWI_1815",
+  "source": "LexiCore-Case_Analysis-20260906-1815.pdf",
+  "purpose": "Golden Case / Regression Benchmark #001",
+  "baseline_score_10": 6.4,
+  "target_score_10": 9.5,
+  "required_reasoning_chain": [
+    "Issue",
+    "Applicable Law",
+    "Legal Elements",
+    "Alleged Act",
+    "Evidence",
+    "Counter-Evidence",
+    "Element Test",
+    "Causation",
+    "Risk",
+    "Procedural/Merits Classification",
+    "Recommended Action"
+  ],
+  "critical_findings": [
+    "primary document validation",
+    "tempus delicti and transitional provisions",
+    "legal citation identity anomalies",
+    "individual attribution and responsibility",
+    "causal chain",
+    "forum vs merits separation",
+    "fiduciary is not dispositive of Tipikor jurisdiction",
+    "actual loss / recovery / outstanding",
+    "element-level evidence and counter-evidence",
+    "unresolved element to executable action traceability"
+  ]
+}

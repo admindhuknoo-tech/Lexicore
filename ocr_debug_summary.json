@@ -1,0 +1,590 @@
+{
+  "runs": [
+    {
+      "run_id": "15836-1788823392313",
+      "file": "ALL DKPP.pdf",
+      "pages_total": 37,
+      "categories": {
+        "budget_exhausted": 20,
+        "ocr_success": 17
+      },
+      "event_counts": {
+        "DOCUMENT_START": 1,
+        "PAGE_START": 37,
+        "RENDER_DONE": 18,
+        "RAPID_START": 7,
+        "RAPID_TIMEOUT": 7,
+        "TESSERACT_START": 17,
+        "TESSERACT_SUCCESS": 17,
+        "PAGE_DONE": 17,
+        "RAPID_INFLIGHT_SKIP": 4,
+        "CIRCUIT_SKIP": 7,
+        "GLOBAL_BUDGET_EXHAUSTED": 20,
+        "PAGE_FAILED": 1,
+        "DOCUMENT_DONE": 1
+      },
+      "timing": {
+        "rapid_avg_seconds": 7.063,
+        "rapid_max_seconds": 8.014,
+        "tesseract_avg_seconds": 7.52,
+        "tesseract_max_seconds": 10.145,
+        "render_avg_seconds": 0.076,
+        "render_max_seconds": 0.214,
+        "document_ocr_elapsed_seconds": 180.105
+      },
+      "final": {
+        "pages_native": 0,
+        "pages_ocr": 17,
+        "pages_failed": 20,
+        "characters_ocr": 32997,
+        "total_timeout_exceeded": true
+      },
+      "pages": [
+        {
+          "page": 1,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 2,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_INFLIGHT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 3,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 4,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_INFLIGHT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 5,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 6,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 7,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 8,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 9,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 10,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_INFLIGHT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 11,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 12,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_INFLIGHT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 13,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 14,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 15,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 16,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 17,
+          "category": "ocr_success",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "CIRCUIT_SKIP",
+            "TESSERACT_START",
+            "TESSERACT_SUCCESS",
+            "PAGE_DONE"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "tesseract",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 18,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "RENDER_DONE",
+            "RAPID_START",
+            "RAPID_TIMEOUT",
+            "GLOBAL_BUDGET_EXHAUSTED",
+            "PAGE_FAILED"
+          ],
+          "engines": [
+            "render",
+            "rapid",
+            "rapid",
+            "tesseract"
+          ],
+          "errors": []
+        },
+        {
+          "page": 19,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 20,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 21,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 22,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 23,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 24,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 25,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 26,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 27,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 28,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 29,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 30,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 31,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 32,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 33,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 34,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 35,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 36,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        },
+        {
+          "page": 37,
+          "category": "budget_exhausted",
+          "events": [
+            "PAGE_START",
+            "GLOBAL_BUDGET_EXHAUSTED"
+          ],
+          "engines": [],
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

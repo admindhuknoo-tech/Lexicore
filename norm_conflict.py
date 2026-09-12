@@ -110,10 +110,32 @@ def _manual_same_subject(a: Dict[str,Any], b: Dict[str,Any], context: str) -> Di
 
 
 def _explicit_antinomy(context: str) -> bool:
-    t=(context or '').lower()
-    keys=['bertentangan','kontradiksi','tidak dapat diterapkan bersama','mengesampingkan',
-          'melarang sedangkan','mewajibkan sedangkan','tidak sinkron','antinomi']
-    return any(k in t for k in keys)
+    """Detect a conflict between norms, not merely conduct vs a duty.
+
+    Full case files frequently say that a party's act is "bertentangan" with
+    an ethical/legal obligation.  That is not an antinomy between two norms and
+    must not turn every A-vs-B/C/D comparison into a pseudo-conflict.
+    """
+    t=re.sub(r'\s+',' ',(context or '').lower())
+    # Explicit negation is common in working papers and must remain fail-closed.
+    if re.search(r'\btidak\s+(?:menyatakan|menunjukkan|terdapat|ada|ditemukan)\b[^.;]{0,140}\b(?:konflik|pertentangan|bertentangan|antinomi|kontradiksi)\b', t, re.I):
+        # Continue only if a separate, non-negated strong conflict phrase exists.
+        cleaned=re.sub(r'\btidak\s+(?:menyatakan|menunjukkan|terdapat|ada|ditemukan)\b[^.;]{0,140}\b(?:konflik|pertentangan|bertentangan|antinomi|kontradiksi)\b','',t,flags=re.I)
+    else:
+        cleaned=t
+    strong=(
+        'tidak dapat diterapkan bersama','saling mengesampingkan','lex superior',
+        'lex specialis','lex posterior','antinomi','kontradiksi norma',
+        'konflik norma','pertentangan norma','tidak sinkron antar peraturan',
+    )
+    if any(k in cleaned for k in strong):
+        return True
+    norm_words=r'(?:aturan(?:-aturan)?|norma|pasal|undang-undang|peraturan|ketentuan)'
+    t=cleaned
+    return bool(
+        re.search(rf'\b{norm_words}\b[^.;]{{0,120}}\b(?:bertentangan|kontradiktif|tidak sinkron)\b',t,re.I)
+        or re.search(rf'\b(?:bertentangan|kontradiktif|tidak sinkron)\b[^.;]{{0,120}}\b{norm_words}\b',t,re.I)
+    )
 
 
 def _specificity_hint(a: Dict[str,Any], b: Dict[str,Any], context: str) -> Optional[str]:
@@ -238,10 +260,15 @@ def analyze_conflicts(provisions: List[str] | None, facts_context: str = '', reg
     # If no manual comparison was supplied, preserve a material-first corpus screen.
     conflicts=[]
     for row in matrix:
-        if row.get('classification') in ('POTENTIAL_CONFLICT','RESOLVED_CONFLICT_CANDIDATE'):
+        # A material conflict requires both the same-subject gate and an actual
+        # antinomy.  Full-document words such as "bertentangan" must not turn
+        # unrelated A-vs-B/C/D comparisons into pseudo-conflicts with principle
+        # NONE.  Relationships remain available separately for audit.
+        materially_conflicting = bool(row.get('same_subject_matter')) and bool(row.get('antinomy_identified'))
+        if materially_conflicting and row.get('classification') in ('POTENTIAL_CONFLICT','RESOLVED_CONFLICT_CANDIDATE'):
             conflicts.append({
                 'type':'PAIRWISE_NORM_CONFLICT','classification':row.get('classification'),
-                'rule_principle':row.get('principle_applied'),
+                'rule_principle':row.get('principle_applied') or 'UNRESOLVED',
                 'legal_reasoning':row.get('contradiction_analysis'),
                 'recommendation_for_counsel':row.get('legal_effect'),
                 'applicable_law':row.get('applicable_law'),
@@ -255,10 +282,12 @@ def analyze_conflicts(provisions: List[str] | None, facts_context: str = '', reg
         reg=(hit or {}).get('regulation') or {}; label=reg.get('nomor') or reg.get('tentang')
         if label and label not in acts: acts.append(label)
 
-    resolved=sum(1 for r in matrix if r.get('classification')=='RESOLVED_CONFLICT_CANDIDATE')
-    potential=sum(1 for r in matrix if r.get('classification')=='POTENTIAL_CONFLICT')
+    resolved=sum(1 for r in matrix if r.get('classification')=='RESOLVED_CONFLICT_CANDIDATE' and r.get('same_subject_matter') and r.get('antinomy_identified'))
+    potential=sum(1 for r in matrix if r.get('classification')=='POTENTIAL_CONFLICT' and r.get('same_subject_matter') and r.get('antinomy_identified'))
     relationship=len(relationships)
     return {
+        'status':'CONFLICT_DETECTED' if conflicts else 'NO_MATERIAL_NORM_CONFLICT_IDENTIFIED',
+        'count':len(conflicts),
         'hierarchy_level':3,
         'hierarchy_label':'Material conflict + strict principle resolver',
         'acts_analyzed':acts or ['Peraturan Perundang-undangan Terkait'],

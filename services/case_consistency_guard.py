@@ -19,6 +19,11 @@ CONCEPTS={
     'IDENTITY': {'identitas','error','persona','salah','orang','terdakwa','nama','nik'},
     'FIDUCIARY': {'fidusia','fiduciary','jaminan','agunan','bpkb','objek','lelang','eksekusi'},
     'GOVERNANCE': {'prosedur','penyimpangan','tata','kelola','sop','plafon','appraisal','komite','persetujuan'},
+    'CIVIL_PROCEDURE': {'gugatan','penggugat','tergugat','eksepsi','posita','petitum','obscuur','plurium','kompetensi','forum','surat kuasa'},
+    'LAND': {'sertipikat','sertifikat','shm','tanah','surat ukur','buku tanah','warkah','skpt','ptsl','bpn','pendaftaran','mulyoagung'},
+    'INHERITANCE': {'waris','pewaris','ahli waris','harta waris','harta peninggalan','wasiat','kajat'},
+    'TORT': {'perbuatan melawan hukum','pmh','melawan hukum','ganti rugi'},
+    'CONTRACT': {'wanprestasi','cidera janji','ingkar janji','somasi','perjanjian','kontrak','prestasi'},
 }
 
 META_RE=re.compile(r'(?i)(?:\bnik\b|\bnia\b|\bemail\b|\b(?:hp|tlp|telp|telepon|phone)\b|\b(?:jl\.?|jalan)\b|rt\.?\s*\d+|rw\.?\s*\d+|lahir\s+di|agama\b|menikah\b|master\s+ilmu\s+hukum|magister|\b(?:kertarejasa|candirenggo|singosari)\b)')
@@ -30,7 +35,7 @@ LEGAL_REF_RE=re.compile(r'(?i)\b(?:pasal\s+\d+|undang-?undang|\buu\s+(?:no\.?|no
 PLEADING_RE=re.compile(r'(?i)\b(?:eksepsi|permohonan|petitum|kesimpulan|mohon|menyatakan|dakwaan|dalil|menurut|mestinya|seharusnya|berpendapat)\b')
 HEADING_RE=re.compile(r'(?i)^(?:dalam\s+)?(?:eksepsi|konvensi|rekonvensi|permohonan|petitum|kesimpulan|kewenangan\s+mengadili|kasus\s+posisi(?:\s+sesuai\s+dakwaan\s+jpu)?|tentang\s+hukumnya|pokok\s+perkara)\s*[:.-]?$')
 EVIDENCE_DOC_RE=re.compile(r'(?i)\b(?:surat\s+kuasa\s+khusus|sertifikat\s+fidusia|sertipikat\s+fidusia|bpkb|rekening\s+koran|laporan\s+audit|hasil\s+audit|notulen|berita\s+acara|sk\s+walikota|surat\s+keputusan|perjanjian(?:\s+[a-zA-ZÀ-ÿ]+){0,3}|appraisal|slik|bukti\s+pencairan|kwitansi|akta)\b')
-CASE_FACT_RE=re.compile(r'(?i)\b(?:pemberian\s+kredit|kredit\s+macet|digantikan|menjabat|direktur\s+utama|nilai\s+jaminan|melebihi\s+plafon|tersimpan\s+di\s+bank|tidak\s+ditemukan|dialihkan|dijual|pencairan|pembayaran|outstanding|kerugian)\b')
+CASE_FACT_RE=re.compile(r'(?i)\b(?:pemberian\s+kredit|kredit\s+macet|digantikan|menjabat|direktur\s+utama|nilai\s+jaminan|melebihi\s+plafon|tersimpan\s+di\s+bank|tidak\s+ditemukan|dialihkan|dijual|pencairan|pembayaran|outstanding|kerugian|sertipikat|sertifikat|surat\s+ukur|skpt|ptsl|bpn|kantor\s+pertanahan|ahli\s+waris|harta\s+waris|pembagian\s+waris|surat\s+keterangan\s+waris|perbuatan\s+melawan\s+hukum|posita|petitum|obscuur\s+libel|plurium\s+litis\s+consortium)\b')
 
 
 def _clean(v: Any) -> str:
@@ -221,8 +226,11 @@ def ranked_support_for_issue(issue: str, ledger: Iterable[Dict[str,Any]], limit:
 
 def evidence_rows(ledger: Iterable[Dict[str,Any]], system: str='CRIMINAL', limit: int=24) -> List[Dict[str,Any]]:
     rows=[]; seen=set()
+    from services.semantic_admission import route_allowed
     for idx,item in enumerate(ledger or []):
         if not isinstance(item,dict): continue
+        if not route_allowed(item, 'Evidence Map'):
+            continue
         meta=classify_source_item(item)
         cls=meta['classification']; fact=meta['statement']
         # Evidence Map is not a transcript of the pleading.  Only a primary
@@ -269,8 +277,16 @@ def material_source_ledger(ledger: Iterable[Dict[str,Any]], limit: int=80) -> Li
     """
     out=[]; seen=set()
     allowed={'ACTUAL_EVIDENTIARY_ITEM','EVIDENCE_ASSERTION','CASE_FACT','PLEADED_FACT','ALLEGED_ROLE'}
+    from services.semantic_admission import route_allowed
     for idx,item in enumerate(ledger or []):
         if not isinstance(item,dict):
+            continue
+        # Material source projection may retain factual/argument leads for audit,
+        # but statements explicitly rejected by SAL from both Case Readiness and
+        # Evidence Map must not masquerade as case-material evidence.
+        sal_state=item.get('sal_admissibility_state')
+        sal_type=item.get('sal_semantic_type')
+        if sal_state == 'REJECTED' or sal_type in {'QUESTION','FUTURE_ACTION'}:
             continue
         meta=classify_source_item(item); cls=meta['classification']; text=meta['statement']
         if cls not in allowed or not text:
@@ -290,6 +306,16 @@ def material_source_ledger(ledger: Iterable[Dict[str,Any]], limit: int=80) -> Li
             'segment':item.get('segment'),
             'source_classification':cls,
             'source_index':idx,
+            # Preserve the authoritative SAL classification into the user-facing
+            # trace projection. Exporters must not reconstruct semantic meaning
+            # from legacy source_classification labels.
+            'sal_semantic_type': sal_type or (item.get('sal_contract') or {}).get('semantic_envelope',{}).get('semantic_type'),
+            'sal_admissibility_state': sal_state or (item.get('sal_contract') or {}).get('admission_contract',{}).get('admissibility_state'),
+            'sal_statement_id': item.get('statement_id') or (item.get('sal_contract') or {}).get('statement_id'),
+            'sal_speaker_role': item.get('sal_speaker_role') or 'UNKNOWN',
+            'sal_position': item.get('sal_position') or 'NEUTRAL',
+            'sal_stance': item.get('sal_stance') or 'UNSPECIFIED',
+            'sal_epistemic_status': item.get('sal_epistemic_status') or 'UNSPECIFIED',
         })
         if len(out)>=limit:
             break
@@ -299,6 +325,15 @@ def executive_fact_candidates(ledger: Iterable[Dict[str,Any]], limit: int=5) -> 
     scored=[]
     for idx,item in enumerate(ledger or []):
         if not isinstance(item,dict): continue
+        sal_type=item.get('sal_semantic_type') or (item.get('sal_contract') or {}).get('semantic_envelope',{}).get('semantic_type')
+        sal_state=item.get('sal_admissibility_state') or (item.get('sal_contract') or {}).get('admission_contract',{}).get('admissibility_state')
+        if sal_type and sal_type not in {'FACT_ASSERTION','PRIMARY_EVIDENCE'}:
+            continue
+        if sal_state in {'REJECTED','LEAD_ONLY'}:
+            continue
+        epistemic=str(item.get('sal_epistemic_status') or '').upper()
+        if epistemic in {'UNVERIFIED_PROSECUTION_ALLEGATION','UNVERIFIED_DEFENSE_REBUTTAL'}:
+            continue
         meta=classify_source_item(item)
         if meta['classification'] not in {'CASE_FACT','ACTUAL_EVIDENTIARY_ITEM','EVIDENCE_ASSERTION','PLEADED_FACT','ALLEGED_ROLE'}:
             continue

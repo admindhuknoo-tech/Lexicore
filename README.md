@@ -1,6 +1,6 @@
 # LexiCore Assistant — 1.3.14-rc18
 
-Evidence-to-Action Legal Intelligence | ELF - Erfan's Law Firm
+Evidence-to-Action Legal Intelligence | Dynamic User/Firm Identity
 
 ## RC18 Reliability Corrective Batch
 

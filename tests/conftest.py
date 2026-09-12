@@ -45,3 +45,9 @@ os.environ["LEXICORE_AI_MODEL"] = ""
 os.environ["LEXICORE_AI_MODE"] = "local"
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["OPENAI_API_KEY"] = ""
+# Commercial licensing is a runtime/deployment concern, not a prerequisite for
+# deterministic API regression tests. Force the default test process into
+# development mode so a desktop-launcher test cannot leak
+# LEXICORE_LICENSE_REQUIRED=1 into subsequently collected/executed smoke tests.
+# Dedicated licensing tests explicitly enable the gate when they need it.
+os.environ["LEXICORE_LICENSE_REQUIRED"] = "0"

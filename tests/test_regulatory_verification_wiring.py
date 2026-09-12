@@ -379,3 +379,74 @@ def test_r11_fulltext_resolver_rejects_wrong_instrument_even_with_matching_pasal
     assert out['resolved'] is False
     assert out['identity_aligned'] is False
     assert out['resolver_status']=='EXPECTED_IDENTITY_NOT_FOUND'
+
+
+def test_r16_verification_budget_is_explicit_not_silent(monkeypatch):
+    import services.regulatory_retrieval as rr
+    rows=[
+        {'title':'Undang-Undang Nomor 31 Tahun 1999','query':'Undang-Undang Nomor 31 Tahun 1999',
+         'url':'https://peraturan.example/uu31','authoritative':True,'query_origin':'KNOWN_REGULATION',
+         'case_nexus_domains':['corruption'],'case_nexus_status':'CASE_NEXUS_UNCERTAIN',
+         'document_classification':{'legal_instrument_candidate':True}},
+        {'title':'Undang-Undang Nomor 1 Tahun 2023','query':'Undang-Undang Nomor 1 Tahun 2023',
+         'url':'https://peraturan.example/uu1','authoritative':True,'query_origin':'KNOWN_REGULATION',
+         'case_nexus_domains':['criminal'],'case_nexus_status':'CASE_NEXUS_UNCERTAIN',
+         'document_classification':{'legal_instrument_candidate':True}},
+    ]
+    monkeypatch.setattr(rr,'fetch_official_document',lambda url,timeout=5:{
+        'url':url,'final_url':url,'reachable':False,'official_host':True,'body':b'',
+        'content_type':'','error':'offline','connectivity_status':'FETCH_ERROR'})
+    out=rr._verify_positive_law_results(rows,{},max_documents=1,time_budget_seconds=3)
+    assert any((r['positive_law_verification'].get('final_status')=='NOT_ATTEMPTED_BUDGET_EXCEEDED') for r in out)
+    funnel=rr._summarize_positive_law_verification(out)
+    assert funnel['not_attempted_budget_exceeded'] >= 1
+    assert funnel['fetch_attempted'] >= 1
+
+
+def test_exact_identity_recovery_ranks_matching_title_before_unrelated_reference(monkeypatch):
+    import services.regulatory_retrieval as rr
+    fetched=[]
+    monkeypatch.setattr(rr, 'federated_search_many', lambda *a, **k: {a[0][0]: [
+        {'source_id':'bpk','results':[
+            {'title':'Undang-Undang Nomor 5 Tahun 2017 tentang sesuatu yang menyebut UU Nomor 31 Tahun 1999', 'url':'https://peraturan.bpk.go.id/wrong'},
+            {'title':'Undang-Undang Nomor 31 Tahun 1999', 'url':'https://peraturan.bpk.go.id/exact'},
+        ]}
+    ]})
+    def fake_fetch(url, timeout=4):
+        fetched.append(url)
+        return {'reachable':True,'official_host':True,'final_url':url,'body':b'%PDF-x','content_type':'application/pdf'}
+    monkeypatch.setattr(rr, 'fetch_official_document', fake_fetch)
+    monkeypatch.setattr(rr, 'resolve_official_fulltext', lambda url,*a,**k: {
+        'resolved': url.endswith('/exact'),
+        'identity_aligned': url.endswith('/exact'),
+        'resolved_identity_key': 'UU:31:1999' if url.endswith('/exact') else 'UU:5:2017',
+        'source_url':url,'resolver_status':'DIRECT_PDF_TEXT',
+        'text': ('UNDANG-UNDANG REPUBLIK INDONESIA NOMOR 31 TAHUN 1999. Pasal 3 ketentuan.' if url.endswith('/exact') else 'UNDANG-UNDANG REPUBLIK INDONESIA NOMOR 5 TAHUN 2017.')
+    })
+    out=rr._recover_expected_official_fulltext('UU:31:1999',['Pasal 3'],time_budget_seconds=4.0)
+    assert out['resolved'] is True
+    assert out['identity_aligned'] is True
+    assert fetched == ['https://peraturan.bpk.go.id/exact']
+
+
+def test_recovery_metadata_explicit_wrong_title_is_hard_negative():
+    import services.regulatory_retrieval as rr
+    wrong={'title':'Undang-Undang Nomor 5 Tahun 2017 tentang perubahan atas Undang-Undang Nomor 31 Tahun 1999'}
+    exact={'title':'Undang-Undang Nomor 31 Tahun 1999'}
+    assert rr._recovery_candidate_metadata_rank(wrong,'UU:31:1999')[0] < 0
+    assert rr._recovery_candidate_metadata_rank(exact,'UU:31:1999')[0] == 3
+
+
+def test_r25_material_year_rejects_vehicle_model_year():
+    from services.regulatory_retrieval import detect_material_year
+    text=(
+        'Ditemukan bahwa Pemberian Kredit tersebut melebihi plafon terhadap barang jaminan '
+        'Mobil Honda Jazz Warna Merah tahun 2020. Tidak terdapat tanggal atau periode perbuatan yang didakwakan.'
+    )
+    assert detect_material_year(text) is None
+
+
+def test_r25_material_year_accepts_explicit_event_year():
+    from services.regulatory_retrieval import detect_material_year
+    text='Pada tahun 2020 dilakukan pemberian kredit kepada debitur berdasarkan persetujuan kredit.'
+    assert detect_material_year(text) == 2020

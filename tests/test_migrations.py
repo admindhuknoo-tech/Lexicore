@@ -72,7 +72,7 @@ def test_bpr_case_precision_prioritizes_financial_and_corruption_domains():
         'Berita Acara Pemeriksaan tersangka mantan Direksi Perumda BPR. '
         'Perkara berkaitan dengan persetujuan kredit debitur, komite kredit, BMPK, '
         'prinsip kehati-hatian, dugaan korupsi dan penyalahgunaan kewenangan serta Pasal 603. '
-        'Perjanjian kredit dan utang disebut sebagai bagian dari dokumen kredit pada tahun 2022.'
+        'Persetujuan kredit terjadi pada tahun 2022; perjanjian kredit dan utang disebut sebagai bagian dari dokumen kredit.'
     )
     domains = rr.detect_domains(text)
     assert domains[0]['id'] == 'corruption'

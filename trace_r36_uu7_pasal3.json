@@ -1,0 +1,412 @@
+{
+  "trace_version": "R36_DIAGNOSTIC_ONLY_V1",
+  "started_at": "2026-09-07T04:44:11.763110+00:00",
+  "expected_identity_key": "UU:7:2017",
+  "requested_provision": "Pasal 3",
+  "detail_url": "https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017",
+  "detail_fetch": {
+    "reachable": true,
+    "http_status": 200,
+    "final_url": "https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": 76240,
+    "detail_text_length": 22460,
+    "identity_candidates": [
+      "UU:7:2017",
+      "UU:7:2023",
+      "PERPU:1:2022",
+      "UU:1:2022",
+      "UU:8:2012",
+      "UU:15:2011",
+      "UU:42:2008"
+    ],
+    "primary_identity": "UU:7:2017",
+    "contains_Pasal_3": false,
+    "error": null
+  },
+  "candidate_links_found": 7,
+  "candidate_links": [
+    {
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26741/UU_Nomor_7_Tahun_2017_-_Lampiran_I.pdf",
+      "label": "Download",
+      "rank": 0,
+      "production_selected_max_candidates_2": true
+    },
+    {
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26742/UU_Nomor_7_Tahun_2017_-_Lampiran_II.pdf",
+      "label": "Download",
+      "rank": 1,
+      "production_selected_max_candidates_2": true
+    },
+    {
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26743/UU_Nomor_7_Tahun_2017_-_Lampiran_III.pdf",
+      "label": "Download",
+      "rank": 2,
+      "production_selected_max_candidates_2": false
+    },
+    {
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26744/UU_Nomor_7_Tahun_2017_-_Lampiran_IV.pdf",
+      "label": "Download",
+      "rank": 3,
+      "production_selected_max_candidates_2": false
+    },
+    {
+      "score": 224,
+      "url": "https://peraturan.bpk.go.id/Download/26738/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._1-150.pdf",
+      "label": "Download",
+      "rank": 4,
+      "production_selected_max_candidates_2": false
+    },
+    {
+      "score": 224,
+      "url": "https://peraturan.bpk.go.id/Download/26739/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._151-317.pdf",
+      "label": "Download",
+      "rank": 5,
+      "production_selected_max_candidates_2": false
+    },
+    {
+      "score": 224,
+      "url": "https://peraturan.bpk.go.id/Download/26740/UU_Nomor_7_Tahun_2017_-_Penjelasan.pdf",
+      "label": "Download",
+      "rank": 6,
+      "production_selected_max_candidates_2": false
+    }
+  ],
+  "production_resolver": {
+    "resolved": true,
+    "resolver_status": "DETAIL_HTML_TEXT",
+    "resolved_source_url": "https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017",
+    "resolved_identity_key": "UU:7:2017",
+    "identity_candidates": [
+      "UU:7:2017",
+      "UU:7:2023",
+      "PERPU:1:2022",
+      "UU:1:2022",
+      "UU:8:2012",
+      "UU:15:2011",
+      "UU:42:2008"
+    ],
+    "identity_aligned": true,
+    "candidate_links_found": 7,
+    "attempted_urls": [
+      "https://peraturan.bpk.go.id/Details/37644/uu-no-7-tahun-2017",
+      "https://peraturan.bpk.go.id/Download/26741/UU_Nomor_7_Tahun_2017_-_Lampiran_I.pdf",
+      "https://peraturan.bpk.go.id/Download/26742/UU_Nomor_7_Tahun_2017_-_Lampiran_II.pdf"
+    ],
+    "resolved_text_length": 22460,
+    "contains_Pasal_3": false,
+    "Pasal_3_position": null,
+    "patterns": [
+      {
+        "pattern": "\\bPasal\\s*3\\b",
+        "found": false,
+        "position": null
+      },
+      {
+        "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+        "found": false,
+        "position": null
+      },
+      {
+        "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+        "found": false,
+        "position": null
+      }
+    ],
+    "Pasal_3_context": ""
+  },
+  "attachments": [
+    {
+      "rank": 0,
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26741/UU_Nomor_7_Tahun_2017_-_Lampiran_I.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": true,
+      "reachable": true,
+      "official_host": true,
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Download/26741/UU_Nomor_7_Tahun_2017_-_Lampiran_I.pdf",
+      "content_type": "application/octet-stream",
+      "content_length": 3154237,
+      "body_is_pdf": true,
+      "pdf_complete_eof": true,
+      "extracted_text_length": 12318,
+      "first_500_chars": "PRES I DEN REPUBLIK INDONESIA LAMPIRAN I UNDANG.UNDANG REPUBLIK INDONESIA NOMOR 7 TAHUN 2OI7 TENTANG PEMILIHAN UMUM JTIUUUI ANGGOTA KOMISI PEMILIHAN IIMUM PROVIilSI 1 Aceh 5 2 Sumatera Utara 7 3 Sumatera Barat 5 4 Riau 5 5 Kepulauan Riau 5 6 Jambi 5 7 Sumatera Selatan 5 8 Bangka Belitung 5 9 Bengkulu 5 10 Lampung 7 11 Daerah Khusus Ibukota Jakarta 7 t2 Jawa Barat 7 13 Banten 7 L4 Jawa Tengah 7 15 Daerah Istimewa Yoryakarta 5 16 Jawa Timtrr 7 t7 Bali 5 ;-{t-.-i.!,.tr.,r' ixi\"l, \" ,+: PRES I DEN R",
+      "identity_candidates": [],
+      "primary_identity": null,
+      "contains_Pasal_3": false,
+      "Pasal_3_position": null,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": "",
+      "error": null
+    },
+    {
+      "rank": 1,
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26742/UU_Nomor_7_Tahun_2017_-_Lampiran_II.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": true,
+      "reachable": true,
+      "official_host": true,
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Download/26742/UU_Nomor_7_Tahun_2017_-_Lampiran_II.pdf",
+      "content_type": "application/octet-stream",
+      "content_length": 3206528,
+      "body_is_pdf": true,
+      "pdf_complete_eof": true,
+      "extracted_text_length": 12285,
+      "first_500_chars": "PRES I DEN REPUBLIK INDONESIA LAMPIRAN II UNDANG.UNDANG REPUBLIK INDONESIA NOMOR 7 TAHUN 2OI7 TENTANG PEMILIHAN UMUM JIIULIIH ANGGOTA BADAIT PENGAWAS PEMILU PROVIilSI I Aceh 5 2 Sumatera Utara 7 3 Sumatera Barat 5 4 Riau 5 5 Kepulauan Riau 5 6 Jambi 5 7 Sumatera Selatan 5 8 Bangka Belitung 5 9 Bengkulu 5 10 Lampung 7 11 Daerah Khusus Ibukota Jakarta 7 t2 Jawa Barat 7 13 Banten 7 L4 Jawa Tengah 7 15 Daerah Istimewa Yograkarta 5 r6 Jawa Timur 7 L7 Bali 5 ,'mirti ':..1.iF;f#:\\iiTI PRES I DEN REPUBL",
+      "identity_candidates": [],
+      "primary_identity": null,
+      "contains_Pasal_3": false,
+      "Pasal_3_position": null,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": "",
+      "error": null
+    },
+    {
+      "rank": 2,
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26743/UU_Nomor_7_Tahun_2017_-_Lampiran_III.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": false,
+      "reachable": true,
+      "official_host": true,
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Download/26743/UU_Nomor_7_Tahun_2017_-_Lampiran_III.pdf",
+      "content_type": "application/octet-stream",
+      "content_length": 2398057,
+      "body_is_pdf": true,
+      "pdf_complete_eof": true,
+      "extracted_text_length": 11920,
+      "first_500_chars": "PRES lDEN REPUBLIK INDONESIA LAMPIRAN III UNDANG-UNDANG REPUBLIK INDONESIA NOMOR 7 TAHUN 2OI7 TENTANG PEMILIHAN UMUM DAIRAII PEUILIHAN ANGGOTA DEtrIAN PERWAI(ILITN RAI(YAT RTPUBLIK INDONESIA ffi ffiI Aceh 13 Aceh I 7 1. Aceh Selatan 2. Aceh Tenggara 3. Aceh Barat 4. Aceh Besar 5. Pidie 6. Simeulue 7. Aceh Singkil 8. Aceh Barat Daya 9. Gayo Lues 10. AcehJaya 1 1. Nagan Raya L2. Pidie Jaya 13. Kota Banda Aceh L4. Kota Sabang 15. Kota Subulussalam Aceh II 6 1. Aceh Timur 2. Aceh Tengah 3. Bener Mer",
+      "identity_candidates": [],
+      "primary_identity": null,
+      "contains_Pasal_3": false,
+      "Pasal_3_position": null,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": "",
+      "error": null
+    },
+    {
+      "rank": 3,
+      "score": 246,
+      "url": "https://peraturan.bpk.go.id/Download/26744/UU_Nomor_7_Tahun_2017_-_Lampiran_IV.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": false,
+      "reachable": true,
+      "official_host": true,
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Download/26744/UU_Nomor_7_Tahun_2017_-_Lampiran_IV.pdf",
+      "content_type": "application/octet-stream",
+      "content_length": 5067954,
+      "body_is_pdf": true,
+      "pdf_complete_eof": true,
+      "extracted_text_length": 20910,
+      "first_500_chars": "PRES lDEN REPUBLIK INDONESIA LAMPIRAN IV UNDANG-UNDANG REPUBLIK INDONESIA NOMOR 7 TAHUN 2OL7 TENTANG PEMILIHAN UMUM DAERAII PEMILIIIAN ANGGOTA DEWAN PERUIAIflLIIN RAI{YAT DATRAII PROVINSI #ffii ffiffi i, i:.ii.ri-'r1' :E,il'iF*: :-ra;,;;fl': \",:'ffif.ii ;.Y. Jikr-i;t-rli ,{i:-\\tiii+*'.irq $#j6ffi : rt:1:,1llrt!: 1 Aceh 81 Aceh 1 11 1. Aceh Besar 2. Kota Banda Aceh 3. Kota Sabang Aceh 2 9 1. 2. Pidie Pidie Jaya Aceh 3 7 Bireuen Aceh 4 6 1. 2. Aceh Tengah Bener Meriah Aceh 5 L2 1. Aceh Utara 2. Ko",
+      "identity_candidates": [],
+      "primary_identity": null,
+      "contains_Pasal_3": false,
+      "Pasal_3_position": null,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": "",
+      "error": null
+    },
+    {
+      "rank": 4,
+      "score": 224,
+      "url": "https://peraturan.bpk.go.id/Download/26738/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._1-150.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": false,
+      "reachable": true,
+      "official_host": true,
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Download/26738/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._1-150.pdf",
+      "content_type": "application/octet-stream",
+      "content_length": 12857468,
+      "body_is_pdf": true,
+      "pdf_complete_eof": true,
+      "extracted_text_length": 206211,
+      "first_500_chars": "PRESIOEN REPUELIK INDONESIA UNDANG-UNDANG REPUBLIK INDONESIA NOMOR 7 TAHUN 2017 TENTANG PEMILIHAN UMUM SALINAN Menimbang: DENGAN RAHMATTUHAN YANG MAHA ESA PRESIDEN REPUBLIK INDONESIA, bahwa untuk menjamin tercapainya cita-cita dan hrjuannasional sebagaimana termaktu-b dalam pembukaan Undang-Undang Dasar Negara Republik Indonesia Tahun 1945 perlu diselenggarakan pemilihan umum untuk T\"m+! anggota Dewan Perwakilan Ra-lryat, anggota Dewan Perwakilan Daerah, Presiden dan Wakil pr-iiden, dan untuk me",
+      "identity_candidates": [
+        "UU:7:2017"
+      ],
+      "primary_identity": "UU:7:2017",
+      "contains_Pasal_3": true,
+      "Pasal_3_position": 9663,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": true,
+          "position": 9663
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": true,
+          "position": 9663
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": ", aanTatau Kepolisian Resor, dan Kejaksaan Agung Republik Indonesia, Kejaksaan Tinggi, dan/atau Kejaksaan ttegeri. 37. 38. BAB II ASAS, PRINSIP, DAN TUJUAN Pasal 2 Pemilu dilaksanakan berdasarkan asas Langsung, umum, bebas, rahasia, jujur, dan adil. Pasal 3 Dalam menyelenggarakan pemilu, penyelenggara pemilu hanrsmelaksanakan Pemilu berdasarkan pada -asas sebagaimana dimaksud ddam Pasal 2 d,an penyelenggaraannya harusmemenuhi prinsip: a. mandiri; b. jujur; c. adil; d.berkepastian... ob. h. i. j. k. PRES IOEN REPUBLIK INOONESIA -8- d. berkepastian hukum; e. tertib; f. terbuka; proporsional; profesional; akuntabel; efektif; dan efisien. Pasal 4 Pengahrran Penyelenggaraan pemilu bertujuan unhrk: a. memperkuat sistem ketatanegaraan ySng demokratis; b. mewujudkan pemilu yang adil dan berintegritas; c. menjamin konsistensi pengaturan sistem pemilu; d. memberikan kepastian hukum dan mencegah duplikasidalam pengahrran pemilu; dan e. meurujudkan pemilu yang efektif dan efisien. Pasal S Penyandang disabilitas yang . memenuhi syarat mempunyai IT",
+      "error": null
+    },
+    {
+      "rank": 5,
+      "score": 224,
+      "url": "https://peraturan.bpk.go.id/Download/26739/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._151-317.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": false,
+      "reachable": true,
+      "official_host": true,
+      "http_status": 200,
+      "final_url": "https://peraturan.bpk.go.id/Download/26739/UU_Nomor_7_Tahun_2017_-_Batang_Tubuh_-_Hal._151-317.pdf",
+      "content_type": "application/octet-stream",
+      "content_length": 14847090,
+      "body_is_pdf": true,
+      "pdf_complete_eof": true,
+      "extracted_text_length": 241533,
+      "first_500_chars": "(1) (2t (3) (4) PRESIDEN REPU BLIK INDONESIA -151- surat pemyataan pengunduran diri dari karyawan atau pejabat badan usaha milik negara atau badan usaha milik daerah sejak ditetapkan sebagai Pasangan Calon Peserta Pemilu. Pasal 228 Partai Politik dilarang menerima imbalan dalam bentuk apa pun pada proses pencalonan Presiden dan Wakil Presiden. Dalam hal Partai Politik terbukti menerima imbalan sebagaimana dimaksud pada ayat (1), Partai Politik yang bersangkutan dilarang mengajukan calon pada per",
+      "identity_candidates": [
+        "UU:8:1981",
+        "UU:15:2011",
+        "UU:42:2008",
+        "UU:11:2006"
+      ],
+      "primary_identity": "UU:8:1981",
+      "contains_Pasal_3": false,
+      "Pasal_3_position": null,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": "",
+      "error": null
+    },
+    {
+      "rank": 6,
+      "score": 224,
+      "url": "https://peraturan.bpk.go.id/Download/26740/UU_Nomor_7_Tahun_2017_-_Penjelasan.pdf",
+      "label": "Download",
+      "production_selected_max_candidates_2": false,
+      "reachable": false,
+      "official_host": true,
+      "http_status": null,
+      "final_url": "https://peraturan.bpk.go.id/Download/26740/UU_Nomor_7_Tahun_2017_-_Penjelasan.pdf",
+      "content_type": "",
+      "content_length": 0,
+      "body_is_pdf": false,
+      "pdf_complete_eof": false,
+      "extracted_text_length": 0,
+      "first_500_chars": "",
+      "identity_candidates": [],
+      "primary_identity": null,
+      "contains_Pasal_3": false,
+      "Pasal_3_position": null,
+      "patterns": [
+        {
+          "pattern": "\\bPasal\\s*3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal[\\s\\u00A0]+3\\b",
+          "found": false,
+          "position": null
+        },
+        {
+          "pattern": "\\bPasal\\s+3\\s*[\\(\\.:]",
+          "found": false,
+          "position": null
+        }
+      ],
+      "Pasal_3_context": "",
+      "error": "The read operation timed out"
+    }
+  ],
+  "diagnostic_classification": "B_CORRECT_ATTACHMENT_OUTSIDE_TOP2"
+}

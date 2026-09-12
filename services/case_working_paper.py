@@ -15,6 +15,7 @@ import re
 from typing import Dict, List, Any
 
 from services.case_consistency_guard import evidence_rows, ranked_support_for_issue
+from services.document_posture_resolver import resolve_document_posture
 
 
 def _text(v: Any) -> str:
@@ -144,8 +145,16 @@ def _analysis_readiness(result: Dict) -> Dict:
 
 
 def _evidence_basis(result: Dict) -> Dict:
-    domains=set((result.get("domain_classification") or {}).get("domain_contract") or [])
-    posture=str(result.get("case_posture") or "").upper()
+    dc=result.get("domain_classification") or {}
+    domains=set(dc.get("domain_contract") or [])
+    primary=str(dc.get("primary_domain") or "")
+    posture=str(result.get("case_posture") or dc.get("case_posture") or "").upper()
+    if "electoral_ethics" in domains or primary == "electoral_ethics" or "ELECTORAL_ETHICS" in posture:
+        return {
+            "system":"ELECTORAL_ETHICS",
+            "citation":"Regulasi Pemilu/Pilkada dan tata beracara/etik DKPP yang berlaku pada tempus perkara — verifikasi sumber resmi",
+            "note":"Perkara etik/administratif penyelenggara pemilu tidak diperlakukan sebagai perkara pidana hanya karena dokumen menyebut undang-undang, aparat, atau istilah hukum. Bobot bukti tetap bergantung pada dokumen primer, autentikasi, relevansi, dan aturan pembuktian forum yang tepat."
+        }
     criminal=("criminal" in domains or "corruption" in domains or "PIDANA" in posture or "PENYIDIKAN" in posture)
     if criminal:
         return {
@@ -256,8 +265,16 @@ def _legal_construction(result: Dict, matrix: Dict) -> Dict:
             status="PROVISIONALLY_SUPPORTED"
         elif best:
             status="EVIDENCE_NEXUS_FOUND_LAW_UNVERIFIED"
+        application=(("Fakta/bukti dengan nexus semantik ditemukan. " + probative_reason + " " + ("Dasar hukum yang telah terfilter digunakan secara provisional." if rule != "Dasar hukum spesifik belum terverifikasi." else "Dasar hukum spesifik masih harus diverifikasi.")) if best else "Application ditahan karena belum ada fakta/bukti sumber yang lolos ambang nexus.")
+        conclusion={
+            "PROVISIONALLY_SUPPORTED":"Dukungan provisional; belum merupakan kesimpulan final dan tetap memerlukan verifikasi profesional.",
+            "EVIDENCE_NEXUS_FOUND_LAW_UNVERIFIED":"Fakta/bukti terkait ditemukan, tetapi kesimpulan hukum ditahan sampai rule terverifikasi.",
+            "SEMANTIC_NEXUS_ONLY":"Keterkaitan topikal ditemukan, tetapi bobot pembuktian belum memadai.",
+            "REQUIRES_VERIFICATION":"Belum cukup dasar untuk menarik kesimpulan hukum.",
+        }.get(status,"Belum cukup dasar untuk menarik kesimpulan hukum.")
         chains.append({
             "issue":issue,
+            "irac":{"issue":issue,"rule":rule,"application":application,"conclusion":conclusion},
             "material_fact":material_fact,
             "supporting_evidence":supporting,
             "evidence_reference":evidence_ref,
@@ -271,55 +288,209 @@ def _legal_construction(result: Dict, matrix: Dict) -> Dict:
             "causal_logic":(("Sumber memiliki keterkaitan topik dengan isu, namun daya buktinya harus dinilai terpisah. " + probative_reason) if best else "Tidak boleh dibentuk jalinan kausalitas sebelum ditemukan fakta/bukti sumber yang benar-benar terkait dengan isu ini."),
             "construction_status":status
         })
+    posture=result.get("document_posture_profile") or resolve_document_posture(
+        result.get("domain_classification") or {}, {"source_text": result.get("source_text") or ""}
+    )
+    posture_code=str(posture.get("posture") or "GENERAL_LEGAL_DOCUMENT")
     synthesis=str(result.get("legal_analysis") or "").strip()
-    if not synthesis:
-        synthesis="Konstruksi hukum belum dapat disimpulkan final sebelum fakta material, alat bukti primer, dan norma yang berlaku pada tempus perkara diverifikasi secara berantai."
-    return {"synthesis":synthesis,"chains":chains}
+    # The working paper consumes the canonical posture.  A stale upstream
+    # criminal/objection template must never survive into a response, claim,
+    # decision, or agreement merely because quoted source text contains those
+    # words.
+    if posture_code == "RESPONSE_TO_COMPLAINT":
+        synthesis=(
+            "Dokumen ini merupakan jawaban terhadap aduan atau klaim. Analisis dipusatkan pada "
+            "pokok aduan yang benar-benar diajukan, fakta material, bukti pendukung dan kontra, "
+            "kronologi peristiwa, norma yang telah diverifikasi, serta hubungan antara fakta dan "
+            "kewajiban yang dipersoalkan. Tanggapan formil dipisahkan dari pembelaan pokok perkara."
+        )
+    elif posture_code == "CLAIM_OR_COMPLAINT":
+        synthesis=(
+            "Dokumen ini merupakan pengajuan aduan, klaim, gugatan, atau permohonan. Analisis "
+            "memeriksa kedudukan para pihak, fakta material, bukti primer, dasar hukum yang "
+            "terverifikasi, hubungan sebab-akibat, dan permohonan yang diminta."
+        )
+    elif posture_code == "DECISION_OR_ORDER":
+        synthesis=(
+            "Dokumen ini merupakan putusan atau penetapan. Analisis memisahkan identitas perkara, "
+            "pertimbangan, norma yang digunakan, fakta yang dinilai, amar, serta akibat hukum dan "
+            "pilihan tindak lanjut."
+        )
+    elif not synthesis:
+        synthesis="Kesimpulan hukum belum dapat dinaikkan sebelum fakta material, bukti primer, dan norma yang berlaku pada waktu relevan diverifikasi secara berantai."
+    return {"synthesis":synthesis,"chains":chains,"reasoning_model":"IRAC_DETERMINISTIC_FAIL_CLOSED"}
 
 
-def _domain_steps(result: Dict) -> List[Dict]:
-    domains=set((result.get("domain_classification") or {}).get("domain_contract") or [])
-    steps=[]
-    civil=bool(domains & {"civil_contract","civil_procedure","land_property","religious_court","employment"})
-    criminal=bool(domains & {"criminal","corruption"})
-    if civil:
-        steps.extend([
-            {"priority":"P2","time_window":"3–7 hari","action":"Susun posisi pra-litigasi/somasi atau tanggapan formal berdasarkan hubungan hukum dan bukti yang sudah tervalidasi.","condition":"Jika sengketa masih dapat/harus ditempuh melalui pemberitahuan atau upaya pra-litigasi."},
-            {"priority":"P2","time_window":"7–14 hari","action":"Finalisasi forum, kompetensi, para pihak, posita, petitum, dan daftar bukti untuk pendaftaran perkara jika penyelesaian pra-litigasi tidak tercapai.","condition":"Jika dasar gugatan/permohonan dan forum telah terverifikasi."},
-            {"priority":"P3","time_window":"Saat pendaftaran/awal persidangan","action":"Nilai kebutuhan sita jaminan/conservatoir beslag atau tindakan provisi lain berdasarkan risiko pengalihan aset/objek dan syarat formil yang dapat dibuktikan.","condition":"Hanya jika fakta konkret dan syarat hukum tindakan provisi terpenuhi."},
-        ])
-    if criminal:
-        steps.extend([
-            {"priority":"P2","time_window":"3–7 hari","action":"Kunci kronologi, sumber bukti, chain of custody, dan kesesuaian setiap alat bukti dengan unsur pasal yang benar-benar berlaku pada tempus perkara.","condition":"Sebelum menetapkan strategi pembelaan/penuntutan final."},
-            {"priority":"P2","time_window":"7–14 hari","action":"Susun matriks unsur-versus-bukti dan identifikasi bukti ekskulpatoris, saksi/ahli, serta keberatan prosedural yang mempunyai dasar faktual.","condition":"Setelah berkas/bukti utama tersedia."},
-        ])
-    return steps
+def _classification_context(result: Dict) -> Dict:
+    dc=result.get("domain_classification") or {}
+    return {
+        "ranah_hukum": str(dc.get("ranah_hukum") or "UMUM").upper(),
+        "posisi_pengguna": str(dc.get("posisi_pengguna") or "BELUM_TERIDENTIFIKASI").upper(),
+        "posture": str(dc.get("posture") or result.get("case_posture") or "GENERAL_LEGAL").upper(),
+        "primary_domain": str(dc.get("primary_domain") or "").lower(),
+    }
 
+
+# Generic tactical modules are keyed by formal legal area + procedural side.
+# They are consideration modules only.  No module is a legal conclusion and each
+# remains subject to facts, evidence, forum, tempus and verified positive law.
+_TACTICAL_MATRIX={
+    ("PERDATA","TERGUGAT"): [
+        ("P2","Uji kompetensi/forum dan syarat formil sebelum masuk pokok perkara.","Jika ada dasar faktual untuk keberatan forum/formil."),
+        ("P2","Susun jawaban per dalil dengan matriks fakta-bukti dan bantahan yang terukur.","Jika gugatan/dalil lawan dan bukti utama tersedia."),
+        ("P3","Nilai rekonvensi atau tuntutan balik hanya bila terdapat hak/tuntutan mandiri yang dapat dibuktikan.","Jika hubungan hukum dan bukti mendukung tuntutan balik."),
+    ],
+    ("PERDATA","PENGGUGAT"): [
+        ("P2","Kunci legal standing, forum, para pihak, posita, petitum, dan bukti primer sebelum pendaftaran.","Jika hubungan hukum dan kerugian/tuntutan telah terpetakan."),
+        ("P3","Nilai kebutuhan provisi atau sita berdasarkan risiko konkret terhadap objek/aset.","Hanya jika syarat faktual dan hukum tindakan sementara terpenuhi."),
+    ],
+    ("PIDANA","TERDAKWA"): [
+        ("P2","Uji kewenangan, keabsahan proses, dan keberatan formil yang mempunyai dasar faktual.","Jika dokumen proses pidana dan dasar keberatan tersedia."),
+        ("P2","Susun matriks unsur-versus-bukti serta bukti ekskulpatoris/kontra untuk pembelaan pokok perkara.","Setelah dakwaan/berkas dan bukti utama tersedia."),
+        ("P3","Identifikasi saksi/ahli yang relevan untuk menguji unsur, atribusi, kausalitas, dan mens rea.","Jika relevansi dan sumber pengetahuan saksi/ahli dapat ditunjukkan."),
+    ],
+    ("PIDANA","TERSANGKA"): [
+        ("P2","Audit dasar tindakan penyidikan, penetapan status, penyitaan/penahanan, dan bukti yang menjadi dasar proses.","Jika dokumen tindakan penyidikan tersedia."),
+        ("P2","Kunci kronologi, atribusi, chain of custody, serta bukti ekskulpatoris sejak tahap penyidikan.","Sebelum mengambil langkah prosedural atau merits."),
+    ],
+    ("PIDANA","KORBAN"): [
+        ("P2","Konsolidasikan kronologi, bukti primer, kerugian/dampak, dan identitas pelaku/peristiwa yang dapat diverifikasi.","Sebelum eskalasi atau permintaan tindak lanjut."),
+    ],
+    ("TUN","PENGGUGAT"): [
+        ("P2","Verifikasi objek sengketa, kewenangan pejabat, tenggang waktu, dan upaya administratif sebelum gugatan.","Jika keputusan/tindakan administratif yang disengketakan telah teridentifikasi."),
+        ("P2","Susun matriks cacat kewenangan, prosedur, substansi, dan AUPB terhadap bukti primer.","Setelah objek dan record administratif tersedia."),
+    ],
+    ("TUN","TERGUGAT"): [
+        ("P2","Uji kompetensi, tenggang waktu, legal standing, upaya administratif, dan keabsahan objek sengketa.","Jika gugatan dan record keputusan/tindakan tersedia."),
+        ("P2","Susun jawaban berbasis kewenangan, prosedur, substansi, dan record administratif yang dapat diaudit.","Setelah bukti administrasi primer tersedia."),
+    ],
+    ("AGAMA","PENGGUGAT"): [
+        ("P2","Verifikasi kompetensi absolut/relatif, status para pihak, objek, dan petitum berdasarkan dokumen primer.","Sebelum pendaftaran atau finalisasi gugatan."),
+    ],
+    ("AGAMA","PEMOHON"): [
+        ("P2","Verifikasi kompetensi, kedudukan pemohon, fakta status personal/keluarga, dan dokumen pendukung utama.","Sebelum permohonan diajukan."),
+    ],
+    ("ETIK_ADMINISTRATIF","TERADU"): [
+        ("P2","Susun jawaban per pokok aduan dengan pemisahan tegas antara fakta, bukti primer, dan argumentasi.","Jika pokok aduan dan bukti yang dirujuk tersedia."),
+        ("P2","Kunci kronologi status/jabatan dan nexus setiap tindakan terhadap kewajiban etik yang benar-benar berlaku pada tempus.","Setelah tanggal material dan norma terverifikasi."),
+    ],
+    ("ETIK_ADMINISTRATIF","PENGADU"): [
+        ("P2","Susun pokok aduan per peristiwa dengan bukti primer, kronologi, dan nexus terhadap kewajiban etik.","Jika peristiwa dan bukti pendukung dapat diidentifikasi."),
+    ],
+}
+
+
+def _generic_tactical_steps(result: Dict) -> List[Dict]:
+    ctx=_classification_context(result)
+    key=(ctx["ranah_hukum"],ctx["posisi_pengguna"])
+    modules=list(_TACTICAL_MATRIX.get(key) or [])
+
+    # Unknown/new domains still receive evidence-first universal modules. This
+    # is the anti-hardcode fallback: a new case must remain analyzable without a
+    # new `if case_type` branch.
+    if not modules:
+        modules=[
+            ("P2","Kunci kronologi material, kapasitas para pihak, hubungan hukum, dan bukti primer yang membentuk sengketa.","Sebelum menyimpulkan posisi hukum atau memilih langkah prosedural."),
+            ("P2","Pisahkan fakta terbukti, dalil, inference, counter-evidence, dan gap pembuktian per isu.","Setelah sumber material dipetakan."),
+            ("P3","Pilih langkah prosedural hanya setelah forum, tempus, dan dasar hukum positif terverifikasi.","Jika jalur tindakan belum dapat ditentukan secara aman."),
+        ]
+    return [
+        {"priority":p,"time_window":"3–7 hari" if p=="P2" else "7–14 hari","action":a,"condition":c,
+         "ranah_hukum":ctx["ranah_hukum"],"posisi_pengguna":ctx["posisi_pengguna"]}
+        for p,a,c in modules
+    ]
+
+
+def _verified_law_tokens(result: Dict) -> set[str]:
+    tokens=set()
+    snap=result.get("case_regulatory_snapshot") or {}
+    for row in snap.get("official_results") or []:
+        if not isinstance(row,dict):
+            continue
+        v=row.get("positive_law_verification") or {}
+        coherent=(v.get("final_status")=="VERIFIED_APPLICABLE"
+                  and v.get("identity_confirmed") is True
+                  and v.get("case_nexus_status")=="CASE_NEXUS_VERIFIED"
+                  and v.get("tempus_status")=="TEMPUS_VERIFIED"
+                  and v.get("tempus_applicable") is True)
+        if not coherent:
+            continue
+        title=str(row.get("title") or row.get("name") or "").lower()
+        if title:
+            tokens.add(re.sub(r"\s+"," ",title).strip())
+        pv=v.get("provision_verification") or {}
+        for prov in pv.get("verified") or []:
+            tokens.add(str(prov).lower().strip())
+    return tokens
+
+
+_SPECIFIC_LAW_RE=re.compile(r"\b(?:pasal\s+\d+[a-z]?(?:\s+ayat\s*\([^)]*\))?|(?:uu|undang-undang|perpu|perppu|pp|perpres|perma|sema|pojk|pkpu|peraturan\s+dkpp)\s+(?:nomor\s+|no\.?\s*)?\d+)\b",re.I)
+
+
+def _action_legal_gate(action: str, verified_tokens: set[str]) -> tuple[bool,str]:
+    text=str(action or "")
+    low=text.lower()
+    # Actions whose purpose is verification are always allowed.
+    if any(k in low for k in ("verifikasi","uji ","cek ","audit ")):
+        return True,"VERIFICATION_ACTION"
+    refs=[m.group(0).lower().strip() for m in _SPECIFIC_LAW_RE.finditer(text)]
+    if not refs:
+        return True,"NO_SPECIFIC_CITATION"
+    for ref in refs:
+        if not any(ref in token or token in ref for token in verified_tokens if token):
+            return False,"SPECIFIC_CITATION_NOT_VERIFIED_APPLICABLE"
+    return True,"VERIFIED_APPLICABLE_CITATION"
 
 def _tactical_action_plan(result: Dict) -> List[Dict]:
     base=result.get("action_plan") or []
     rows=[]; step=1
     windows={"P1":"0–3 hari","P2":"3–7 hari","P3":"7–14 hari"}
+    verified_tokens=_verified_law_tokens(result)
+    blocked_specific_law=False
     for item in base[:10]:
-        if not isinstance(item,dict): continue
+        if not isinstance(item,dict):
+            continue
+        action=item.get("action") or item.get("issue") or "Tindak lanjut perkara"
+        allowed, gate=_action_legal_gate(action,verified_tokens)
+        if not allowed:
+            blocked_specific_law=True
+            continue
         pr=str(item.get("priority") or "P2").upper()
         rows.append({
             "step":step,
             "priority":pr,
             "time_window":windows.get(pr,"3–7 hari"),
-            "action":item.get("action") or item.get("issue") or "Tindak lanjut perkara",
+            "action":action,
             "objective":item.get("issue") or "Menutup gap analitis/pembuktian",
             "condition":item.get("current_status") or "PERLU DIUJI",
-            "why_it_matters":item.get("why_it_matters") or ""
+            "why_it_matters":item.get("why_it_matters") or "",
+            "legal_verification_gate":gate,
+        }); step+=1
+    if blocked_specific_law:
+        rows.append({
+            "step":step,"priority":"P1","time_window":"0–3 hari",
+            "action":"Verifikasi identitas instrumen, status berlaku, tempus, keterkaitan perkara, dan teks pasal sebelum memakai dasar hukum spesifik dalam tindakan.",
+            "objective":"Mencegah rekomendasi pasal yang belum VERIFIED_APPLICABLE.",
+            "condition":"LEGAL_VERIFICATION_REQUIRED",
+            "why_it_matters":"Action planner fail-closed terhadap pasal atau instrumen yang belum lolos positive-law gate.",
+            "legal_verification_gate":"BLOCKED_UNVERIFIED_SPECIFIC_CITATION",
         }); step+=1
     existing=" ".join(str(r.get("action") or "").lower() for r in rows)
-    for item in _domain_steps(result):
-        key=str(item.get("action") or "").lower().split(" ")[:4]
-        if key and " ".join(key) in existing: continue
-        rows.append({"step":step,"priority":item["priority"],"time_window":item["time_window"],"action":item["action"],"objective":"Langkah taktis bersyarat","condition":item["condition"],"why_it_matters":"Harus disesuaikan dengan posture, forum, tempus, dan bukti aktual."}); step+=1
-        if len(rows)>=14: break
+    for item in _generic_tactical_steps(result):
+        key=" ".join(str(item.get("action") or "").lower().split(" ")[:5])
+        if key and key in existing:
+            continue
+        rows.append({
+            "step":step,"priority":item["priority"],"time_window":item["time_window"],
+            "action":item["action"],"objective":"Modul taktis bersyarat",
+            "condition":item["condition"],
+            "why_it_matters":"Dipilih dari ranah hukum + posisi pengguna, lalu tetap tunduk pada fakta, bukti, forum, tempus, dan hukum terverifikasi.",
+            "ranah_hukum":item["ranah_hukum"],"posisi_pengguna":item["posisi_pengguna"],
+            "legal_verification_gate":"TACTICAL_MODULE_REQUIRES_CASE_GATES",
+        }); step+=1
+        if len(rows)>=14:
+            break
     return rows
-
 
 def build_case_working_paper(result: Dict) -> Dict:
     """Return the canonical four-part working paper without mutating core analysis."""

@@ -12,15 +12,67 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime, timezone
+import time
+from pathlib import Path
 from typing import Iterable
 
 from legal_sources import federated_search, federated_search_many, supplementary_search_many, fetch_official_document, resolve_official_fulltext
-from services.positive_law_verification import html_to_text, verify_document_candidate, verify_provisions, classify_legal_document_candidate, regulation_identity, evaluate_case_nexus, normalize_provision_ref
+from services.positive_law_verification import html_to_text, verify_document_candidate, verify_provisions, locate_provisions, classify_legal_document_candidate, regulation_identity, evaluate_case_nexus, normalize_provision_ref, apply_post_verification_status_semantics
 from services.case_domain_classifier import classify_case
+from services.official_identity_resolver import exact_query_variants, rank_candidates
+from services.instrument_identity_contract import evaluate_instrument_identity_contract
+from services.material_tempus_extractor import extract_material_tempus_candidates, select_material_tempus
 from database import RegulatoryCorpusManager
+from retrieval.search_router import LexiCoreLawRetrievalRouter
+
+logger=logging.getLogger(__name__)
+
+
+def _law_weight_config_path():
+    return Path(__file__).resolve().parent.parent / "retrieval" / "law_weight_config.json"
+
+
+def load_law_weight_config() -> dict:
+    """Load the bounded retrieval-weight contract. Fail closed to neutral weights."""
+    try:
+        data=json.loads(_law_weight_config_path().read_text(encoding="utf-8"))
+        return data if isinstance(data,dict) else {}
+    except Exception as exc:
+        logger.warning("law weight config unavailable: %s", exc)
+        return {}
+
+
+def _candidate_text_for_weighting(row: dict) -> str:
+    # Deliberately exclude the query string: a broad/correct query must not
+    # launder an unrelated search hit into a materially relevant law candidate.
+    return _clean(" ".join(str(row.get(k) or "") for k in ("title","description","snippet"))).lower()
+
+
+def evaluate_law_weight_policy(row: dict, domains: list[dict], config: dict | None = None) -> dict:
+    """Apply the retrieval-only positive-allow policy.
+
+    This function is intentionally a compatibility facade for callers in the
+    regulatory retrieval service.  The policy itself lives in
+    ``retrieval/search_router.py`` and has no authority to mark a norm
+    applicable, temporally valid, or governing.
+    """
+    if config is None:
+        router=LexiCoreLawRetrievalRouter(_law_weight_config_path())
+    else:
+        # Avoid mutating the frozen config file merely to test/inject a policy.
+        router=LexiCoreLawRetrievalRouter.__new__(LexiCoreLawRetrievalRouter)
+        router.config_path=_law_weight_config_path()
+        router.config=config
+    decision=router.evaluate_candidate(row,domains)
+    # Backwards-compatible diagnostic aliases used by existing report/tests.
+    decision.setdefault("strong_positive_hits", [h for h in decision.get("positive_hits",[]) if ":strong:" in h])
+    decision.setdefault("disqualifying_hits", list(decision.get("hard_drop_reasons",[])) + list(decision.get("degraded_reasons",[])))
+    decision.setdefault("exact_identity_match", False)
+    return decision
 
 DOMAIN_RULES = [
     {
@@ -38,7 +90,7 @@ DOMAIN_RULES = [
         "id": "employment", "label": "Ketenagakerjaan",
         "keywords": {"phk":5.0,"pemutusan hubungan kerja":5.0,"pesangon":4.0,"pkwt":5.0,"pkwtt":5.0,"pekerja":1.0,"buruh":2.0,"ketenagakerjaan":4.0,"upah":2.0,"outsourcing":3.0},
         "sources": ("kemnaker", "bpk"),
-        "queries": ("UU Ketenagakerjaan PHK pesangon", "PP 35 Tahun 2021 PKWT PHK"),
+        "queries": ("UU Ketenagakerjaan PHK pesangon", "PP 35 Tahun 2021 PKWT PHK", "UU Penyelesaian Perselisihan Hubungan Industrial bipartit mediasi PHK"),
     },
     {
         "id": "corruption", "label": "Tindak Pidana Korupsi",
@@ -56,7 +108,7 @@ DOMAIN_RULES = [
         "id": "civil_contract", "label": "Perdata / Perikatan",
         "keywords": {"perjanjian":0.7,"kontrak":1.5,"wanprestasi":5.0,"utang":0.8,"piutang":1.0,"ganti rugi":1.0,"kuhperdata":5.0,"perikatan":3.0},
         "sources": ("bpk", "ma"),
-        "queries": ("KUHPerdata perjanjian wanprestasi",),
+        "queries": ("KUHPerdata Pasal 1238 1243 wanprestasi somasi", "KUHPerdata Pasal 1320 1338 syarat sah perjanjian itikad baik", "KUHPerdata Pasal 1365 perbuatan melawan hukum ganti rugi"),
     },
     {
         "id": "corporate", "label": "Perseroan / Korporasi",
@@ -81,6 +133,12 @@ DOMAIN_RULES = [
         "keywords": {"gugatan":2.0,"tergugat":1.5,"penggugat":1.5,"eksepsi":4.0,"obscuur libel":5.0,"plurium litis consortium":5.0,"rekonvensi":4.0,"kompetensi absolut":4.0,"kewenangan absolut":4.0,"rv":3.0,"h.i.r":4.0,"hir":3.0},
         "sources": ("ma", "bpk"),
         "queries": ("hukum acara perdata eksepsi obscuur libel plurium litis consortium", "kompetensi absolut pengadilan gugatan perdata"),
+    },
+    {
+        "id": "electoral_ethics", "label": "Pemilu / Pilkada / Etik Penyelenggara",
+        "keywords": {"dkpp":6.0,"dewan kehormatan penyelenggara pemilu":6.0,"kode etik":5.0,"pelanggaran kode etik":6.0,"kpu":4.0,"bawaslu":4.0,"pemilihan umum":5.0,"pemilu":5.0,"pilkada":5.0,"pengadu":3.0,"teradu":3.0},
+        "sources": ("bpk", "kemenkum", "kemendagri"),
+        "queries": ("UU 7 Tahun 2017 Pemilihan Umum penyelenggara pemilu kode etik DKPP", "UU 1 Tahun 2015 Pemilihan Gubernur Bupati Walikota", "Peraturan DKPP Nomor 2 Tahun 2019 Kode Etik Pedoman Perilaku Penyelenggara Pemilu"),
     },
     {
         "id": "constitutional", "label": "Konstitusi / Pengujian Norma",
@@ -179,38 +237,22 @@ def detect_domains(text: str) -> list[dict]:
 
 
 def detect_material_year(text: str) -> int | None:
-    """Best-effort event year for an initial tempus screen, never final law.
+    """Return one defensible material-event year, or ``None``.
 
-    Uses frequency plus material-context weighting instead of the earliest year;
-    this avoids mistaking biography/employment history or old statute years for
-    the tempus of the alleged act in long BAP documents.
+    R30 delegates candidate extraction to the dedicated fail-closed tempus
+    extractor. Discovery never means verified applicability.
     """
-    raw = text or ""
-    matches = list(re.finditer(r"\b(19\d{2}|20\d{2})\b", raw))
-    if not matches:
+    selected=select_material_tempus(text)
+    if selected.get('status') != 'MATERIAL_TEMPUS_CANDIDATE':
         return None
-    material_terms = ("kredit","pencairan","perbuatan","kejadian","transaksi","fasilitas","persetujuan","putusan","phk","kontrak","perjanjian","tempus")
-    procedural_terms = ("surat perintah penyidikan","penetapan tersangka","berita acara pemeriksaan","pemeriksaan tersangka")
-    scores = {}
-    counts = {}
-    now_year = datetime.now().year
-    for m in matches:
-        y = int(m.group(1))
-        if y < 1945 or y > now_year:
-            continue
-        counts[y] = counts.get(y, 0) + 1
-        window = raw[max(0,m.start()-140):m.end()+140].lower()
-        score = 1.0
-        score += 4.0 * sum(1 for t in material_terms if t in window)
-        score -= 1.5 * sum(1 for t in procedural_terms if t in window)
-        # statute citation years are useful context but weak evidence of tempus
-        if re.search(r"(?:uu|undang-undang|pojk|seojk|peraturan)[^\n]{0,50}tahun\s*$", window[:140], re.I):
-            score -= 2.0
-        scores[y] = scores.get(y, 0.0) + score
-    if not scores:
-        return None
-    # Frequency matters strongly in full documents; weighted context breaks ties.
-    return max(scores, key=lambda y: (scores[y] + counts.get(y,0)*0.75, counts.get(y,0), y))
+    value=str(selected.get('value') or '')
+    m=re.match(r"(19\d{2}|20\d{2})",value)
+    return int(m.group(1)) if m else None
+
+
+def material_tempus_candidates(text: str) -> list[dict]:
+    """Public diagnostic accessor for ranked material-tempus candidates."""
+    return extract_material_tempus_candidates(text)
 
 
 
@@ -266,10 +308,12 @@ def detect_case_dates(text: str) -> list[dict]:
 
 
 def detect_material_date(text: str) -> str | None:
-    """Return only a defensible material-event date, never a filing date by default."""
-    candidates=detect_case_dates(text)
-    material=[x for x in candidates if x['role']=='material_event' and x['score'] >= 10]
-    return material[0]['date'] if material else None
+    """Return a defensible exact material-event date, never filing/process dates."""
+    selected=select_material_tempus(text)
+    if selected.get('status') == 'MATERIAL_TEMPUS_CANDIDATE' and selected.get('precision') == 'date':
+        return str(selected.get('value'))
+    return None
+
 
 def _qualified_ref(ref: str) -> bool:
     ref = _clean(ref)
@@ -292,11 +336,14 @@ KNOWN_REGULATION_QUERIES = {
     ),
     "employment": (
         "Undang-Undang Nomor 13 Tahun 2003 tentang Ketenagakerjaan",
+        "Peraturan Pemerintah Nomor 35 Tahun 2021 tentang Perjanjian Kerja Waktu Tertentu Alih Daya Waktu Kerja dan Waktu Istirahat dan Pemutusan Hubungan Kerja",
+        "Undang-Undang Nomor 2 Tahun 2004 tentang Penyelesaian Perselisihan Hubungan Industrial",
         "Undang-Undang Nomor 6 Tahun 2023 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja menjadi Undang-Undang",
     ),
     "corruption": (
         "Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
         "Undang-Undang Nomor 20 Tahun 2001 tentang Perubahan atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+        "Undang-Undang Nomor 30 Tahun 2002 tentang Komisi Pemberantasan Tindak Pidana Korupsi",
     ),
     "criminal": (
         "Undang-Undang Nomor 20 Tahun 2025 tentang Kitab Undang-Undang Hukum Acara Pidana",
@@ -305,6 +352,8 @@ KNOWN_REGULATION_QUERIES = {
     ),
     "civil_contract": (
         "Kitab Undang-Undang Hukum Perdata Burgerlijk Wetboek",
+        "KUHPerdata Pasal 1238 Pasal 1243 wanprestasi dan ganti rugi",
+        "KUHPerdata Pasal 1365 perbuatan melawan hukum dan ganti rugi",
     ),
     "corporate": (
         "Undang-Undang Nomor 40 Tahun 2007 tentang Perseroan Terbatas",
@@ -323,6 +372,11 @@ KNOWN_REGULATION_QUERIES = {
     "constitutional": (
         "Undang-Undang Nomor 24 Tahun 2003 tentang Mahkamah Konstitusi",
         "Undang-Undang Nomor 7 Tahun 2020 tentang Perubahan Ketiga atas Undang-Undang Nomor 24 Tahun 2003 tentang Mahkamah Konstitusi",
+    ),
+    "electoral_ethics": (
+        "Undang-Undang Nomor 7 Tahun 2017 tentang Pemilihan Umum",
+        "Undang-Undang Nomor 1 Tahun 2015 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2014 tentang Pemilihan Gubernur, Bupati, dan Walikota Menjadi Undang-Undang",
+        "Undang-Undang Nomor 10 Tahun 2016 tentang Perubahan Kedua atas Undang-Undang Nomor 1 Tahun 2015 tentang Pemilihan Gubernur, Bupati, dan Walikota",
     ),
     "regional_government": (
         "Undang-Undang Nomor 23 Tahun 2014 tentang Pemerintahan Daerah",
@@ -397,10 +451,12 @@ EXACT_QUERY_DOMAIN_MARKERS = {
     "corruption": ("pemberantasan tindak pidana korupsi", "tindak pidana korupsi", "tipikor", "korupsi"),
     "criminal": ("kitab undang-undang hukum pidana", "kuhp", "kitab undang-undang hukum acara pidana", "kuhap", "penyesuaian pidana"),
     "regional_government": ("pemerintahan daerah", "badan usaha milik daerah", "bumd", "perumda"),
+    "civil_contract": ("kitab undang-undang hukum perdata", "kuhperdata", "burgerlijk wetboek", "wanprestasi", "perbuatan melawan hukum"),
     "land_property": ("pokok-pokok agraria", "pendaftaran tanah", "pertanahan", "agraria"),
     "religious_court": ("peradilan agama", "pengadilan agama"),
     "civil_procedure": ("hukum acara perdata", "perma", "sema"),
     "employment": ("ketenagakerjaan", "pemutusan hubungan kerja", "pkwt", "pkwtt"),
+    "electoral_ethics": ("pemilihan umum", "pemilihan gubernur", "pilkada", "dkpp", "kode etik", "penyelenggara pemilu"),
     "administrative": ("peradilan tata usaha negara", "administrasi pemerintahan", "ptun"),
     "public_information": ("keterbukaan informasi publik",),
     "investment": ("penanaman modal",),
@@ -409,6 +465,36 @@ EXACT_QUERY_DOMAIN_MARKERS = {
     "arbitration": ("arbitrase", "alternatif penyelesaian sengketa"),
     "data_privacy": ("pelindungan data pribadi", "informasi dan transaksi elektronik"),
 }
+
+SUBJECT_FAMILY_MARKERS = {
+    "electoral_ethics": ("pemilihan umum", "pemilu", "pilkada", "pemilihan gubernur", "pemilihan bupati", "pemilihan walikota", "kpu", "bawaslu", "dkpp", "kode etik penyelenggara"),
+    "corruption": ("pemberantasan tindak pidana korupsi", "komisi pemberantasan tindak pidana korupsi", "kpk", "tipikor"),
+    "financial_services": ("perbankan", "bank perkreditan rakyat", "bank perekonomian rakyat", "otoritas jasa keuangan"),
+    "employment": ("ketenagakerjaan", "hubungan industrial", "pemutusan hubungan kerja", "pkwt"),
+    "land_property": ("agraria", "pendaftaran tanah", "hak atas tanah", "pertanahan"),
+    "corporate": ("perseroan terbatas",),
+    "consumer": ("perlindungan konsumen",),
+    "data_privacy": ("pelindungan data pribadi", "informasi dan transaksi elektronik"),
+}
+
+def _instrument_subject_families(value: str) -> set[str]:
+    low=_clean(value).lower()
+    return {family for family,markers in SUBJECT_FAMILY_MARKERS.items() if any(m in low for m in markers)}
+
+def _exact_subject_family_consistent(query: str, candidate_title: str) -> bool:
+    """Fail closed only on a strong cross-family contradiction.
+
+    Identity number/year is still verified separately.  This guard prevents an
+    exact case citation in one legal family (e.g. Pilkada) from being promoted
+    through a search result whose title clearly belongs to another family (e.g.
+    KPK) merely because it references the same regulation number/year.
+    Ambiguous titles are retained for the normal identity/fulltext verifier.
+    """
+    qf=_instrument_subject_families(query)
+    tf=_instrument_subject_families(candidate_title)
+    if not qf or not tf:
+        return True
+    return bool(qf & tf)
 
 def _exact_case_query_domains(query: str, domains: list[dict]) -> list[str]:
     """Map an exact regulation citation from the case to active domains.
@@ -441,6 +527,7 @@ def _extract_case_regulation_bindings(text: str) -> list[dict]:
         return []
     inst_pat=re.compile(
         r"(?:Undang-Undang|Undang undang|UU)(?:\s+Republik(?:\s+Indonesia)?|\s+Republk(?:\s+Indonesia)?)?\s+(?:Nomor|No\.?)\s*\d+[A-Za-z]?\s+Tahun\s+\d{4}"
+        r"|(?:Peraturan Pemerintah Pengganti Undang-Undang|Peraturan Pemerintah Pengganti Undang undang|PERPPU|PERPU)\s+(?:Nomor|No\.?)\s*\d+[A-Za-z]?\s+Tahun\s+\d{4}"
         r"|(?:Peraturan Pemerintah|PP)(?:\s+Republik Indonesia)?\s+(?:Nomor|No\.?)\s*\d+[A-Za-z]?\s+Tahun\s+\d{4}"
         r"|(?:Peraturan Mahkamah Agung|PERMA)\s+(?:Nomor|No\.?)\s*\d+[A-Za-z]?\s+Tahun\s+\d{4}"
         r"|(?:Surat Edaran Mahkamah Agung|SEMA)\s+(?:Nomor|No\.?)\s*\d+[A-Za-z]?\s+Tahun\s+\d{4}"
@@ -520,6 +607,72 @@ def _case_binding_provision_map(text: str) -> dict[str,list[str]]:
                 bucket.append(ref)
     return out
 
+
+
+def _build_exact_case_verification_rows(source_bindings: list[dict], domains: list[dict], event_year: int | None) -> list[dict]:
+    """Build first-class deterministic verification rows from case citations.
+
+    Exact case-bound instruments must not depend on federated discovery recall.
+    A canonical official-registry URL is used as a fetch seed only; all normal
+    official-host, identity, status, tempus, nexus and provision gates still run.
+    If no canonical seed is available the binding is left to the existing
+    recovery/discovery path rather than inventing an authoritative URL.
+    """
+    rows=[]
+    seen=set()
+    active_domain_ids=[str(d.get("id")) for d in (domains or []) if isinstance(d,dict) and d.get("role") != "SUPPORTING_ONLY"]
+    for binding in source_bindings or []:
+        ident=(binding.get("identity") or {}).get("key")
+        provisions=[normalize_provision_ref(x) for x in (binding.get("provisions") or [])]
+        provisions=[x for x in provisions if x]
+        if not ident or not provisions or ident in seen:
+            continue
+        seen.add(ident)
+        seeds=[]
+        try:
+            seeds=_canonical_official_seed_candidates(ident)
+        except Exception:
+            seeds=[]
+        if not seeds:
+            continue
+        seed_source_id,seed=seeds[0]
+        query=_clean(binding.get("query") or seed.get("query") or _identity_query_from_key(ident))
+        row={
+            "title":_clean(seed.get("title") or query)[:360],
+            "description":_clean(seed.get("description") or "")[:700],
+            "url":seed.get("url") or "",
+            "source_id":seed_source_id or "local_corpus",
+            "source_name":seed.get("source_name") or "Canonical official registry exact-job seed",
+            "authoritative":True,
+            "query":query,
+            "source_score":100.0,
+            "relevance_score":1.0,
+            "query_origin":"EXACT_CASE_REGULATION",
+            "exact_verification_job":True,
+            "expected_identity_key":ident,
+            "requested_provisions":provisions[:8],
+            "provision_binding_provenance":{
+                "exact_case_text":provisions[:8],
+                "qualified_case_citation":[],
+                "generated_research_refs":[],
+                "case_bound":True,
+                "instrument_key":ident,
+                "expected_query_identity_key":ident,
+                "actual_candidate_identity_key":None,
+                "identity_alignment":"UNVERIFIED",
+                "eligible_for_identity_verification":True,
+                "verification_job":"DETERMINISTIC_EXACT_CASE_CITATION",
+            },
+        }
+        exact_domains=_exact_case_query_domains(query,domains)
+        row["case_nexus_domains"]=list(dict.fromkeys(exact_domains or active_domain_ids))
+        row["case_nexus_status"]="CASE_NEXUS_VERIFIED" if row["case_nexus_domains"] else "CASE_NEXUS_UNCERTAIN"
+        row["case_nexus_reason"]="first-class deterministic exact case citation verification job"
+        row["document_classification"]=classify_legal_document_candidate(row)
+        row["temporal_anchor"]="MATERIAL_EVENT"
+        row["temporal_status"]=_temporal_screen(row,event_year)
+        rows.append(row)
+    return rows
 
 def build_case_queries(text: str, title: str = "", provision_refs=None, domains=None,
                        qualified_queries=None, legal_issues=None, max_queries: int = 10) -> list[str]:
@@ -624,7 +777,15 @@ def _result_relevance(row: dict, domains: list[dict]) -> float:
     score = 0.08 * overlap + 0.16 * strong + 0.035 * q_overlap
     if row.get("authoritative"):
         score += 0.08
-    return round(min(score, 1.0), 3)
+    # Feed the bounded lexical/vector-like relevance computed above into the
+    # separate router. The router may rank/degrade/drop only; it cannot verify
+    # legal applicability.
+    policy=evaluate_law_weight_policy({**row,"initial_vector_score":max(0.0,min(score,1.0))}, domains)
+    if policy.get("status") == "POSITIVE_NEXUS_VERIFIED":
+        score=max(score,float(policy.get("final_retrieval_score") or 0.0))
+    else:
+        score=min(score,float(policy.get("final_retrieval_score") or score))
+    return round(max(0.0,min(score, 1.0)), 3)
 
 
 def _temporal_screen(row: dict, event_year: int | None) -> str:
@@ -669,6 +830,18 @@ def _compact_searches(queries: list[str], domains: list[dict], event_year: int |
                     "authoritative": bool(src.get("authoritative")), "query": query,
                     "source_score": item.get("score", 0),
                 }
+                if _clean(query).lower() in case_exact_queries:
+                    # R32: exact-case discovery must satisfy the metadata identity
+                    # contract before it can become a verification candidate.
+                    # Ambiguous metadata is retained; explicit type/number-year/
+                    # subject-family/domain contradictions are rejected.
+                    active_domain_ids=[str(d.get("id")) for d in (domains or []) if isinstance(d,dict) and d.get("role") != "SUPPORTING_ONLY"]
+                    expected_key=regulation_identity(query).get("key")
+                    contract=evaluate_instrument_identity_contract(
+                        expected_key, row, expected_text=query, active_domains=active_domain_ids, phase="PREFETCH")
+                    row["instrument_identity_contract"]=contract
+                    if not contract.get("passed"):
+                        continue
                 row["relevance_score"] = _result_relevance(row, domains)
                 known_domains=_known_query_domains(query, domains)
                 domain_rule_domains=_domain_rule_query_domains(query, domains)
@@ -684,6 +857,12 @@ def _compact_searches(queries: list[str], domains: list[dict], event_year: int |
                     row["relevance_score"] = min(1.0, row["relevance_score"] + 0.24)
                 else:
                     row["query_origin"] = "DISCOVERY"
+                row["law_weight_policy"] = evaluate_law_weight_policy(row, domains)
+                # Backlog B: positive-allow candidate admission. Exact case-bound
+                # citations are preserved for identity verification; other discovery
+                # hits must prove subject-matter relevance from their own title/text.
+                if row["query_origin"] != "EXACT_CASE_REGULATION" and row["law_weight_policy"].get("status") != "POSITIVE_NEXUS_VERIFIED":
+                    continue
                 active_domain_ids=[str(d.get("id")) for d in (domains or []) if isinstance(d,dict) and d.get("role") != "SUPPORTING_ONLY"]
                 nexus=evaluate_case_nexus(row, active_domain_ids)
                 row["case_nexus_domains"] = list(dict.fromkeys((exact_case_domains or []) + (known_domains or []) + (domain_rule_domains or []) + (nexus.get("matched_domains") or [])))
@@ -700,12 +879,62 @@ def _compact_searches(queries: list[str], domains: list[dict], event_year: int |
                 "authoritative": bool(src.get("authoritative")), "reachable": bool(src.get("reachable")),
                 "http_status": src.get("http_status"), "results": results,
             })
+        # R35 recall guard: every exact case-bound instrument with a canonical
+        # official URL in the verified local registry gets one deterministic
+        # seed candidate.  This is generic and prevents search-engine recall
+        # variance from dropping the exact statute (for example when a same-
+        # number PKPU ranks ahead of a UU).  The seed still goes through all
+        # normal fetch, full-text identity, status, tempus and provision gates.
+        if _clean(query).lower() in case_exact_queries:
+            expected_key=regulation_identity(query).get("key")
+            seed_rows=[]
+            try:
+                seed_rows=_canonical_official_seed_candidates(expected_key)
+            except Exception:
+                seed_rows=[]
+            for seed_source_id, seed in seed_rows[:1]:
+                seed_url=seed.get("url") or ""
+                if not seed_url or seed_url in seen_urls:
+                    continue
+                seen_urls.add(seed_url)
+                row={
+                    "title":_clean(seed.get("title", ""))[:360],
+                    "description":_clean(seed.get("description", ""))[:700],
+                    "url":seed_url,
+                    "source_id":seed_source_id or "local_corpus",
+                    "source_name":seed.get("source_name") or "Canonical official registry seed",
+                    "authoritative":True,
+                    "query":query,
+                    "source_score":99.0,
+                    "query_origin":"EXACT_CASE_REGULATION",
+                }
+                active_domain_ids=[str(d.get("id")) for d in (domains or []) if isinstance(d,dict) and d.get("role") != "SUPPORTING_ONLY"]
+                contract=evaluate_instrument_identity_contract(
+                    expected_key,row,expected_text=query,active_domains=active_domain_ids,phase="PREFETCH")
+                row["instrument_identity_contract"]=contract
+                if not contract.get("passed"):
+                    continue
+                row["relevance_score"]=1.0
+                exact_case_domains=_exact_case_query_domains(query,domains)
+                row["case_nexus_domains"]=list(dict.fromkeys(exact_case_domains or active_domain_ids))
+                row["case_nexus_status"]="CASE_NEXUS_VERIFIED" if row["case_nexus_domains"] else "CASE_NEXUS_UNCERTAIN"
+                row["case_nexus_reason"]="canonical official seed for exact case-bound regulation"
+                row["document_classification"]=classify_legal_document_candidate(row)
+                row["temporal_anchor"]="MATERIAL_EVENT"
+                row["temporal_status"]=_temporal_screen(row,event_year)
+                flat.append(row)
+                compact_sources.append({
+                    "source_id":row["source_id"],"source_name":row["source_name"],
+                    "authoritative":True,"reachable":True,"http_status":None,"results":[row],
+                })
         bundles.append({"query": query, "sources": compact_sources})
 
     origin_priority={"EXACT_CASE_REGULATION":4,"KNOWN_REGULATION":3,"DOMAIN_RULE_REGULATION":2,"DISCOVERY":1}
     flat.sort(key=lambda r: (origin_priority.get(r.get("query_origin"),0), r.get("relevance_score", 0), bool(r.get("authoritative"))), reverse=True)
     candidates = [r for r in flat if r.get("relevance_score", 0) >= 0.20]
-    material = [r for r in candidates if r.get("relevance_score", 0) >= 0.38]
+    _law_cfg=load_law_weight_config()
+    _material_threshold=float(((_law_cfg.get("thresholds") or {}).get("generic_material_min_score",0.38)) or 0.38)
+    material = [r for r in candidates if r.get("relevance_score", 0) >= _material_threshold]
     temporal_not_excluded = [r for r in material if r.get("temporal_status") != "POST_EVENT_REFERENCE"]
     authoritative_located = [r for r in temporal_not_excluded if r.get("authoritative")]
     legal_document_candidates=[r for r in temporal_not_excluded if (r.get("document_classification") or {}).get("legal_instrument_candidate")]
@@ -798,11 +1027,14 @@ def _attach_requested_provisions(results: list[dict], provision_refs, local_data
     for row in results or []:
         item=dict(row)
         hay=_clean((item.get('title') or '')+' '+(item.get('query') or '')).lower()
-        cid=regulation_identity(item.get('query') or '')
-        if not cid.get('key'):
-            cid=regulation_identity(item.get('title') or '')
-        case_bound_refs=list(case_binding_map.get(cid.get('key'),[])) if cid.get('key') else []
-        generated_qualified_refs=list(qualified_map.get(cid.get('key'),[])) if cid.get('key') else []
+        query_identity=regulation_identity(item.get('query') or '')
+        actual_key=_candidate_actual_identity_key(item)
+        candidate_key=actual_key or query_identity.get('key')
+        # R41: source-text provision bindings follow the candidate's actual
+        # identity whenever that identity is knowable.  A neighbouring statute
+        # returned by search must not inherit Pasal demand from the query.
+        case_bound_refs=list(case_binding_map.get(candidate_key,[])) if candidate_key else []
+        generated_qualified_refs=list(qualified_map.get(candidate_key,[])) if candidate_key else []
         # Legacy callers may provide only qualified citations and no source-text
         # binding map.  Preserve that compatibility, but when source bindings
         # exist (normal Case Analysis route) generated research queries can never
@@ -815,10 +1047,10 @@ def _attach_requested_provisions(results: list[dict], provision_refs, local_data
         # Global orphan article refs are safe only when the case contains a single
         # exact instrument identity; otherwise they remain unresolved rather than
         # being attached to every statute candidate.
-        if not refs and len(exact_ids) == 1 and cid.get('key') in exact_ids:
+        if not refs and len(exact_ids) == 1 and candidate_key in exact_ids:
             refs=list(explicit)
         for entry in local:
-            same_identity=bool(cid.get('key') and entry['identity'].get('key') == cid.get('key'))
+            same_identity=bool(candidate_key and entry['identity'].get('key') == candidate_key)
             # Article requests must stay instrument-bound.  Do not propagate a
             # local-corpus Pasal merely because an amendment/referencing title
             # shares the same subject.  That behaviour inflated one case into
@@ -843,7 +1075,20 @@ def _attach_requested_provisions(results: list[dict], provision_refs, local_data
             'qualified_case_citation': [r for r in item['requested_provisions'] if r in qualified_bound_refs],
             'generated_research_refs': [r for r in generated_qualified_refs if r not in case_bound_refs and r not in qualified_bound_refs],
             'case_bound': bool(case_bound_refs or qualified_bound_refs),
-            'instrument_key': cid.get('key'),
+            'instrument_key': candidate_key,
+            'expected_query_identity_key': query_identity.get('key'),
+            'actual_candidate_identity_key': actual_key,
+            'identity_alignment': (
+                'DIRECT_MATCH' if actual_key and query_identity.get('key') == actual_key
+                else 'MISMATCH' if actual_key and query_identity.get('key') and query_identity.get('key') != actual_key
+                else 'UNVERIFIED'
+            ),
+            'eligible_for_identity_verification': bool(
+                str(item.get('query_origin') or '').upper() == 'EXACT_CASE_REGULATION'
+                and query_identity.get('key')
+                and not actual_key
+                and (case_bound_refs or qualified_bound_refs)
+            ),
         }
         out.append(item)
     return out
@@ -867,28 +1112,127 @@ def _verification_candidate_priority(row: dict) -> tuple:
     return (1 if same_identity else 0, 1 if requested else 0, nexus, origin, float(row.get('relevance_score') or 0.0))
 
 
-def _verification_identity_key(row: dict) -> str:
+def _candidate_actual_identity_key(row: dict) -> str | None:
+    """Return the identity carried by the discovery result itself.
+
+    R41 keeps query expectation separate from candidate identity.  A search hit
+    for another regulation must not inherit the case-bound identity merely
+    because it was returned for an exact-regulation query.
+    """
+    canonical=str(row.get('canonical_instrument_key') or '').strip()
+    if canonical:
+        return canonical
+    for raw in (row.get('title'), row.get('discovery_title')):
+        rid=regulation_identity(raw or '')
+        if rid.get('key'):
+            return str(rid['key'])
+    # Official detail URLs often expose a deterministic slug even when a search
+    # result title is truncated or generic.  Normalizing punctuation makes the
+    # same public identity parser usable without site-specific statute numbers.
+    url=str(row.get('url') or '')
+    if url:
+        slug=re.sub(r'[-_/%]+',' ',url)
+        rid=regulation_identity(slug)
+        if rid.get('key'):
+            return str(rid['key'])
+    return None
+
+
+def _query_expected_identity_key(row: dict) -> str | None:
     qid=regulation_identity(row.get('query') or '')
-    if qid.get('key'):
-        return str(qid['key'])
-    tid=regulation_identity(row.get('title') or '')
-    if tid.get('key'):
-        return str(tid['key'])
+    return str(qid['key']) if qid.get('key') else None
+
+
+def _identity_alignment_state(row: dict) -> str:
+    """R42 tri-state identity alignment for prefetch candidate handling.
+
+    UNVERIFIED is materially different from MISMATCH: an exact case-bound
+    candidate whose actual identity has not yet been established must survive
+    long enough to reach official fetch/fulltext verification.
+    """
+    expected=_query_expected_identity_key(row)
+    actual=_candidate_actual_identity_key(row)
+    if not actual:
+        return 'UNVERIFIED'
+    if expected and actual == expected:
+        return 'DIRECT_MATCH'
+    if expected and actual != expected:
+        return 'MISMATCH'
+    return 'DIRECT_MATCH'
+
+
+def _prefetch_identity_decision(row: dict, contract: dict | None = None) -> dict:
+    """Single prefetch identity decision used by selection and processing.
+
+    Exact case-bound candidates with unknown actual identity are preserved long
+    enough to reach official fetch/fulltext verification.  Only a proven
+    mismatch is rejected.  General discovery rows continue to follow the
+    existing instrument-identity contract.
+    """
+    alignment=_identity_alignment_state(row)
+    exact_case=_is_exact_case_verification_row(row)
+    contract=contract or {}
+    contract_passed=bool(contract.get('passed'))
+
+    if alignment == 'MISMATCH' and str(row.get('query_origin') or '').upper() == 'EXACT_CASE_REGULATION':
+        return {
+            'alignment':alignment,
+            'eligible':False,
+            'preserved_unverified_exact':False,
+            'reason':'PROVEN_EXACT_CASE_IDENTITY_MISMATCH',
+        }
+
+    if alignment == 'UNVERIFIED' and exact_case:
+        binding=row.get('provision_binding_provenance') or {}
+        expected=_query_expected_identity_key(row) or str(binding.get('instrument_key') or '').strip()
+        # UNVERIFIED preservation requires provenance from the case text.
+        # Query origin alone is insufficient because a wrong-type search hit
+        # (for example a PKPU returned for an expected UU) may also inherit the
+        # exact query label while its actual identity parser remains unknown.
+        if expected and binding.get('case_bound'):
+            return {
+                'alignment':alignment,
+                'eligible':True,
+                'preserved_unverified_exact':True,
+                'reason':'CASE_BOUND_EXACT_IDENTITY_PENDING_OFFICIAL_FETCH',
+            }
+
+    return {
+        'alignment':alignment,
+        'eligible':contract_passed,
+        'preserved_unverified_exact':False,
+        'reason':('IDENTITY_CONTRACT_PASSED' if contract_passed else 'IDENTITY_CONTRACT_REJECTED'),
+    }
+
+
+def _verification_identity_key(row: dict) -> str:
+    # Verification grouping is keyed by the candidate's actual identity first.
+    # An explicit query/title mismatch receives its own non-canonical budget key
+    # so it cannot consume fallback URL slots reserved for an aligned candidate.
+    actual=_candidate_actual_identity_key(row)
+    expected=_query_expected_identity_key(row)
+    alignment=_identity_alignment_state(row)
+    if alignment == 'MISMATCH':
+        return f'MISMATCH:{actual}<-{expected}:{row.get("url") or ""}'
+    if alignment == 'UNVERIFIED' and expected and _is_exact_case_verification_row(row):
+        # Preserve the exact case-bound slot until official identity verification.
+        return expected
+    if actual:
+        return actual
+    if expected:
+        return expected
     return str(row.get('url') or '')
 
 
 def _expected_identity_key_for_fulltext(row: dict) -> str | None:
     binding=row.get('provision_binding_provenance') or {}
     bound=str(binding.get('instrument_key') or '').strip()
-    if re.fullmatch(r'(?:UU|PP|PERMA|SEMA|PERPRES|POJK|SEOJK):[0-9]+[A-Za-z]?:(?:19|20)\d{2}', bound, re.I):
+    if binding.get('case_bound') and re.fullmatch(r'(?:UU|PP|PERMA|SEMA|PERPRES|POJK|SEOJK):[0-9]+[A-Za-z]?:(?:19|20)\d{2}', bound, re.I):
         return bound.upper().replace(':', ':', 1) if not bound.startswith(('UU:','PP:','PERMA:','SEMA:','PERPRES:','POJK:','SEOJK:')) else bound
-    qid=regulation_identity(row.get('query') or '')
-    if qid.get('key'):
-        return str(qid['key'])
-    tid=regulation_identity(row.get('title') or '')
-    if tid.get('key'):
-        return str(tid['key'])
-    return None
+    actual=_candidate_actual_identity_key(row)
+    if actual:
+        return actual
+    return _query_expected_identity_key(row)
 
 
 def _identity_query_from_key(identity_key: str | None) -> str | None:
@@ -931,17 +1275,60 @@ def _rebind_resolved_instrument_metadata(item: dict, resolved: dict) -> None:
         item['resolved_source_url']=resolved.get('source_url')
         item['url']=resolved.get('source_url')
     item['document_classification']=classify_legal_document_candidate(item)
-def _recover_expected_official_fulltext(expected_identity_key: str | None, requested_provisions, preferred_source_id: str | None = None, timeout: int = 5) -> dict:
-    """Bounded exact-identity recovery after a mismatched official hit.
+def _canonical_official_seed_candidates(expected_identity_key: str | None) -> list[tuple[str, dict]]:
+    """Return exact local-corpus official URLs as fetch seeds, never as proof.
 
-    The search-result URL is not evidence of instrument identity.  If an official
-    result resolves to another statute, retry with an exact canonical instrument
-    query and accept only a fulltext whose own text contains the expected key.
-    This is retrieval recovery only; all legal gates remain in the verifier.
+    The local URL is metadata only. It still has to be fetched from an official
+    host and pass primary fulltext identity verification before use.
     """
-    query=_identity_query_from_key(expected_identity_key)
-    if not query:
+    expected=str(expected_identity_key or '').strip().upper()
+    if not expected:
+        return []
+    try:
+        from regulatory_db import get_all_regulations
+    except Exception:
+        return []
+    seeds=[]
+    for reg in get_all_regulations() or []:
+        title=' '.join(str(reg.get(k) or '') for k in ('nomor','tentang')).strip()
+        rid=regulation_identity(title).get('key')
+        if str(rid or '').upper() != expected:
+            continue
+        url=str(reg.get('official_url') or '').strip()
+        if not url.startswith('http'):
+            continue
+        seeds.append(('local_corpus',{
+            'title':str(reg.get('nomor') or title),
+            'description':str(reg.get('tentang') or ''),
+            'url':url,
+            'query':_identity_query_from_key(expected),
+            'relevance_score':99.0,
+            'source_name':str(reg.get('jdih_source') or 'Local official metadata'),
+        }))
+    return seeds
+
+
+def _recovery_candidate_metadata_rank(row: dict, expected_identity_key: str | None) -> tuple:
+    """Compatibility rank: exact=3, auxiliary=2, ambiguous=1, wrong=-1."""
+    ranked=rank_candidates(expected_identity_key, [(str((row or {}).get('source_id') or ''), row or {})])
+    relevance=float((row or {}).get('relevance_score') or 0.0)
+    if not ranked:
+        return (-1, relevance)
+    reason=ranked[0].reason
+    return ({'EXACT_TITLE_IDENTITY':3,'AUX_EXPECTED_IDENTITY':2,'AMBIGUOUS_METADATA':1}.get(reason,1), relevance)
+
+
+def _recover_expected_official_fulltext(expected_identity_key: str | None, requested_provisions, preferred_source_id: str | None = None, timeout: int = 4, time_budget_seconds: float = 4.0) -> dict:
+    """Tightly bounded exact-identity recovery after a mismatched official hit.
+
+    R19: seed the exact official URL already carried by the local corpus, then
+    search a small set of exact-identity query variants. Metadata can rank a
+    candidate, but only primary fulltext identity can verify it.
+    """
+    queries=exact_query_variants(expected_identity_key)
+    if not queries:
         return {'resolved':False,'resolver_status':'RECOVERY_IDENTITY_UNAVAILABLE','attempted_urls':[]}
+    query=queries[0]
     kind=str(expected_identity_key or '').split(':',1)[0].upper()
     if kind in {'POJK','SEOJK'}:
         ids=['ojk','bpk','kemenkum']
@@ -951,44 +1338,298 @@ def _recover_expected_official_fulltext(expected_identity_key: str | None, reque
         ids=['bpk','kemenkum','dpr','setneg']
     if preferred_source_id and preferred_source_id not in ids:
         ids.insert(0, preferred_source_id)
+    deadline=time.monotonic()+max(0.5,float(time_budget_seconds or 4.0))
+
+    rows=_canonical_official_seed_candidates(expected_identity_key)
+    seen={row.get('url') for _,row in rows if row.get('url')}
+    # Search exact variants inside one bounded federation call. The canonical
+    # corpus URL remains first-class but never bypasses official/fulltext gates.
     try:
-        bundles=federated_search(query, direct_ids=tuple(ids), per_source_limit=5)
+        search_budget=min(2.5, max(0.5, deadline-time.monotonic()))
+        sm=federated_search_many(queries, direct_ids=tuple(ids), per_source_limit=3, max_workers=4,
+                                 time_budget_seconds=search_budget)
+        for q in queries:
+            for src in sm.get(q,[]) or []:
+                for row in src.get('results') or []:
+                    url=row.get('url') or ''
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    row=dict(row); row['query']=row.get('query') or q
+                    rows.append((src.get('source_id'), row))
     except Exception as exc:
-        return {'resolved':False,'resolver_status':'RECOVERY_SEARCH_ERROR','error':str(exc)[:240],'attempted_urls':[]}
-    rows=[]
-    seen=set()
-    for src in bundles or []:
-        for row in src.get('results') or []:
-            url=row.get('url') or ''
-            if not url or url in seen:
-                continue
-            seen.add(url); rows.append((src.get('source_id'), row))
+        if not rows:
+            return {'resolved':False,'resolver_status':'RECOVERY_SEARCH_ERROR','error':str(exc)[:240],'attempted_urls':[]}
+
+    ranked=rank_candidates(expected_identity_key, rows)
+
+    # R20 invariant: once an exact-title identity candidate exists, legacy or
+    # ambiguous candidates are not eligible to run ahead of it (or replace it)
+    # inside the same recovery pass.  If the exact candidates cannot be fetched
+    # or their PRIMARY fulltext identity fails, recovery fails closed instead of
+    # silently falling back to a different instrument that merely references the
+    # expected law in metadata/snippets.
+    exact_ranked=[
+        cand for cand in ranked
+        if cand.reason == 'EXACT_TITLE_IDENTITY'
+        and str(cand.title_identity or '').upper() == str(expected_identity_key or '').upper()
+    ]
+    recovery_pool=exact_ranked if exact_ranked else ranked
+    exact_lock=bool(exact_ranked)
+    logger.info(
+        'official recovery expected=%s total_ranked=%s exact=%s exact_lock=%s',
+        expected_identity_key, len(ranked), len(exact_ranked), exact_lock)
+    candidate_trace=[{
+        'rank':idx,
+        'source_id':cand.source_id,
+        'reason':cand.reason,
+        'title_identity':cand.title_identity,
+        'title':str((cand.row or {}).get('title') or '')[:180],
+        'url':str((cand.row or {}).get('url') or '')[:260],
+        'score':cand.score,
+    } for idx,cand in enumerate(recovery_pool[:6])]
+
     attempted=[]
-    for source_id,row in rows[:12]:
+    # Preserve the performance contract: normal/fulltext hot path remains
+    # max_candidates=2.  Recovery examines at most two exact candidates when
+    # exact metadata is available; otherwise the legacy bounded pool remains
+    # capped at four.
+    recovery_fetch_cap=2 if exact_lock else 4
+    for idx,cand in enumerate(recovery_pool[:recovery_fetch_cap]):
+        logger.info(
+            'official recovery candidate[%s] expected=%s reason=%s title_identity=%s title=%s url=%s',
+            idx, expected_identity_key, cand.reason, cand.title_identity,
+            str((cand.row or {}).get('title') or '')[:100],
+            str((cand.row or {}).get('url') or '')[:180])
+        remaining=deadline-time.monotonic()
+        if remaining <= 0.75:
+            break
+        row=cand.row; source_id=cand.source_id
         url=row.get('url') or ''
+        if not url:
+            continue
         attempted.append(url)
-        fetched=fetch_official_document(url, timeout=timeout)
+        call_timeout=max(1,min(int(timeout or 4), int(max(1,remaining))))
+        fetched=fetch_official_document(url, timeout=call_timeout)
         if not (fetched.get('reachable') and fetched.get('official_host')):
             continue
+        remaining=deadline-time.monotonic()
+        if remaining <= 0.75:
+            break
         resolved=resolve_official_fulltext(
             fetched.get('final_url') or url, fetched.get('body') or b'', fetched.get('content_type') or '',
-            requested_provisions=requested_provisions or [], timeout=timeout, max_candidates=8,
+            requested_provisions=requested_provisions or [], timeout=max(1,min(call_timeout,int(max(1,remaining)))), max_candidates=2,
             expected_identity_key=expected_identity_key)
-        if resolved.get('resolved') and resolved.get('identity_aligned'):
+        if _resolved_fulltext_satisfies_provision_contract(resolved, requested_provisions):
             resolved=dict(resolved)
             resolved['resolver_status']='RECOVERED_EXACT_IDENTITY_'+str(resolved.get('resolver_status') or 'FULLTEXT')
             resolved['recovery_query']=query
+            resolved['recovery_query_variants']=queries
             resolved['recovery_source_id']=source_id
+            resolved['recovery_rank_reason']=cand.reason
             resolved['recovery_attempted_urls']=attempted
+            resolved['recovery_exact_lock']=exact_lock
+            resolved['recovery_exact_candidate_count']=len(exact_ranked)
+            resolved['recovery_candidate_trace']=candidate_trace
             return resolved
     return {
-        'resolved':False,'resolver_status':'EXPECTED_IDENTITY_RECOVERY_FAILED',
+        'resolved':False,
+        'resolver_status':('EXPECTED_IDENTITY_EXACT_CANDIDATE_FAILED' if exact_lock else 'EXPECTED_IDENTITY_RECOVERY_FAILED'),
         'expected_identity_key':expected_identity_key,'recovery_query':query,
-        'attempted_urls':attempted,
+        'recovery_query_variants':queries,'attempted_urls':attempted,
+        'recovery_exact_lock':exact_lock,
+        'recovery_exact_candidate_count':len(exact_ranked),
+        'recovery_candidate_trace':candidate_trace,
+        'recovery_budget_exhausted': time.monotonic() >= deadline,
     }
 
 
-def _verify_positive_law_results(results: list[dict], snapshot: dict, max_documents: int = 10) -> list[dict]:
+
+def _resolved_fulltext_satisfies_provision_contract(resolved: dict | None, requested_provisions) -> bool:
+    """Return True only when a resolved official text is provision-capable.
+
+    Identity-aligned detail HTML is useful for metadata/status, but it is not
+    sufficient to close a requested article gate when the article is absent.
+    In that situation exact recovery must still be allowed to seek the linked
+    official PDF/fulltext.
+    """
+    resolved=resolved or {}
+    if not (resolved.get('resolved') and resolved.get('identity_aligned') and resolved.get('text')):
+        return False
+    requested=[normalize_provision_ref(x) for x in (requested_provisions or []) if normalize_provision_ref(x)]
+    if not requested:
+        return True
+    located=locate_provisions(requested, resolved.get('text') or '', resolved.get('source_url'))
+    located_set={normalize_provision_ref(x) for x in (located.get('located') or []) if normalize_provision_ref(x)}
+    return all(ref in located_set for ref in requested)
+
+def _recovery_result_should_replace_legacy(recovered: dict | None, legacy_resolved: dict | None = None) -> bool:
+    """R21 propagation invariant for exact-identity recovery.
+
+    A successful recovery always replaces the legacy result. If exact-lock is
+    active, a fail-closed recovery also replaces a legacy result that is either
+    unresolved or explicitly identity-misaligned. This prevents a stale wrong
+    instrument (e.g. UU:5:2017) from surviving after an exact UU:31:1999
+    candidate has been locked, while preserving compatibility with older
+    resolver results that predate the explicit ``identity_aligned`` field.
+    """
+    recovered=recovered or {}
+    legacy_resolved=legacy_resolved or {}
+    if recovered.get('resolved'):
+        return True
+    if not recovered.get('recovery_exact_lock'):
+        return False
+    if not legacy_resolved.get('resolved'):
+        return True
+    return legacy_resolved.get('identity_aligned') is False
+
+
+
+EXACT_CASE_RECOVERY_RESERVE_SECONDS = 4.0
+
+
+def _is_exact_case_verification_row(row: dict) -> bool:
+    """Return True only for regulations deterministically bound to the case.
+
+    This is deliberately generic: no statute number is hard-coded.  A row is
+    exact-case when it came from the exact-case route or carries case-bound
+    provision provenance produced from the uploaded document.
+    """
+    if str(row.get('query_origin') or '').upper() == 'EXACT_CASE_REGULATION':
+        alignment=_identity_alignment_state(row)
+        # R42: only a proven mismatch is rejected.  UNVERIFIED candidates remain
+        # eligible for official identity verification instead of being treated
+        # as if a contradiction had already been established.
+        if alignment == 'MISMATCH':
+            return False
+        if alignment == 'UNVERIFIED':
+            binding=row.get('provision_binding_provenance') or {}
+            return bool(
+                _query_expected_identity_key(row)
+                and (binding.get('case_bound') or row.get('query_origin') == 'EXACT_CASE_REGULATION')
+            )
+        return True
+    binding=row.get('provision_binding_provenance') or {}
+    return bool(binding.get('case_bound') and binding.get('instrument_key'))
+
+
+class _VerificationScheduler:
+    """Bounded scheduler that prevents exact-case regulations from starvation.
+
+    The global wall-clock deadline is unchanged.  Exact-case rows are executed
+    first, and while any exact-case identity is still pending, non-exact
+    full-text/recovery work may not consume the final reserved slice.
+    """
+    def __init__(self, remaining_fn, exact_identity_keys, reserve_seconds: float = EXACT_CASE_RECOVERY_RESERVE_SECONDS):
+        self._remaining_fn=remaining_fn
+        self._pending_exact={str(x) for x in (exact_identity_keys or []) if x}
+        self.reserve_seconds=max(0.0,float(reserve_seconds or 0.0))
+
+    def remaining(self) -> float:
+        return max(0.0,float(self._remaining_fn()))
+
+    def is_exact(self, row: dict) -> bool:
+        return _is_exact_case_verification_row(row)
+
+    def can_run_fulltext(self, row: dict) -> bool:
+        rem=self.remaining()
+        if self.is_exact(row):
+            return rem > 0.35
+        floor=(self.reserve_seconds if self._pending_exact else 0.0) + 1.25
+        return rem > floor
+
+    def can_run_recovery(self, row: dict) -> bool:
+        rem=self.remaining()
+        if self.is_exact(row):
+            return rem > 0.35
+        floor=(self.reserve_seconds if self._pending_exact else 0.0) + 1.25
+        return rem > floor
+
+    def recovery_budget(self, row: dict) -> float:
+        rem=self.remaining()
+        if self.is_exact(row):
+            # Use the reserved slice first, but never extend the global deadline.
+            return min(self.reserve_seconds, max(0.35, rem - 0.10))
+        return min(3.5, max(0.75, rem))
+
+    def mark_exact_processed(self, row: dict) -> None:
+        if not self.is_exact(row):
+            return
+        key=_verification_identity_key(row)
+        self._pending_exact.discard(str(key or ''))
+
+
+DEFAULT_VERIFICATION_DOCUMENT_BUDGET = 10
+DEFAULT_VERIFICATION_TIME_BUDGET_SECONDS = 18.0
+
+
+def _positive_law_row_strength(row: dict) -> tuple:
+    """Monotonic ranking for duplicate representations of one instrument.
+
+    A row that reached verified official fulltext/provision state must never be
+    replaced by a stale detail-page representation of the same instrument.
+    """
+    pv=row.get('positive_law_verification') or {}
+    prov=pv.get('provision_verification') or {}
+    return (
+        int(bool(pv.get('identity_confirmed'))),
+        int(pv.get('case_nexus_status') == 'CASE_NEXUS_VERIFIED'),
+        int(prov.get('verified_count') or 0),
+        int(bool((row.get('fulltext_resolution') or {}).get('resolved'))),
+        int(bool(pv.get('text_retrieved'))),
+        float(row.get('relevance_score') or 0.0),
+    )
+
+
+def _consolidate_exact_case_rows(rows: list[dict]) -> list[dict]:
+    """Keep one strongest canonical row per exact case-bound instrument.
+
+    Discovery hits that carry a different actual identity are intentionally not
+    folded into the expected instrument.  Only rows still qualifying as exact
+    case rows participate in this consolidation.
+    """
+    out=[]
+    slot_by_key={}
+    for row in rows or []:
+        if not _is_exact_case_verification_row(row):
+            out.append(row)
+            continue
+        key=(
+            str(row.get('canonical_instrument_key') or '').strip()
+            or _candidate_actual_identity_key(row)
+            or _expected_identity_key_for_fulltext(row)
+        )
+        if not key:
+            out.append(row)
+            continue
+        if key not in slot_by_key:
+            slot_by_key[key]=len(out)
+            out.append(row)
+            continue
+        idx=slot_by_key[key]
+        current=out[idx]
+        if _positive_law_row_strength(row) > _positive_law_row_strength(current):
+            winner=dict(row); loser=current
+        else:
+            winner=dict(current); loser=row
+        alt=[]
+        for source in (current,row):
+            for url in [source.get('discovery_url'), source.get('url'), source.get('resolved_source_url')]:
+                if url and url != winner.get('url') and url not in alt:
+                    alt.append(url)
+            for url in source.get('alternate_source_urls') or []:
+                if url and url != winner.get('url') and url not in alt:
+                    alt.append(url)
+        if alt:
+            winner['alternate_source_urls']=alt[:8]
+        winner['canonical_instrument_key']=key
+        winner['canonical_merge_strength']=_positive_law_row_strength(winner)
+        winner['canonical_merge_applied']=True
+        out[idx]=winner
+    return out
+
+
+def _verify_positive_law_results(results: list[dict], snapshot: dict, max_documents: int = DEFAULT_VERIFICATION_DOCUMENT_BUDGET, time_budget_seconds: float = DEFAULT_VERIFICATION_TIME_BUDGET_SECONDS) -> list[dict]:
     """Verify only deterministic legal-instrument candidates.
 
     Official news, event, profile, and unidentified landing pages remain visible
@@ -997,15 +1638,118 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
     duplicate URLs and malformed exact citations cannot starve valid statutes.
     """
     enriched=[]
+    enriched_by_index={}
     verified_budget=0
     fetch_map={}
     fetch_candidates=[]
+    verification_started=time.monotonic()
+    verification_deadline=verification_started+max(2.0,float(time_budget_seconds or DEFAULT_VERIFICATION_TIME_BUDGET_SECONDS))
+
+    def _remaining() -> float:
+        return max(0.0, verification_deadline-time.monotonic())
+
+    def _apply_incorporated_provision_resolution(item: dict, base_verification: dict, resolved: dict) -> dict:
+        """Verify article text in an expressly incorporated official attachment.
+
+        R38 deliberately does not re-run parent status/tempus extraction against
+        the child instrument text.  The parent official detail page remains the
+        source of instrument identity/lifecycle metadata; the incorporated text
+        supplies provision evidence only after the parent-child relationship has
+        been verified by the fulltext resolver.
+        """
+        base=dict(base_verification or {})
+        expected_key=_expected_identity_key_for_fulltext(item)
+        if not (
+            base.get('identity_confirmed') is True
+            and resolved.get('resolved')
+            and resolved.get('identity_aligned')
+            and resolved.get('relationship_verified')
+            and resolved.get('legal_role') == 'INCORPORATED_INSTRUMENT'
+            and resolved.get('incorporation_parent_identity_key') == expected_key
+            and resolved.get('incorporated_identity_key')
+            and resolved.get('text')
+        ):
+            return base
+        text=resolved.get('text') or ''
+        requested=item.get('requested_provisions') or []
+        base['text_retrieved']=True
+        base['provision_text_location']=locate_provisions(requested,text,resolved.get('source_url'))
+        text_verified=verify_provisions(requested,text,resolved.get('source_url'))
+        base['provision_text_verification']=text_verified
+        if base.get('case_nexus_status') == 'CASE_NEXUS_VERIFIED':
+            base['provision_verification']=text_verified
+        elif requested:
+            base['provision_verification']={
+                'status':'PROVISION_BLOCKED_BY_CASE_NEXUS',
+                'requested':list(text_verified.get('requested') or []),
+                'verified':[],'unverified':list(text_verified.get('requested') or []),
+                'citations':[],'verified_count':0,
+                'requested_count':int(text_verified.get('requested_count') or 0),
+                'gate_reason':'CASE_NEXUS_VERIFIED is required before case-bound article verification',
+            }
+        base['provision_source_url']=resolved.get('source_url')
+        base['provision_source_status']=resolved.get('resolver_status')
+        base['fulltext_reconciliation']={
+            'source_instrument_key': expected_key,
+            'resolved_instrument_key': expected_key,
+            'text_instrument_key': resolved.get('text_identity_key'),
+            'incorporated_instrument_key': resolved.get('incorporated_identity_key'),
+            'legal_role':'INCORPORATED_INSTRUMENT',
+            'relationship_verified':True,
+            'identity_aligned':True,
+            'provision_binding_preserved': bool(item.get('provision_binding_provenance')),
+            'resolver_status': resolved.get('resolver_status'),
+        }
+        base['fetch_attempted']=True
+        base['fetch_reachable']=True
+        return base
+
+    def _apply_postfetch_contract(item: dict, verification: dict, official_text: str) -> dict:
+        """Apply semantic family/domain checks only after official identity is confirmed."""
+        if not isinstance(verification,dict) or verification.get('identity_confirmed') is not True:
+            return verification
+        expected_key=_expected_identity_key_for_fulltext(item)
+        post_contract=evaluate_instrument_identity_contract(
+            expected_key,item,expected_text=item.get('query') or '',
+            active_domains=item.get('case_nexus_domains') or [],phase="POSTFETCH",
+            official_text=official_text)
+        item['instrument_identity_contract_postfetch']=post_contract
+        if post_contract.get('passed'):
+            return verification
+        out=dict(verification)
+        out.update({
+            'case_nexus_status':'CASE_NEXUS_UNCERTAIN',
+            'final_status':'REJECTED_POSTFETCH_SUBJECT_DOMAIN_CONTRACT',
+            'diagnostic':post_contract.get('reason') or 'post-fetch semantic identity contract rejected official text',
+            'semantic_contract_rejected':True,
+        })
+        # A semantic rejection must not leave article verification looking valid.
+        pv=out.get('provision_verification') or {}
+        if pv.get('requested_count'):
+            out['provision_verification']={
+                **pv,'status':'PROVISION_BLOCKED_BY_POSTFETCH_SEMANTIC_CONTRACT',
+                'verified':[],'verified_count':0,
+                'unverified':list(pv.get('requested') or []),
+                'citations':[],
+                'gate_reason':'official text subject/domain conflicts with the expected case-bound instrument family',
+            }
+        return out
 
     eligible=[]
     for idx,row in enumerate(results):
         classification=row.get('document_classification') or classify_legal_document_candidate(row)
         url=row.get('url') or ''
-        if classification.get('legal_instrument_candidate') and row.get('authoritative') and url:
+        expected_key=_expected_identity_key_for_fulltext(row)
+        active_domains=row.get('case_nexus_domains') or []
+        alignment=_identity_alignment_state(row)
+        row['identity_alignment']=alignment
+        contract=evaluate_instrument_identity_contract(
+            expected_key, row, expected_text=row.get('query') or '', active_domains=active_domains, phase="PREFETCH")
+        row['instrument_identity_contract']=contract
+        decision=_prefetch_identity_decision(row, contract)
+        row['eligible_for_identity_verification']=bool(decision.get('eligible'))
+        row['prefetch_identity_decision']=decision
+        if classification.get('legal_instrument_candidate') and row.get('authoritative') and url and decision.get('eligible'):
             eligible.append((idx,row))
     eligible.sort(key=lambda pair: _verification_candidate_priority(pair[1]), reverse=True)
 
@@ -1032,7 +1776,7 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
         return (direct_pdf, downloadish, title_pdf, *_verification_candidate_priority(row))
 
     selected_urls=set(); selected_identities=set()
-    max_urls_per_identity=3
+    max_urls_per_identity=2
     for identity_key in identity_order:
         if len(selected_identities) >= max_documents:
             break
@@ -1048,16 +1792,45 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
                 continue
             selected_urls.add(url)
             fetch_candidates.append(url)
-    if fetch_candidates:
-        with ThreadPoolExecutor(max_workers=min(4,len(fetch_candidates))) as ex:
-            futs={ex.submit(fetch_official_document,url,5):url for url in fetch_candidates}
-            for fut in as_completed(futs):
-                url=futs[fut]
-                try: fetch_map[url]=fut.result()
-                except Exception as exc:
-                    fetch_map[url]={"url":url,"reachable":False,"official_host":True,"body":b"",
-                                    "content_type":"","error":str(exc)[:240],"connectivity_status":"FETCH_ERROR"}
-    for row in results:
+    if fetch_candidates and _remaining() > 1.0:
+        # Reserve part of the verification wall-clock for identity/fulltext work.
+        # Fetch discovery must not consume the complete budget.
+        batch_budget=min(7.0, max(1.0, _remaining()*0.45))
+        per_fetch_timeout=max(1,min(4,int(batch_budget)))
+        ex=ThreadPoolExecutor(max_workers=min(4,len(fetch_candidates)), thread_name_prefix="lexicore-verify")
+        futs={ex.submit(fetch_official_document,url,per_fetch_timeout):url for url in fetch_candidates}
+        done,pending=wait(set(futs), timeout=batch_budget)
+        for fut in done:
+            url=futs[fut]
+            try: fetch_map[url]=fut.result()
+            except Exception as exc:
+                fetch_map[url]={"url":url,"reachable":False,"official_host":True,"body":b"",
+                                "content_type":"","error":str(exc)[:240],"connectivity_status":"FETCH_ERROR"}
+        for fut in pending:
+            url=futs[fut]
+            fut.cancel()
+            fetch_map[url]={"url":url,"reachable":False,"official_host":True,"body":b"",
+                            "content_type":"","error":"VERIFICATION_FETCH_TIME_BUDGET_EXCEEDED",
+                            "connectivity_status":"TIME_BUDGET_EXCEEDED"}
+        ex.shutdown(wait=False, cancel_futures=True)
+    exact_identity_keys=[
+        _verification_identity_key(row) for row in results
+        if _is_exact_case_verification_row(row) and _verification_identity_key(row)
+    ]
+    scheduler=_VerificationScheduler(_remaining, exact_identity_keys)
+
+    # Execute exact-case verification first so general discovery cannot starve
+    # the regulation actually cited/bound in the case. Output order is restored
+    # before returning, so this changes scheduling only, not report ordering.
+    processing_rows=sorted(
+        enumerate(results),
+        key=lambda pair: (
+            1 if _is_exact_case_verification_row(pair[1]) else 0,
+            _verification_candidate_priority(pair[1]),
+        ),
+        reverse=True,
+    )
+    for original_idx,row in processing_rows:
         item=dict(row)
         classification=item.get('document_classification') or classify_legal_document_candidate(item)
         item['document_classification']=classification
@@ -1067,27 +1840,67 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
             'legal_status':'UNVERIFIED','tempus_status':'TEMPUS_UNVERIFIED',
             'case_nexus_status':item.get('case_nexus_status') or 'CASE_NEXUS_UNCERTAIN',
             'final_status':'UNVERIFIED','professional_verification':'PENDING',
+            'fetch_attempted':False,'fetch_reachable':False,'verification_budget_exceeded':False,
         }
         if not classification.get('legal_instrument_candidate'):
             item['positive_law_verification'].update({
                 'final_status':'REJECTED_NON_LEGAL_CONTENT',
                 'diagnostic':classification.get('reason') or 'not a deterministic legal instrument candidate',
             })
-            enriched.append(item)
+            enriched_by_index[original_idx]=item
+            scheduler.mark_exact_processed(item)
+            continue
+
+        expected_key=_expected_identity_key_for_fulltext(item)
+        contract=item.get('instrument_identity_contract') or evaluate_instrument_identity_contract(
+            expected_key, item, expected_text=item.get('query') or '', active_domains=item.get('case_nexus_domains') or [], phase="PREFETCH")
+        item['instrument_identity_contract']=contract
+        decision=_prefetch_identity_decision(item, contract)
+        item['identity_alignment']=decision.get('alignment')
+        item['eligible_for_identity_verification']=bool(decision.get('eligible'))
+        item['prefetch_identity_decision']=decision
+        if not decision.get('eligible'):
+            item['positive_law_verification'].update({
+                'final_status':'REJECTED_INSTRUMENT_IDENTITY_CONTRACT',
+                'diagnostic':decision.get('reason') or contract.get('reason') or 'instrument identity contract rejected candidate metadata',
+                'identity_contract_rejected':True,
+            })
+            enriched_by_index[original_idx]=item
+            scheduler.mark_exact_processed(item)
             continue
 
         url=item.get('url') or ''
+        identity_key=_verification_identity_key(item)
+        if item.get('authoritative') and classification.get('legal_instrument_candidate') and url not in selected_urls:
+            if identity_key not in selected_identities:
+                item['positive_law_verification'].update({
+                    'final_status':'NOT_ATTEMPTED_BUDGET_EXCEEDED',
+                    'verification_budget_exceeded':True,
+                    'diagnostic':f'positive-law verification identity budget exhausted ({max_documents}); candidate was discovered but not fetched',
+                })
+            else:
+                item['positive_law_verification'].update({
+                    'final_status':'NOT_ATTEMPTED_URL_FALLBACK_LIMIT',
+                    'diagnostic':'alternate URL for an already-selected instrument was not fetched because the per-identity URL cap was reached',
+                })
         if url in selected_urls and item.get('authoritative'):
             verified_budget += 1
-            fetched=fetch_map.get(url) or fetch_official_document(url, timeout=5)
+            item['positive_law_verification']['fetch_attempted']=True
+            fetched=fetch_map.get(url) or {'url':url,'reachable':False,'official_host':True,'body':b'',
+                                           'content_type':'','error':'VERIFICATION_FETCH_NOT_COMPLETED_WITHIN_BUDGET',
+                                           'connectivity_status':'TIME_BUDGET_EXCEEDED'}
             item['document_fetch']={k:v for k,v in fetched.items() if k!='body'}
             if fetched.get('reachable') and fetched.get('official_host'):
+                item['positive_law_verification']['fetch_reachable']=True
                 ctype=(fetched.get('content_type') or '').lower()
                 body=fetched.get('body') or b''
                 if 'html' in ctype:
                     text=html_to_text(body)
                     item['positive_law_verification']=verify_document_candidate(
                         item, source_text=text, snapshot=snapshot)
+                    item['positive_law_verification']=_apply_postfetch_contract(item,item['positive_law_verification'],text)
+                    item['positive_law_verification']['fetch_attempted']=True
+                    item['positive_law_verification']['fetch_reachable']=True
                     # Official search results frequently land on metadata/detail
                     # pages.  Identity, lifecycle status and the requested Pasal
                     # may exist only in the linked official PDF.  Resolve the
@@ -1108,31 +1921,47 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
                         expected_identity_key=_expected_identity_key_for_fulltext(item)
                         resolved=resolve_official_fulltext(
                             fetched.get('final_url') or url, body, fetched.get('content_type') or '',
-                            requested_provisions=item.get('requested_provisions') or [], timeout=5, max_candidates=2,
-                            expected_identity_key=expected_identity_key)
-                        if expected_identity_key and not (resolved.get('resolved') and resolved.get('identity_aligned')):
+                            requested_provisions=item.get('requested_provisions') or [], timeout=max(1,min(3,int(max(1,scheduler.remaining())))), max_candidates=2,
+                            expected_identity_key=expected_identity_key) if scheduler.can_run_fulltext(item) else {'resolved':False,'resolver_status':'VERIFICATION_TIME_BUDGET_EXCEEDED','attempted_urls':[]}
+                        if expected_identity_key and not _resolved_fulltext_satisfies_provision_contract(resolved, item.get('requested_provisions') or []):
                             recovered=_recover_expected_official_fulltext(
                                 expected_identity_key, item.get('requested_provisions') or [],
-                                preferred_source_id=item.get('source_id'), timeout=5)
-                            if recovered.get('resolved'):
+                                preferred_source_id=item.get('source_id'), timeout=3, time_budget_seconds=scheduler.recovery_budget(item)) if scheduler.can_run_recovery(item) else {'resolved':False,'recovery_exact_lock':False,'resolver_status':'RECOVERY_SKIPPED_TIME_BUDGET','attempted_urls':[]}
+                            if _recovery_result_should_replace_legacy(recovered, resolved):
                                 resolved=recovered
                         item['fulltext_resolution']={k:v for k,v in resolved.items() if k!='text'}
                         if resolved.get('resolved') and resolved.get('text'):
-                            resolved_candidate=dict(item)
-                            if resolved.get('source_url'):
-                                resolved_candidate['url']=resolved.get('source_url')
-                            full_verified=verify_document_candidate(
-                                resolved_candidate, source_text=resolved.get('text') or '', snapshot=snapshot)
-                            full_verified['provision_source_url']=resolved.get('source_url')
-                            full_verified['provision_source_status']=resolved.get('resolver_status')
-                            full_verified['fulltext_reconciliation']={
-                                'source_instrument_key': expected_identity_key,
-                                'resolved_instrument_key': resolved.get('resolved_identity_key'),
-                                'identity_aligned': bool(resolved.get('identity_aligned')),
-                                'provision_binding_preserved': bool(item.get('provision_binding_provenance')),
-                                'resolver_status': resolved.get('resolver_status'),
-                            }
-                            full_verified['legal_status_source_url']=resolved.get('source_url')
+                            if resolved.get('legal_role') == 'INCORPORATED_INSTRUMENT':
+                                full_verified=_apply_incorporated_provision_resolution(
+                                    item,item['positive_law_verification'],resolved)
+                                full_verified=_apply_postfetch_contract(
+                                    item,full_verified,resolved.get('text') or '')
+                                # Parent detail remains authoritative for lifecycle
+                                # status/tempus; the attachment is evidence for the
+                                # requested provision text only.
+                                full_verified['legal_status_source_url']=fetched.get('final_url') or url
+                            else:
+                                resolved_candidate=dict(item)
+                                if resolved.get('source_url'):
+                                    resolved_candidate['url']=resolved.get('source_url')
+                                full_verified=verify_document_candidate(
+                                    resolved_candidate, source_text=resolved.get('text') or '', snapshot=snapshot)
+                                full_verified=apply_post_verification_status_semantics(full_verified, resolved_candidate)
+                                full_verified=_apply_postfetch_contract(item,full_verified,resolved.get('text') or '')
+                                full_verified['provision_source_url']=resolved.get('source_url')
+                                full_verified['provision_source_status']=resolved.get('resolver_status')
+                                full_verified['fulltext_reconciliation']={
+                                    'source_instrument_key': expected_identity_key,
+                                    'resolved_instrument_key': resolved.get('resolved_identity_key'),
+                                    'text_instrument_key': resolved.get('text_identity_key'),
+                                    'legal_role': resolved.get('legal_role'),
+                                    'identity_aligned': bool(resolved.get('identity_aligned')),
+                                    'provision_binding_preserved': bool(item.get('provision_binding_provenance')),
+                                    'resolver_status': resolved.get('resolver_status'),
+                                }
+                                full_verified['legal_status_source_url']=resolved.get('source_url')
+                                full_verified['fetch_attempted']=True
+                                full_verified['fetch_reachable']=True
                             _rebind_resolved_instrument_metadata(item, resolved)
                             item['positive_law_verification']=full_verified
                     # Post-fulltext identity is the final legal-document gate.
@@ -1147,18 +1976,24 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
                     expected_identity_key=_expected_identity_key_for_fulltext(item)
                     resolved=resolve_official_fulltext(
                         fetched.get('final_url') or url, body, fetched.get('content_type') or '',
-                        requested_provisions=item.get('requested_provisions') or [], timeout=5, max_candidates=2,
-                        expected_identity_key=expected_identity_key)
-                    if expected_identity_key and not (resolved.get('resolved') and resolved.get('identity_aligned')):
+                        requested_provisions=item.get('requested_provisions') or [], timeout=max(1,min(3,int(max(1,scheduler.remaining())))), max_candidates=2,
+                        expected_identity_key=expected_identity_key) if scheduler.can_run_fulltext(item) else {'resolved':False,'resolver_status':'VERIFICATION_TIME_BUDGET_EXCEEDED','attempted_urls':[]}
+                    if expected_identity_key and not _resolved_fulltext_satisfies_provision_contract(resolved, item.get('requested_provisions') or []):
                         recovered=_recover_expected_official_fulltext(
                             expected_identity_key, item.get('requested_provisions') or [],
-                            preferred_source_id=item.get('source_id'), timeout=5)
-                        if recovered.get('resolved'):
+                            preferred_source_id=item.get('source_id'), timeout=3, time_budget_seconds=scheduler.recovery_budget(item)) if scheduler.can_run_recovery(item) else {'resolved':False,'recovery_exact_lock':False,'resolver_status':'RECOVERY_SKIPPED_TIME_BUDGET','attempted_urls':[]}
+                        if _recovery_result_should_replace_legacy(recovered, resolved):
                             resolved=recovered
                     item['fulltext_resolution']={k:v for k,v in resolved.items() if k!='text'}
                     if resolved.get('resolved') and resolved.get('text'):
                         item['positive_law_verification']=verify_document_candidate(
                             item, source_text=resolved.get('text') or '', snapshot=snapshot)
+                        item['positive_law_verification']=apply_post_verification_status_semantics(
+                            item['positive_law_verification'], item)
+                        item['positive_law_verification']=_apply_postfetch_contract(
+                            item,item['positive_law_verification'],resolved.get('text') or '')
+                        item['positive_law_verification']['fetch_attempted']=True
+                        item['positive_law_verification']['fetch_reachable']=True
                         item['positive_law_verification']['fulltext_reconciliation']={
                             'source_instrument_key': expected_identity_key,
                             'resolved_instrument_key': resolved.get('resolved_identity_key'),
@@ -1191,8 +2026,14 @@ def _verify_positive_law_results(results: list[dict], snapshot: dict, max_docume
                     'transport_status':fetched.get('connectivity_status'),
                     'diagnostic':fetched.get('error') or 'official document fetch failed',
                 })
-        enriched.append(item)
-    return enriched
+        enriched_by_index[original_idx]=item
+        scheduler.mark_exact_processed(item)
+    enriched=[enriched_by_index[i] for i in range(len(results)) if i in enriched_by_index]
+    # R41: exact-case duplicate representations collapse only after all fetch,
+    # identity, status and fulltext gates have run.  This preserves the strongest
+    # verified canonical state and prevents a stale 0/1 detail row from surviving
+    # beside a 1/1 fulltext row for the same instrument.
+    return _consolidate_exact_case_rows(enriched)
 
 
 
@@ -1208,10 +2049,22 @@ def _summarize_positive_law_verification(results: list[dict]) -> dict:
     located_pairs=set()
     verified_pairs=set()
     verified_documents=set()
+    fetch_attempted=0
+    fetch_reachable=0
+    text_located=0
+    instrument_identity_verified=0
+    provision_text_verified=0
+    not_attempted_budget_exceeded=0
     for r in results or []:
         if not isinstance(r,dict):
             continue
         v=r.get("positive_law_verification") or {}
+        fetch_attempted += 1 if v.get('fetch_attempted') else 0
+        fetch_reachable += 1 if v.get('fetch_reachable') else 0
+        text_located += 1 if (v.get('text_retrieved') or v.get('fetch_reachable')) else 0
+        instrument_identity_verified += 1 if v.get('identity_confirmed') else 0
+        if v.get('final_status') == 'NOT_ATTEMPTED_BUDGET_EXCEEDED':
+            not_attempted_budget_exceeded += 1
         # Provision demand is a wiring/attempt metric, not a legal-status result.
         # Count exact case-bound provisions even when the official page could not
         # yet confirm instrument identity.  This keeps "Pasal yang diperiksa"
@@ -1236,6 +2089,7 @@ def _summarize_positive_law_verification(results: list[dict]) -> dict:
                 verified_pairs.add((identity_key, ref.lower()))
         if ptv.get("status") in {"PROVISION_VERIFIED","PROVISION_PARTIALLY_VERIFIED"} and int(ptv.get("verified_count") or 0) > 0:
             verified_documents.add(identity_key)
+            provision_text_verified += 1
 
         # Legal-status/tempus/applicability remain strict: no identity confirmation,
         # no promotion. Secondary research (including Hukumonline) never changes
@@ -1261,6 +2115,12 @@ def _summarize_positive_law_verification(results: list[dict]) -> dict:
         "provision_located": provision_located,
         "provision_verified": provision_verified,
         "provision_documents_verified": provision_documents_verified,
+        "fetch_attempted": fetch_attempted,
+        "fetch_reachable": fetch_reachable,
+        "text_located": text_located,
+        "instrument_identity_verified": instrument_identity_verified,
+        "provision_text_verified": provision_text_verified,
+        "not_attempted_budget_exceeded": not_attempted_budget_exceeded,
     }
 
 
@@ -1285,19 +2145,54 @@ def _collect_identity_verification_diagnostics(results: list[dict], limit: int =
             continue
         identity=v.get("identity") or {}
         recon=v.get("fulltext_reconciliation") or {}
+        fulltext_resolution=r.get("fulltext_resolution") or {}
         binding=r.get("provision_binding_provenance") or {}
-        expected_key=(identity.get("expected_key") or recon.get("source_instrument_key") or _verification_identity_key(r))
-        resolved_key=(recon.get("resolved_instrument_key") or identity.get("key"))
-        dedupe=(str(expected_key), tuple(x.lower() for x in located), str(r.get("url") or ""))
+        expected_key=(
+            fulltext_resolution.get("expected_identity_key")
+            or identity.get("expected_key")
+            or recon.get("source_instrument_key")
+            or _verification_identity_key(r)
+        )
+
+        # R22 report-state invariant: diagnostics must serialize the canonical
+        # post-recovery state.  Once exact-lock is active, a stale pre-recovery
+        # mismatch (for example UU:5:2017) must never leak into Section 14.
+        exact_lock=bool(fulltext_resolution.get("recovery_exact_lock"))
+        exact_success=bool(
+            exact_lock
+            and fulltext_resolution.get("resolved")
+            and fulltext_resolution.get("identity_aligned")
+        )
+        if exact_lock:
+            resolved_key=(fulltext_resolution.get("resolved_identity_key") or expected_key) if exact_success else ""
+            identity_confirmed=exact_success
+            identity_reason=(
+                fulltext_resolution.get("resolver_status")
+                or ("RECOVERED_EXACT_IDENTITY" if exact_success else "EXPECTED_IDENTITY_EXACT_CANDIDATE_FAILED")
+            )
+            trace=fulltext_resolution.get("recovery_candidate_trace") or []
+            identity_candidates=[
+                str(x.get("title_identity")) for x in trace
+                if isinstance(x,dict) and x.get("title_identity")
+            ][:8]
+        else:
+            resolved_key=(recon.get("resolved_instrument_key") or identity.get("key"))
+            identity_confirmed=bool(v.get("identity_confirmed"))
+            identity_reason=identity.get("match_reason")
+            identity_candidates=list(identity.get("actual_identity_candidates") or [])[:8]
+
+        dedupe=(str(expected_key), tuple(x.lower() for x in located), str(r.get("url") or ""), exact_lock, str(resolved_key))
         if dedupe in seen:
             continue
         seen.add(dedupe)
         out.append({
             "expected_instrument_key": expected_key,
             "resolved_instrument_key": resolved_key,
-            "identity_candidates": list(identity.get("actual_identity_candidates") or [])[:8],
-            "identity_confirmed": bool(v.get("identity_confirmed")),
-            "identity_match_reason": identity.get("match_reason"),
+            "identity_candidates": identity_candidates,
+            "identity_confirmed": identity_confirmed,
+            "identity_match_reason": identity_reason,
+            "exact_lock_active": exact_lock,
+            "post_recovery_status": fulltext_resolution.get("resolver_status") if exact_lock else None,
             "expected_identity_source": identity.get("expected_identity_source"),
             "case_nexus_status": v.get("case_nexus_status"),
             "requested_provisions": list(pv.get("requested") or r.get("requested_provisions") or []),
@@ -1337,6 +2232,7 @@ def filter_regulatory_matches_for_domains(matches: list[dict], domains: list[dic
         'administrative': ('ptun','tata usaha negara','administrasi pemerintahan','aaupb','upaya administratif'),
         'public_information': ('keterbukaan informasi publik','informasi publik','komisi informasi'),
         'investment': ('penanaman modal','investasi','bkpm','perizinan berusaha'),
+        'electoral_ethics': ('pemilihan umum','pemilu','pilkada','kpu','bawaslu','dkpp','kode etik','penyelenggara pemilu'),
     }
     allowed=tuple(k for domain in active for k in vocab.get(domain,()))
     exclusive={
@@ -1352,6 +2248,7 @@ def filter_regulatory_matches_for_domains(matches: list[dict], domains: list[dic
         'administrative':('peradilan tata usaha negara','administrasi pemerintahan'),
         'public_information':('keterbukaan informasi publik',),
         'investment':('penanaman modal',),
+        'electoral_ethics':('pemilihan umum','pemilihan gubernur','pemilihan bupati','pemilihan walikota','dkpp','kode etik penyelenggara pemilu'),
     }
     out=[]
     for row in matches or []:
@@ -1408,7 +2305,8 @@ def _database_matches_for_domains(text: str, domains: list[dict], limit: int = 1
 
 def retrieve_for_case_dynamic(*, text: str, title: str, provision_refs=None, qualified_queries=None,
                               local_seed_matches=None, legal_issues=None, online: bool = True,
-                              retrieval_mode: str | None = None, domain_classification: dict | None = None) -> dict:
+                              retrieval_mode: str | None = None, domain_classification: dict | None = None,
+                              material_tempus_selection: dict | None = None) -> dict:
     mode_requested=(retrieval_mode or ('hybrid' if online else 'offline')).strip().lower()
     if mode_requested not in ('offline','online','hybrid'):
         mode_requested='hybrid'
@@ -1422,8 +2320,19 @@ def retrieve_for_case_dynamic(*, text: str, title: str, provision_refs=None, qua
     else:
         domains = detect_domains(text)
     local_database_matches = _database_matches_for_domains(text, domains, limit=10) if mode_requested in ('offline','hybrid') else []
-    event_year = detect_material_year(text)
-    event_date = detect_material_date(text)
+    # Canonical material-tempus selection is computed once upstream when available
+    # and reused here.  This preserves the exact-verification architecture while
+    # preventing procedural dates from becoming the positive-law temporal anchor.
+    material_tempus_selection = dict(material_tempus_selection or select_material_tempus(text))
+    if material_tempus_selection.get('status') == 'MATERIAL_TEMPUS_CANDIDATE':
+        material_value = str(material_tempus_selection.get('value') or '')
+        material_precision = material_tempus_selection.get('precision')
+        event_date = material_value if material_precision == 'date' else None
+        m = re.match(r'(19\d{2}|20\d{2})', material_value)
+        event_year = int(m.group(1)) if m else None
+    else:
+        event_date = None
+        event_year = None
     date_candidates = detect_case_dates(text)
     procedural_dates=sorted([x.get('date') for x in date_candidates if x.get('role')=='procedural_or_filing' and x.get('date')])
     procedural_date = procedural_dates[0] if procedural_dates else None
@@ -1450,13 +2359,81 @@ def retrieve_for_case_dynamic(*, text: str, title: str, provision_refs=None, qua
 
     results = official.get("results", [])
     results = _attach_requested_provisions(results, provision_refs, local_database_matches, qualified_queries=qualified_queries, case_exact_queries=case_exact_queries, case_binding_map=case_binding_map)
+
+    # Integrated Closure: exact case citations are first-class deterministic
+    # verification jobs.  They are created from the case text itself and are
+    # prepended before discovery rows, so search recall/ranking can never decide
+    # whether an expressly cited instrument receives a verification attempt.
+    exact_job_rows=_build_exact_case_verification_rows(source_bindings, domains, event_year)
+    if exact_job_rows:
+        existing={(str(r.get("url") or ""), str(_verification_identity_key(r) or "")) for r in results}
+        merged_exact=[]
+        for job_row in exact_job_rows:
+            key=(str(job_row.get("url") or ""), str(_verification_identity_key(job_row) or ""))
+            if key not in existing:
+                merged_exact.append(job_row)
+                existing.add(key)
+            else:
+                # If discovery already returned the same exact URL, upgrade that
+                # row with deterministic case-bound job provenance rather than
+                # creating a duplicate representation.
+                for r in results:
+                    if (str(r.get("url") or ""), str(_verification_identity_key(r) or "")) == key:
+                        r.update({
+                            "query_origin":"EXACT_CASE_REGULATION",
+                            "exact_verification_job":True,
+                            "expected_identity_key":job_row.get("expected_identity_key"),
+                            "requested_provisions":job_row.get("requested_provisions") or r.get("requested_provisions") or [],
+                            "provision_binding_provenance":job_row.get("provision_binding_provenance"),
+                            "case_nexus_domains":job_row.get("case_nexus_domains") or r.get("case_nexus_domains") or [],
+                            "case_nexus_status":job_row.get("case_nexus_status") or r.get("case_nexus_status"),
+                            "case_nexus_reason":job_row.get("case_nexus_reason"),
+                        })
+                        break
+        results=merged_exact+results
+
+    # Final retrieval lock: every row entering positive-law verification must
+    # carry an explicit candidate-law relevance decision.  This closes paths
+    # where exact-job merging or legacy/reconstructed rows could bypass the
+    # initial compact-search filter.  Exact case citations may still be kept for
+    # identity/provision audit, but a hard institutional mismatch is explicitly
+    # barred from the downstream Candidate Law pool.
+    locked_results=[]
+    for row in results:
+        if not isinstance(row,dict):
+            continue
+        decision=evaluate_law_weight_policy(row, domains)
+        row=dict(row)
+        row["law_weight_policy"]=decision
+        exact_case=str(row.get("query_origin") or "").upper()=="EXACT_CASE_REGULATION"
+        hard_drop=bool(decision.get("hard_drop_reasons"))
+        if hard_drop:
+            row["candidate_law_eligible"]=False
+            row["candidate_law_rejection_reason"]=(decision.get("hard_drop_reasons") or ["INSTITUTIONAL_MISMATCH"])[0]
+            # Preserve an exact source citation only for audit/identity checking.
+            # It must not later become a governing-law candidate.
+            if exact_case:
+                locked_results.append(row)
+            continue
+        if exact_case:
+            row["candidate_law_eligible"]=True
+            locked_results.append(row)
+            continue
+        if decision.get("status") != "POSITIVE_NEXUS_VERIFIED":
+            continue
+        row["candidate_law_eligible"]=True
+        locked_results.append(row)
+    results=locked_results
+
     verification_snapshot = {
         "event_year_candidate": event_year,
         "event_date_candidate": event_date,
         "procedural_date_candidate": procedural_date,
+        "material_tempus_status": material_tempus_selection.get("status"),
+        "material_tempus_selection_basis": material_tempus_selection.get("selection_basis"),
     }
     if online and results:
-        results = _verify_positive_law_results(results, verification_snapshot, max_documents=10)
+        results = _verify_positive_law_results(results, verification_snapshot, max_documents=DEFAULT_VERIFICATION_DOCUMENT_BUDGET, time_budget_seconds=DEFAULT_VERIFICATION_TIME_BUDGET_SECONDS)
         official["results"] = results
         funnel = official.get("funnel") or {}
         funnel.update(_summarize_positive_law_verification(results))
@@ -1489,6 +2466,7 @@ def retrieve_for_case_dynamic(*, text: str, title: str, provision_refs=None, qua
     payload = {
         "mode": mode, "retrieval_mode": mode_requested, "domains": domains, "queries": queries,
         "event_year_candidate": event_year, "event_date_candidate": event_date, "procedural_date_candidate": procedural_date, "date_candidates": date_candidates,
+        "material_tempus": material_tempus_selection,
         "official_results": results, "search_bundles": official.get("bundles", []),
         "official_source_ids": list(official.get("source_ids", [])),
         "case_regulation_bindings": source_bindings,

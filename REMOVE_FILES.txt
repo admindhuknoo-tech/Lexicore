@@ -1,0 +1,5 @@
+Obsolete file that MUST be removed by APPLY_PATCH.bat:
+exporters/terminology_mapper.py
+
+Reason: tools/release_audit.py freezes exporters/ to exactly:
+__init__.py, case_docx.py, case_pdf.py, common.py

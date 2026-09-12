@@ -10,7 +10,8 @@ import os
 PRODUCT_NAME = "LexiCore"
 PRODUCT_LABEL = "LexiCore Assistant"
 INITIATIVE = "Evidence-to-Action Legal Intelligence"
-FIRM_NAME = "ELF - Erfan's Law Firm"
+FIRM_NAME = "USER_CONFIGURED_PROFILE"
+SAL_CONTRACT_VERSION = "SAL-1.0"
 
 # Public release line. Increment only for a deliberate release milestone.
 PUBLIC_VERSION = "1.3.14"
@@ -33,6 +34,7 @@ def release_metadata() -> dict:
         "product_label": PRODUCT_LABEL,
         "initiative": INITIATIVE,
         "firm_name": FIRM_NAME,
+        "sal_contract_version": SAL_CONTRACT_VERSION,
         "public_version": PUBLIC_VERSION,
         "release_channel": RELEASE_CHANNEL,
         "release_sequence": RELEASE_SEQUENCE,

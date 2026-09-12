@@ -84,17 +84,17 @@ class DocumentExtractor:
         return text
 
     @staticmethod
-    def extract_with_diagnostics(file_path: str):
+    def extract_with_diagnostics(file_path: str, progress_callback=None):
         """Return (text, ingestion diagnostics) for Case Analysis/audit UI."""
         ext = file_path.lower().rsplit('.', 1)[-1] if '.' in file_path else ''
         if ext == 'pdf':
-            text, diag = extract_pdf_text(file_path)
+            text, diag = extract_pdf_text(file_path, progress_callback=progress_callback) if progress_callback is not None else extract_pdf_text(file_path)
             if (diag or {}).get('pages_ocr'):
                 text, pp = postprocess_legal_ocr(text)
                 diag['legal_ocr_postprocess'] = pp
             return text, diag
         if ext in {'png', 'jpg', 'jpeg', 'webp', 'tif', 'tiff'}:
-            text, diag = extract_image_text(file_path)
+            text, diag = extract_image_text(file_path, progress_callback=progress_callback) if progress_callback is not None else extract_image_text(file_path)
             if text:
                 text, pp = postprocess_legal_ocr(text)
                 diag['legal_ocr_postprocess'] = pp

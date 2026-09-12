@@ -14,7 +14,7 @@ from services.backup_service import create_database_backup, ensure_daily_backup,
 BASE_DIR = Path(__file__).resolve().parent
 _raw_db_path = os.environ.get("LEXICORE_DB_PATH", "lexicore.db")
 DB_PATH = str((BASE_DIR / _raw_db_path).resolve()) if not os.path.isabs(_raw_db_path) else str(Path(_raw_db_path).resolve())
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 13
 
 # Every table column expected by the current application lives here.  When a
 # future release adds a column, add it to this map.  Startup validation will
@@ -46,6 +46,7 @@ EXPECTED_COLUMNS = {
     "client_communications": [
         ("id", "INTEGER"), ("draft_id", "INTEGER"), ("client_id", "TEXT"),
         ("client_name", "TEXT"), ("client_email", "TEXT"), ("whatsapp_number", "TEXT"),
+        ("client_address", "TEXT"), ("legal_position", "TEXT"),
         ("subject", "TEXT"), ("message", "TEXT"), ("document_type", "TEXT"),
         ("status", "TEXT DEFAULT 'draft'"), ("sent_at", "TIMESTAMP"),
         ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
@@ -85,6 +86,14 @@ EXPECTED_COLUMNS = {
         ("effective_date", "TEXT"), ("promulgation_date", "TEXT"), ("jdih_source", "TEXT"),
         ("official_url", "TEXT"), ("domain_tags", "TEXT"), ("articles", "TEXT"),
         ("metadata", "TEXT"), ("source", "TEXT DEFAULT 'BUILTIN_SEED'"),
+        ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ],
+    "app_profile": [
+        ("id", "INTEGER"), ("professional_name", "TEXT"), ("firm_name", "TEXT"),
+        ("credentials", "TEXT"), ("office_address", "TEXT"), ("phone", "TEXT"),
+        ("email", "TEXT"), ("logo_path", "TEXT"), ("watermark_text", "TEXT"),
+        ("branding_mode", "TEXT DEFAULT 'co_brand'"),
+        ("onboarding_seen_at", "TEXT"),
         ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
     ],
 }
@@ -139,7 +148,7 @@ def _create_tables(conn):
         recommendations TEXT, assessment_payload TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
     cur.execute("""CREATE TABLE IF NOT EXISTS client_communications (
         id INTEGER PRIMARY KEY AUTOINCREMENT, draft_id INTEGER, client_id TEXT, client_name TEXT,
-        client_email TEXT, whatsapp_number TEXT, subject TEXT, message TEXT, document_type TEXT,
+        client_email TEXT, whatsapp_number TEXT, client_address TEXT, legal_position TEXT, subject TEXT, message TEXT, document_type TEXT,
         status TEXT DEFAULT 'draft', sent_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (draft_id) REFERENCES drafts(id))""")
     cur.execute("""CREATE TABLE IF NOT EXISTS case_analyses (
@@ -173,6 +182,11 @@ def _create_tables(conn):
         source TEXT DEFAULT 'BUILTIN_SEED', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_regulatory_corpus_year ON regulatory_corpus(tahun)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_regulatory_corpus_kind ON regulatory_corpus(jenis)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS app_profile (
+        id INTEGER PRIMARY KEY CHECK (id=1), professional_name TEXT, firm_name TEXT, credentials TEXT,
+        office_address TEXT, phone TEXT, email TEXT, logo_path TEXT, watermark_text TEXT,
+        branding_mode TEXT DEFAULT 'co_brand', onboarding_seen_at TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    cur.execute("""INSERT OR IGNORE INTO app_profile(id, branding_mode) VALUES(1, 'co_brand')""")
     cur.execute("""CREATE TABLE IF NOT EXISTS schema_meta (
         key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
     conn.commit()
@@ -452,9 +466,9 @@ class CommunicationManager:
     @staticmethod
     def save(data:Dict)->int:
         conn=get_db_connection(); cur=conn.cursor(); cur.execute('''INSERT INTO client_communications
-        (draft_id,client_id,client_name,client_email,whatsapp_number,subject,message,document_type,status,sent_at) VALUES (?,?,?,?,?,?,?,?,?,?)''',(
+        (draft_id,client_id,client_name,client_email,whatsapp_number,client_address,legal_position,subject,message,document_type,status,sent_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',(
             data.get('draft_id'),data.get('client_id',''),data.get('client_name',''),data.get('client_email',''),data.get('whatsapp_number',''),
-            data.get('subject',''),data.get('message',''),data.get('document_type','client_update'),data.get('status','draft'),
+            data.get('client_address',''),data.get('legal_position',''),data.get('subject',''),data.get('message',''),data.get('document_type','client_update'),data.get('status','draft'),
             datetime.now().isoformat() if data.get('status')=='sent' else None))
         i=cur.lastrowid; conn.commit(); conn.close(); AuditLogger.log_action('save_communication','communication',i,data.get('subject','')); return i
 
@@ -509,6 +523,39 @@ class CaseRegulatorySnapshotManager:
             except Exception:
                 d[key]=[]
         return d
+
+
+class AppProfileManager:
+    @staticmethod
+    def get() -> Dict:
+        try:
+            with db_session() as conn:
+                row=conn.execute("SELECT * FROM app_profile WHERE id=1").fetchone()
+            return dict(row) if row else {"id":1,"branding_mode":"co_brand"}
+        except sqlite3.OperationalError:
+            # Compatibility for isolated unit tests or pre-migration databases.
+            return {"id":1,"branding_mode":"co_brand"}
+
+    @staticmethod
+    def mark_onboarding_seen() -> Dict:
+        with db_session(write=True) as conn:
+            conn.execute("UPDATE app_profile SET onboarding_seen_at=COALESCE(onboarding_seen_at, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE id=1")
+        return AppProfileManager.get()
+
+    @staticmethod
+    def save(data: Dict) -> Dict:
+        allowed=("professional_name","firm_name","credentials","office_address","phone","email","logo_path","watermark_text","branding_mode")
+        values={k:str(data.get(k) or "").strip() for k in allowed}
+        if values["branding_mode"] not in {"co_brand","firm_only","product_only"}:
+            values["branding_mode"]="co_brand"
+        with db_session(write=True) as conn:
+            conn.execute("""INSERT INTO app_profile(id,professional_name,firm_name,credentials,office_address,phone,email,logo_path,watermark_text,branding_mode,updated_at)
+                VALUES(1,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+                ON CONFLICT(id) DO UPDATE SET professional_name=excluded.professional_name, firm_name=excluded.firm_name, credentials=excluded.credentials,
+                office_address=excluded.office_address, phone=excluded.phone, email=excluded.email, logo_path=excluded.logo_path,
+                watermark_text=excluded.watermark_text, branding_mode=excluded.branding_mode, updated_at=CURRENT_TIMESTAMP""",
+                tuple(values[k] for k in allowed))
+        return AppProfileManager.get()
 
 
 class RegulatoryCorpusManager:

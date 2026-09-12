@@ -1,0 +1,77 @@
+[
+  {
+    "timestamp": "2026-09-06T23:43:18.764380+00:00",
+    "step": "6_recovery_propagation",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "legacy": {
+        "resolved": false,
+        "identity_aligned": null,
+        "resolved_identity_key": null,
+        "resolver_status": "VERIFICATION_TIME_BUDGET_EXCEEDED"
+      },
+      "recovered": {
+        "resolved": false,
+        "recovery_exact_lock": false,
+        "resolved_identity_key": null,
+        "resolver_status": "RECOVERY_SKIPPED_TIME_BUDGET"
+      },
+      "replace_legacy": false
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:43:18.805995+00:00",
+    "step": "6_recovery_propagation",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "legacy": {
+        "resolved": false,
+        "identity_aligned": null,
+        "resolved_identity_key": null,
+        "resolver_status": "VERIFICATION_TIME_BUDGET_EXCEEDED"
+      },
+      "recovered": {
+        "resolved": false,
+        "recovery_exact_lock": false,
+        "resolved_identity_key": null,
+        "resolver_status": "RECOVERY_SKIPPED_TIME_BUDGET"
+      },
+      "replace_legacy": false
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:43:18.900758+00:00",
+    "step": "7_report_serialization",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "fulltext_resolution": {
+        "resolved": false,
+        "resolved_identity_key": null,
+        "identity_aligned": null,
+        "recovery_exact_lock": null,
+        "resolver_status": "VERIFICATION_TIME_BUDGET_EXCEEDED"
+      },
+      "report_output": {
+        "resolved_identity_key": "UU:5:2017",
+        "identity_confirmed": false,
+        "identity_reason": "OFFICIAL_TEXT_IDENTITY_MISMATCH",
+        "exact_lock_active": false,
+        "identity_candidates": [
+          "UU:5:2017",
+          "UU:30:2002",
+          "UU:10:2015",
+          "UU:1:2015",
+          "UU:17:2003",
+          "PP:14:2017",
+          "PP:63:2005"
+        ]
+      },
+      "located_provisions": [
+        "Pasal 3"
+      ]
+    }
+  }
+]

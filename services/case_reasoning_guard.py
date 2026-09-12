@@ -44,11 +44,16 @@ def _count(text: str, terms: Iterable[str]) -> int:
 def _context_flags(text: str, domain_contract: Dict | None = None) -> Dict[str,bool]:
     low=str(text or "").lower()
     active=set((domain_contract or {}).get("domain_contract") or [])
-    criminal = ("criminal" in active or "corruption" in active or _count(low,["dakwaan","terdakwa","jaksa penuntut umum","tindak pidana","penyidikan"])>=2)
-    corruption = ("corruption" in active or _count(low,["tindak pidana korupsi","tipikor","kerugian keuangan negara","kerugian keuangan daerah","pasal 603","pasal 604","pasal 2","pasal 3"])>=2)
+    primary=str((domain_contract or {}).get("primary_domain") or "")
+    strong_criminal=_count(low,["surat dakwaan","dakwaan","terdakwa","tersangka","jaksa penuntut umum","penyidikan","penuntutan"])>=2
+    noncriminal_posture=primary in {"electoral_ethics","administrative","civil_contract","employment","religious_court","public_information"}
+    criminal = ("criminal" in active or "corruption" in active or (strong_criminal and not noncriminal_posture))
+    corruption_markers=_count(low,["tindak pidana korupsi","tipikor","kerugian keuangan negara","kerugian keuangan daerah","pasal 603","pasal 604"])
+    corruption = ("corruption" in active or (strong_criminal and corruption_markers>=1 and not noncriminal_posture))
+    electoral = ("electoral_ethics" in active)
     banking = ("financial_services" in active or _count(low,["bpr","bank perkreditan rakyat","bank perekonomian rakyat","pemberian kredit","fasilitas kredit","debitur","agunan","plafon kredit"])>=2)
     governance = _count(low,["sop","prosedur","tata kelola","kewenangan","komite kredit","pemutus kredit","survei","survey","analisa 5c"])>=2
-    prosecution = _count(low,["jaksa","penuntut umum","jpu","dakwaan","penuntutan"])>=1
+    prosecution = _count(low,["jaksa","penuntut umum","jpu","dakwaan","penuntutan"])>=1 and criminal
     fiduciary = _count(low,["fidusia","fiduci","sertifikat fidusia","sertipikat fidusia","bpkb","barang jaminan","objek jaminan"])>=2
     objection = _count(low,["eksepsi","keberatan","perlawanan","dakwaan tidak jelas","cermat dan lengkap"])>=1
     forum_tipikor = _count(low,["pengadilan tipikor","pengadilan tindak pidana korupsi","tidak berwenang mengadili","kewenangan mengadili"])>=1
@@ -56,6 +61,7 @@ def _context_flags(text: str, domain_contract: Dict | None = None) -> Dict[str,b
     return {
         "criminal_nexus":criminal,
         "corruption_nexus":corruption,
+        "electoral_nexus":electoral,
         "banking_nexus":banking,
         "governance_nexus":governance,
         "prosecution_context":prosecution,
@@ -175,6 +181,8 @@ def build_reasoning_guard(text: str, domain_contract: Dict | None = None) -> Dic
     modules.append("Dokumen harus dianalisis dari fakta dan bukti yang benar-benar terdapat di sumber; klasifikasi domain hanya merupakan alat penyaringan dan bukan kesimpulan hukum.")
     if flags["objection_context"]:
         modules.append("Karena dokumen memuat eksepsi/keberatan, pisahkan keberatan formil terhadap dakwaan atau forum dari pembelaan yang sebenarnya memasuki pembuktian pokok perkara.")
+    if flags.get("electoral_nexus"):
+        modules.append("Keterkaitan dengan Pemilu/Pilkada atau etik penyelenggara terdeteksi. Pisahkan pemeriksaan etik/administratif dari proses pidana; rujukan terhadap undang-undang pidana atau lembaga penegak hukum tidak mengubah posture perkara tanpa bukti proses pidana yang independen.")
     if flags["criminal_nexus"]:
         modules.append("Keterkaitan dengan perkara pidana terdeteksi. Setiap kesimpulan pidana harus diuji unsur demi unsur dan tidak boleh diturunkan hanya dari pelanggaran prosedur, jabatan, atau hasil akhir yang merugikan.")
     if flags["corruption_nexus"]:

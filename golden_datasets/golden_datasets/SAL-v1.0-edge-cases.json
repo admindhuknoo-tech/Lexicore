@@ -1,0 +1,76 @@
+{
+  "contract": "SAL-1.0",
+  "purpose": "Golden regression anchors for upstream semantic admission; examples are synthetic and do not assert case facts.",
+  "cases": [
+    {
+      "id": "LELY_FUTURE_EVIDENCE_PLAN",
+      "input": "Menyiapkan bukti surat perjanjian hutang piutang dan bukti transfer.",
+      "expected_semantic_type": "FUTURE_ACTION",
+      "expected_state": "REJECTED",
+      "must_not_route_to": [
+        "Evidence Map",
+        "Case Readiness"
+      ]
+    },
+    {
+      "id": "LELY_FUTURE_SOMASI",
+      "input": "Memberikan somasi 1-3x, yang isinya rincian pinjaman yang harus dikembalikan.",
+      "expected_semantic_type": "FUTURE_ACTION",
+      "expected_state": "REJECTED",
+      "must_not_route_to": [
+        "Evidence Map",
+        "Case Readiness"
+      ]
+    },
+    {
+      "id": "BAP_INTERROGATION_QUESTION",
+      "input": "Apakah benar tanda tangan saudara dalam dokumen tersebut?",
+      "expected_semantic_type": "QUESTION",
+      "expected_state": "REJECTED",
+      "must_not_route_to": [
+        "Evidence Map",
+        "Case Readiness",
+        "Alleged Act"
+      ]
+    },
+    {
+      "id": "BAP_PARTY_EXPLANATION",
+      "input": "Tersangka menyatakan bahwa uang tersebut merupakan pinjaman pribadi.",
+      "expected_semantic_type": "PARTY_ARGUMENT",
+      "expected_state": "LIMITED",
+      "must_not_route_to": [
+        "Evidence Map",
+        "Case Readiness"
+      ]
+    },
+    {
+      "id": "UNRELATED_HKI_LAW_IN_DEBT_CASE",
+      "law_source": "Syarat dan Tata Cara Permohonan Pencatatan Perjanjian Lisensi Kekayaan Intelektual",
+      "case_domains": [
+        "civil_contract"
+      ],
+      "case_text": "utang pinjaman wanprestasi somasi pengembalian pinjaman",
+      "expected_admission": false
+    },
+    {
+      "id": "LELY_SHORT_EVIDENCE_REFERENCE",
+      "text": "bukti kerugian",
+      "expected_type": "DOCUMENT_REFERENCE",
+      "expected_state": "LEAD_ONLY",
+      "forbidden": [
+        "Evidence Map",
+        "Alleged Act"
+      ]
+    },
+    {
+      "id": "LELY_MINING_LAW_MISMATCH",
+      "text": "Tata Cara Dan Syarat-Syarat Pengajuan Izin Usaha Pertambangan (IUP)",
+      "case_domains": [
+        "civil_contract",
+        "civil_procedure"
+      ],
+      "expected_law_admission": "REJECTED",
+      "reason": "SUBJECT_MATTER_MISMATCH_PERTAMBANGAN"
+    }
+  ]
+}

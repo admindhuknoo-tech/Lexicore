@@ -11,12 +11,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+# Local/runtime environments are not part of the LexiCore source contract.
+# They may contain third-party modules with generic names such as common.py,
+# so release-audit scans must ignore them deterministically.
+_AUDIT_EXCLUDED_DIR_NAMES = {
+    '.git', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache',
+    '.venv', '.venv-release', 'venv', 'env', 'node_modules', 'dist', 'build',
+}
+
+def _audit_path_excluded(path: Path) -> bool:
+    try:
+        rel = path.relative_to(ROOT)
+    except ValueError:
+        rel = path
+    return any(
+        part in _AUDIT_EXCLUDED_DIR_NAMES or part.startswith('.venv')
+        for part in rel.parts
+    )
+
 def fail(msg: str):
     raise SystemExit(f"RELEASE AUDIT FAIL: {msg}")
 
 # Python parse gate (compileall runs separately, but this reports the file).
 for path in ROOT.rglob('*.py'):
-    if any(part in {'.git','__pycache__','.pytest_cache'} for part in path.parts):
+    if _audit_path_excluded(path):
         continue
     try:
         ast.parse(path.read_text(encoding='utf-8'))
@@ -38,6 +56,22 @@ if not _exporters.exists():
 _exporter_children = {p.name for p in _exporters.iterdir() if p.name != '__pycache__'}
 if _exporter_children != _allowed_exporter_files:
     fail(f'exporters directory contains regression debris: {sorted(_exporter_children - _allowed_exporter_files)}')
+_canonical_exporter_names = {'common.py', 'case_pdf.py', 'case_docx.py', 'terminology_mapper.py'}
+_stray_exporter_copies = sorted(
+    p for p in ROOT.rglob('*.py')
+    if p.name in _canonical_exporter_names
+    and p.parent != _exporters
+    and not _audit_path_excluded(p)
+)
+if _stray_exporter_copies:
+    fail(
+        'orphaned duplicate of an exporter-contract file exists outside exporters/: '
+        f'{[str(p.relative_to(ROOT)) for p in _stray_exporter_copies]}. '
+        'The reader-facing export contract must have exactly one source of truth; '
+        'a stray copy can silently diverge (e.g. an old assertion/label) and, if a '
+        'nested package ever gains an __init__.py or sys.path changes, could shadow '
+        'the canonical module at import time.'
+    )
 _leaked_test_backups = sorted((ROOT/'backups').glob('test_lexicore_*')) if (ROOT/'backups').exists() else []
 if _leaked_test_backups:
     fail(f'test backup leakage detected in project backups/: {[p.name for p in _leaked_test_backups]}')
@@ -53,8 +87,8 @@ if PRODUCT_LABEL != 'LexiCore Assistant':
     fail(f'product label drift: {PRODUCT_LABEL}')
 if INITIATIVE != 'Evidence-to-Action Legal Intelligence':
     fail(f'initiative drift: {INITIATIVE}')
-if FIRM_NAME != "ELF - Erfan's Law Firm":
-    fail(f'firm metadata drift: {FIRM_NAME}')
+if FIRM_NAME != "USER_CONFIGURED_PROFILE":
+    fail(f'dynamic identity contract drift: {FIRM_NAME}')
 if RELEASE_CHANNEL != 'RC' or not isinstance(RELEASE_SEQUENCE, int) or RELEASE_SEQUENCE < 1:
     fail('release channel/sequence contract invalid')
 if not re.fullmatch(r'\d+\.\d+\.\d+-rc\d+', LEXICORE_VERSION):
@@ -70,6 +104,19 @@ if meta.get('product_label') != PRODUCT_LABEL or meta.get('version') != LEXICORE
 for required in ('RELEASE_POLICY.md','build_release.bat','tools/build_release.py'):
     if not (ROOT/required).exists():
         fail(f'missing release-governance file: {required}')
+
+# v1.4.9 commercial release artifact-hygiene contract.
+_build_release_text = (ROOT/'tools'/'build_release.py').read_text(encoding='utf-8', errors='ignore')
+for required in (
+    'ARTIFACT_HYGIENE_REVISION = "v1.4.9"',
+    "'.env'",
+    "'BUILD_MANIFEST.json'",
+    "'license_private_key.pem'",
+    "'license_public_key.pem'",
+    "'manifest_self_entry': False",
+):
+    if required not in _build_release_text:
+        fail(f'v1.4.9 release artifact-hygiene invariant missing: {required}')
 for forbidden in ROOT.rglob('*'):
     if not forbidden.exists():
         continue
@@ -230,7 +277,6 @@ if 'case_run_lock' not in _route or 'health_cache_only=True' not in _route: fail
 for needle in ('jsonWithTimeout','caseAnalysisInFlight','renderCaseReadiness','renderCaseWorkingPaper'):
     if needle not in _html: fail(f'Case Analysis frontend stability invariant missing: {needle}')
 
-print(f"LexiCore structural audit PASS | v{LEXICORE_VERSION} | templates={len(TEMPLATE_REGISTRY)} | regulations={len(regs)}")
 
 
 # v1.3.12.4 full-text provision resolver invariants.
@@ -383,3 +429,29 @@ for leaked in ('<small>probabilitas analitis</small>','PARTIAL_OFFICIAL_SOURCE_A
 export_text=(ROOT/'exporters'/'common.py').read_text(encoding='utf-8',errors='ignore')
 if 'Audit Dokumen Terperinci' not in export_text:
     fail('Professional Review export section missing')
+
+# v1.4.10 standalone offline desktop license invariants.
+_license_client = ROOT / 'licensing.py'
+_license_admin_issue = ROOT / 'license_admin' / 'issue_license.py'
+_license_admin_keys = ROOT / 'license_admin' / 'generate_keys.py'
+_license_doc = ROOT / 'LICENSE_DEPLOYMENT.md'
+for required in (_license_client, _license_admin_issue, _license_admin_keys, _license_doc):
+    if not required.exists(): fail(f'missing offline desktop licensing artifact: {required.relative_to(ROOT)}')
+_lct = _license_client.read_text(encoding='utf-8', errors='ignore')
+for needle in ('device_fingerprint_hash','installation_id','verify_signed_envelope','Ed25519PublicKey','install_license','LICENSE_ACTIVE_OFFLINE'):
+    if needle not in _lct: fail(f'offline license client invariant missing: {needle}')
+for forbidden in ('LEXICORE_LICENSE_SERVER_URL','/v1/activate','/v1/validate','/v1/deactivate','offline_until','next_check_at','LICENSE_SERVER_REQUIRES_HTTPS'):
+    if forbidden in _lct: fail(f'desktop licensing still contains runtime server dependency: {forbidden}')
+_app_license=(ROOT/'app.py').read_text(encoding='utf-8',errors='ignore')
+for needle in ("'/api/license/status'","'/api/license/install'","'/api/license/remove'"):
+    if needle not in _app_license: fail(f'offline desktop license endpoint missing: {needle}')
+for forbidden in ("'/api/license/activate'","'/api/license/revalidate'","'/api/license/deactivate'"):
+    if forbidden in _app_license: fail(f'legacy remote desktop license endpoint remains active: {forbidden}')
+_desktop_launcher=(ROOT/'desktop_launcher.py').read_text(encoding='utf-8',errors='ignore')
+if 'LEXICORE_LICENSE_REQUIRED' not in _desktop_launcher: fail('desktop launcher does not enable commercial license gate')
+_spec=(ROOT/'LexiCoreDesktop.spec').read_text(encoding='utf-8',errors='ignore')
+if 'license_public_key.pem' not in _spec: fail('desktop build does not package public verification key')
+if 'license_private_key' in _spec.lower() or 'license_admin' in _spec:
+    fail('private/admin licensing material must never be packaged into desktop build')
+
+print(f"LexiCore structural audit PASS | v{LEXICORE_VERSION} | templates={len(TEMPLATE_REGISTRY)} | regulations={len(regs)}")

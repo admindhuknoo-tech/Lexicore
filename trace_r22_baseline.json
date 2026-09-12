@@ -1,0 +1,449 @@
+[
+  {
+    "timestamp": "2026-09-06T23:31:29.056658+00:00",
+    "step": "5_recovery_start",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "requested_provisions": [
+        "Pasal 9",
+        "Pasal 2 ayat (1)",
+        "Pasal 3",
+        "Pasal 18"
+      ],
+      "preferred_source_id": "bpk",
+      "query_variants": [
+        "Undang-Undang Nomor 31 Tahun 1999",
+        "UU 31/1999",
+        "UU:31:1999"
+      ],
+      "time_budget_seconds": 8.0
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:29.093120+00:00",
+    "step": "1_canonical_seed_candidates",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "count": 1,
+      "rows": [
+        {
+          "source_id": "local_corpus",
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+          "query": "Undang-Undang Nomor 31 Tahun 1999"
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:29.094078+00:00",
+    "step": "1_search_raw",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "queries": [
+        "Undang-Undang Nomor 31 Tahun 1999",
+        "UU 31/1999",
+        "UU:31:1999"
+      ],
+      "source_ids": [
+        "bpk",
+        "kemenkum",
+        "dpr",
+        "setneg"
+      ],
+      "search_budget_seconds": 2.5
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:31.605918+00:00",
+    "step": "1_search_results",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "queries": {
+        "Undang-Undang Nomor 31 Tahun 1999": [
+          {
+            "source_id": "bpk",
+            "source_name": "Database Peraturan / JDIH BPK",
+            "result_count": 3,
+            "samples": [
+              {
+                "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+                "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+                "description": ""
+              },
+              {
+                "title": "Perubahan atas Undang-Undang Nomor 3 Tahun 1998 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 1998/1999 Sebagaimana telah Diubah dengan Undang-Undang Nomor 7 Tahun 1998",
+                "url": "https://peraturan.bpk.go.id/Details/45353/uu-no-32-tahun-1999",
+                "description": ""
+              },
+              {
+                "title": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2008 Tentang Perubahan Kedua Atas Undang Undang Nomor 23 Tahun 1999 tentang Bank Indonesia menjadi Undang-Undang",
+                "url": "https://peraturan.bpk.go.id/Details/38588/uu-no-6-tahun-2009",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "source_id": "setneg",
+            "source_name": "JDIH Kementerian Sekretariat Negara",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "dpr",
+            "source_name": "JDIH DPR RI",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "kemenkum",
+            "source_name": "JDIH Kementerian Hukum",
+            "result_count": 0,
+            "samples": []
+          }
+        ],
+        "UU 31/1999": [
+          {
+            "source_id": "bpk",
+            "source_name": "Database Peraturan / JDIH BPK",
+            "result_count": 3,
+            "samples": [
+              {
+                "title": "Perubahan atas Undang-Undang Nomor 3 Tahun 1998 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 1998/1999 Sebagaimana telah Diubah dengan Undang-Undang Nomor 7 Tahun 1998",
+                "url": "https://peraturan.bpk.go.id/Details/45353/uu-no-32-tahun-1999",
+                "description": ""
+              },
+              {
+                "title": "Pengeluaran dan Pengedaran Uang Rupiah Khusus Pecahan 150.000 (Seratus Lima Puluh Ribu) dan Pecahan 10.000 (Sepuluh Ribu) Seri \"For The Children of The World\" Tanda Tahun 1999",
+                "url": "https://peraturan.bpk.go.id/Details/138315/peraturan-bi-no-113pbi1999",
+                "description": ""
+              },
+              {
+                "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+                "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "source_id": "setneg",
+            "source_name": "JDIH Kementerian Sekretariat Negara",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "dpr",
+            "source_name": "JDIH DPR RI",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "kemenkum",
+            "source_name": "JDIH Kementerian Hukum",
+            "result_count": 0,
+            "samples": []
+          }
+        ],
+        "UU:31:1999": [
+          {
+            "source_id": "bpk",
+            "source_name": "Database Peraturan / JDIH BPK",
+            "result_count": 3,
+            "samples": [
+              {
+                "title": "Perubahan atas Undang-Undang Nomor 3 Tahun 1998 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 1998/1999 Sebagaimana telah Diubah dengan Undang-Undang Nomor 7 Tahun 1998",
+                "url": "https://peraturan.bpk.go.id/Details/45353/uu-no-32-tahun-1999",
+                "description": ""
+              },
+              {
+                "title": "Pengeluaran dan Pengedaran Uang Rupiah Khusus Pecahan 150.000 (Seratus Lima Puluh Ribu) dan Pecahan 10.000 (Sepuluh Ribu) Seri \"For The Children of The World\" Tanda Tahun 1999",
+                "url": "https://peraturan.bpk.go.id/Details/138315/peraturan-bi-no-113pbi1999",
+                "description": ""
+              },
+              {
+                "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+                "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "source_id": "setneg",
+            "source_name": "JDIH Kementerian Sekretariat Negara",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "dpr",
+            "source_name": "JDIH DPR RI",
+            "result_count": 0,
+            "samples": []
+          },
+          {
+            "source_id": "kemenkum",
+            "source_name": "JDIH Kementerian Hukum",
+            "result_count": 0,
+            "samples": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:31.609257+00:00",
+    "step": "2_candidates_extracted",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "total": 5,
+      "candidates": [
+        {
+          "source_id": "local_corpus",
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+          "query": "Undang-Undang Nomor 31 Tahun 1999",
+          "relevance_score": 99.0
+        },
+        {
+          "source_id": "bpk",
+          "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+          "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+          "query": "Undang-Undang Nomor 31 Tahun 1999",
+          "relevance_score": null
+        },
+        {
+          "source_id": "bpk",
+          "title": "Perubahan atas Undang-Undang Nomor 3 Tahun 1998 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 1998/1999 Sebagaimana telah Diubah dengan Undang-Undang Nomor 7 Tahun 1998",
+          "url": "https://peraturan.bpk.go.id/Details/45353/uu-no-32-tahun-1999",
+          "query": "Undang-Undang Nomor 31 Tahun 1999",
+          "relevance_score": null
+        },
+        {
+          "source_id": "bpk",
+          "title": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2008 Tentang Perubahan Kedua Atas Undang Undang Nomor 23 Tahun 1999 tentang Bank Indonesia menjadi Undang-Undang",
+          "url": "https://peraturan.bpk.go.id/Details/38588/uu-no-6-tahun-2009",
+          "query": "Undang-Undang Nomor 31 Tahun 1999",
+          "relevance_score": null
+        },
+        {
+          "source_id": "bpk",
+          "title": "Pengeluaran dan Pengedaran Uang Rupiah Khusus Pecahan 150.000 (Seratus Lima Puluh Ribu) dan Pecahan 10.000 (Sepuluh Ribu) Seri \"For The Children of The World\" Tanda Tahun 1999",
+          "url": "https://peraturan.bpk.go.id/Details/138315/peraturan-bi-no-113pbi1999",
+          "query": "UU 31/1999",
+          "relevance_score": null
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:31.626785+00:00",
+    "step": "3_candidates_ranked",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "ranked_count": 3,
+      "ranked": [
+        {
+          "rank": 0,
+          "source_id": "bpk",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "title_identity": "UU:31:1999",
+          "score": 1000,
+          "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+          "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001"
+        },
+        {
+          "rank": 1,
+          "source_id": "local_corpus",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "title_identity": "UU:31:1999",
+          "score": 999,
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+        },
+        {
+          "rank": 2,
+          "source_id": "bpk",
+          "reason": "AUX_EXPECTED_IDENTITY",
+          "title_identity": null,
+          "score": 300,
+          "title": "Pengeluaran dan Pengedaran Uang Rupiah Khusus Pecahan 150.000 (Seratus Lima Puluh Ribu) dan Pecahan 10.000 (Sepuluh Ribu) Seri \"For The Children of The World\" Tanda Tahun 1999",
+          "url": "https://peraturan.bpk.go.id/Details/138315/peraturan-bi-no-113pbi1999"
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:31.629839+00:00",
+    "step": "4_pre_recovery",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "exact_lock": true,
+      "exact_count": 2,
+      "recovery_pool_count": 2,
+      "exact_candidates": [
+        {
+          "source_id": "bpk",
+          "title_identity": "UU:31:1999",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "score": 1000,
+          "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+          "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001"
+        },
+        {
+          "source_id": "local_corpus",
+          "title_identity": "UU:31:1999",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "score": 999,
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+        }
+      ],
+      "top_recovery_pool": [
+        {
+          "source_id": "bpk",
+          "title_identity": "UU:31:1999",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "score": 1000,
+          "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+          "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001"
+        },
+        {
+          "source_id": "local_corpus",
+          "title_identity": "UU:31:1999",
+          "reason": "EXACT_TITLE_IDENTITY",
+          "score": 999,
+          "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+          "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:31.632782+00:00",
+    "step": "5_fetch_attempt",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 0,
+      "source_id": "bpk",
+      "reason": "EXACT_TITLE_IDENTITY",
+      "title_identity": "UU:31:1999",
+      "title": "Perubahan Atas Undang-Undang Nomor 31 Tahun 1999 tentang Pemberantasan Tindak Pidana Korupsi",
+      "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+      "timeout": 4,
+      "remaining_before_fetch": 5.424693400011165
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:31.948185+00:00",
+    "step": "5_fetch_result",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 0,
+      "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+      "reachable": true,
+      "official_host": true,
+      "final_url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+      "content_type": "text/html; charset=utf-8",
+      "body_bytes": 44792,
+      "status_code": null,
+      "error": null
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:33.781987+00:00",
+    "step": "5_fulltext_resolution",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 0,
+      "url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+      "resolved": false,
+      "identity_aligned": false,
+      "resolved_identity_key": null,
+      "resolver_status": "EXPECTED_IDENTITY_NOT_FOUND",
+      "source_url": "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+      "provision_located": null,
+      "attempted_urls": [
+        "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+        "https://peraturan.bpk.go.id/Download/33263/UU%20Nomor%2020%20Tahun%202001.pdf"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:33.783742+00:00",
+    "step": "5_fetch_attempt",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 1,
+      "source_id": "local_corpus",
+      "reason": "EXACT_TITLE_IDENTITY",
+      "title_identity": "UU:31:1999",
+      "title": "UU No. 31 Tahun 1999 jo UU No. 20 Tahun 2001",
+      "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "timeout": 3,
+      "remaining_before_fetch": 3.273705700004939
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:33.948212+00:00",
+    "step": "5_fetch_result",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 1,
+      "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "reachable": true,
+      "official_host": true,
+      "final_url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "content_type": "text/html; charset=utf-8",
+      "body_bytes": 50061,
+      "status_code": null,
+      "error": null
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:37.322281+00:00",
+    "step": "5_fulltext_resolution",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "rank": 1,
+      "url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "resolved": true,
+      "identity_aligned": true,
+      "resolved_identity_key": "UU:31:1999",
+      "resolver_status": "DETAIL_HTML_TEXT",
+      "source_url": "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+      "provision_located": null,
+      "attempted_urls": [
+        "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999",
+        "https://peraturan.bpk.go.id/DownloadUjiMateri/229/putusan_mkri_123PUU-XXIII2025.pdf",
+        "https://peraturan.bpk.go.id/DownloadUjiMateri/235/putusan_mkri_71-PUU-XXIII-2025_compressed.pdf"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-09-06T23:31:37.325678+00:00",
+    "step": "5_recovery_success",
+    "expected": "UU:31:1999",
+    "data": {
+      "expected": "UU:31:1999",
+      "exact_lock": true,
+      "resolved_identity_key": "UU:31:1999",
+      "resolver_status": "RECOVERED_EXACT_IDENTITY_DETAIL_HTML_TEXT",
+      "attempted_urls": [
+        "https://peraturan.bpk.go.id/Details/44900/uu-no-20-tahun-2001",
+        "https://peraturan.bpk.go.id/Details/45350/uu-no-31-tahun-1999"
+      ]
+    }
+  }
+]

@@ -6,7 +6,7 @@ Identitas produk, versi rilis, dan identitas build dipisahkan agar koreksi tekni
 ## Identitas tetap
 - Product name: `LexiCore`
 - Product label: `LexiCore Assistant`
-- Firm: `ELF - Erfan's Law Firm`
+- User/Firm identity: dynamic local profile (`app_profile`), never hard-coded into commercial builds
 
 `PRODUCT_LABEL` tidak membawa nomor versi dan tidak boleh berubah hanya karena corrective build.
 

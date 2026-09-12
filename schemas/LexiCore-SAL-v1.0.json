@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexicore.local/schemas/LexiCore-SAL-v1.0.json",
+  "title": "LexiCore SAL v1.0 Frozen Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "statement_id": {"type": "string", "pattern": "^SAL_CONTRACT_[A-Z0-9_]+$"},
+    "text_payload": {"type": "string", "minLength": 1},
+    "semantic_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "semantic_type": {"type": "string", "enum": ["FACT_ASSERTION","DOCUMENT_REFERENCE","PARTY_ARGUMENT","COUNTER_ARGUMENT","QUESTION","FUTURE_ACTION","EVIDENCE_CLAIM","PRIMARY_EVIDENCE","LAW_CITATION","LEGAL_OPINION","METADATA"]},
+        "provenance": {"type": "string", "minLength": 1},
+        "modality_temporality": {"type": "string", "minLength": 1},
+        "domain_posture": {"type": "string", "minLength": 1}
+      },
+      "required": ["semantic_type","provenance","modality_temporality","domain_posture"]
+    },
+    "admission_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "admissibility_state": {"type": "string", "enum": ["ADMITTED","LIMITED","LEAD_ONLY","REJECTED"]},
+        "restricted_routes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "enum": ["Case Readiness","Evidence Map","Candidate Law","Regulation/Tempus","Norm Conflict","Legal Construction","Legal Elements","Alleged Act","Element Test","Causation","Risk","Procedural/Merits","Action Plan","Document Audit","Issue","Counter-Evidence","Evidence Lead","Interrogation Context","NONE"]}},
+        "prohibited_routes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "enum": ["Case Readiness","Evidence Map","Candidate Law","Regulation/Tempus","Norm Conflict","Legal Construction","Legal Elements","Alleged Act","Element Test","Causation","Risk","Procedural/Merits","Action Plan","Document Audit","Issue","Counter-Evidence","Evidence Lead","Interrogation Context","NONE"]}},
+        "rationale": {"type": "string", "minLength": 1}
+      },
+      "required": ["admissibility_state","restricted_routes","prohibited_routes","rationale"]
+    },
+    "downstream_migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary_target_node": {"type": "string", "enum": ["Case Readiness","Evidence Map","Candidate Law","Regulation/Tempus","Norm Conflict","Legal Construction","Legal Elements","Alleged Act","Element Test","Causation","Risk","Procedural/Merits","Action Plan","Document Audit","Issue","Counter-Evidence","Evidence Lead","Interrogation Context","NONE"]},
+        "next_execution_directive": {"type": "string", "minLength": 1}
+      },
+      "required": ["primary_target_node","next_execution_directive"]
+    }
+  },
+  "required": ["statement_id","text_payload","semantic_envelope","admission_contract","downstream_migration"]
+}

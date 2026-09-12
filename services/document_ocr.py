@@ -18,6 +18,9 @@ import importlib.util
 import os
 import re
 import shutil
+import hashlib
+import json
+import copy
 import queue
 import threading
 import time
@@ -31,7 +34,76 @@ _RAPID_STATE_LOCK = threading.Lock()
 _RAPID_CALL_INFLIGHT = False
 _RAPID_CIRCUIT_OPEN = False
 _RAPID_TIMEOUT_COUNT = 0
+_RAPID_CONSECUTIVE_TIMEOUTS = 0
+_RAPID_CIRCUIT_OPENED_AT: Optional[float] = None
+
+# Diagnostic-only OCR telemetry. Disabled by default and deliberately kept
+# outside OCR decision logic. It may be enabled for one process with
+# LEXICORE_OCR_DEBUG=1. JSONL output is append-only and best-effort: telemetry
+# failures must never change OCR behavior.
+_OCR_DEBUG_LOCK = threading.Lock()
+_OCR_DEBUG_RUN_ID = f"{os.getpid()}-{int(time.time() * 1000)}"
+_OCR_DEBUG_START_MONOTONIC = time.monotonic()
+
+
+def _ocr_debug_enabled() -> bool:
+    return (os.environ.get("LEXICORE_OCR_DEBUG") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _ocr_debug_file() -> str:
+    return (os.environ.get("LEXICORE_OCR_DEBUG_FILE") or "ocr_debug.jsonl").strip() or "ocr_debug.jsonl"
+
+
+def _log_ocr_debug(
+    event: str,
+    *,
+    page: Optional[int] = None,
+    engine: Optional[str] = None,
+    elapsed: Optional[float] = None,
+    text_len: Optional[int] = None,
+    error: Optional[Any] = None,
+    extra: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Write one best-effort diagnostic event without changing OCR control flow."""
+    if not _ocr_debug_enabled():
+        return
+    try:
+        payload: Dict[str, Any] = {
+            "run_id": _OCR_DEBUG_RUN_ID,
+            "event": event,
+            "page": page if page is not None else getattr(_OCR_BUDGET_LOCAL, "current_page", None),
+            "engine": engine,
+            "elapsed": round(float(elapsed), 4) if elapsed is not None else None,
+            "text_len": int(text_len) if text_len is not None else None,
+            "error": str(error) if error is not None else None,
+            "elapsed_since_start": round(time.monotonic() - _OCR_DEBUG_START_MONOTONIC, 4),
+            "remaining_document_budget": None,
+            "rapid_timeout_count": int(_RAPID_TIMEOUT_COUNT),
+            "rapid_consecutive_timeouts": int(_RAPID_CONSECUTIVE_TIMEOUTS),
+            "rapid_circuit_open": bool(_RAPID_CIRCUIT_OPEN),
+            "rapid_call_inflight": bool(_RAPID_CALL_INFLIGHT),
+        }
+        remaining = _remaining_ocr_budget()
+        if remaining is not None:
+            payload["remaining_document_budget"] = round(float(remaining), 4)
+        if extra:
+            payload.update(extra)
+        line = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        with _OCR_DEBUG_LOCK:
+            with open(_ocr_debug_file(), "a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+    except Exception:
+        # Diagnostic logging is intentionally non-authoritative.
+        return
 _OCR_BUDGET_LOCAL = threading.local()
+_OCR_BEST_CACHE: Dict[str, Tuple[str, Dict[str, Any]]] = {}
+_OCR_BEST_CACHE_LOCK = threading.Lock()
+_OCR_BEST_CACHE_MAX = 8
+
+# Per-page wall-clock slice used by the document OCR scheduler.  This keeps a
+# long scanned PDF from spending the entire document budget on a handful of
+# difficult pages.  It is intentionally thread-local because Case Analysis is
+# request-scoped.
 
 
 @dataclass
@@ -55,6 +127,14 @@ class OCRDiagnostics:
     total_timeout_seconds: Optional[float] = None
     total_timeout_exceeded: bool = False
     elapsed_ocr_seconds: Optional[float] = None
+    coverage_ratio: Optional[float] = None
+    manual_review_required: bool = False
+    review_status: str = "NOT_REQUIRED"
+    partial_text_preserved: bool = True
+    authoritative_for_analysis: bool = True
+    coverage_guard_status: str = "OCR_CURRENT_RESULT"
+    attempt_coverage_ratio: Optional[float] = None
+    previous_best_coverage_ratio: Optional[float] = None
 
     def __post_init__(self):
         if self.warnings is None:
@@ -63,6 +143,23 @@ class OCRDiagnostics:
             self.engine_chain = ["embedded_rapidocr"]
 
     def to_dict(self) -> Dict[str, Any]:
+        total=max(0,int(self.pages_total or 0))
+        read=max(0,int(self.pages_native or 0))+max(0,int(self.pages_ocr or 0))
+        self.coverage_ratio=round(read/total,4) if total else None
+        failed=max(0,int(self.pages_failed or 0))
+        try:
+            minimum_coverage=max(0.0,min(1.0,float(os.environ.get('LEXICORE_OCR_MIN_ACCEPTABLE_COVERAGE','0.80') or 0.80)))
+        except Exception:
+            minimum_coverage=0.80
+        coverage=(read/total) if total else 1.0
+        self.manual_review_required=bool(total and coverage < minimum_coverage)
+        self.review_status='MANUAL_REVIEW_REQUIRED' if self.manual_review_required else 'NOT_REQUIRED'
+        self.partial_text_preserved=True
+        if self.manual_review_required:
+            msg=(f'OCR coverage parsial: {read}/{total} halaman terbaca; {failed} halaman belum terbaca. '
+                 f'Target minimum coverage {minimum_coverage:.0%}; Manual review diperlukan sebelum analisis dijadikan dasar tindakan.')
+            if msg not in self.warnings:
+                self.warnings.append(msg)
         return asdict(self)
 
 
@@ -171,19 +268,26 @@ def _rapidocr_result_to_text(result, min_confidence: float) -> Tuple[str, Option
     return _clean_text("\n".join(text_lines)), avg
 
 
-def _ocr_total_timeout_seconds() -> float:
+def _ocr_total_timeout_seconds(scan_pages: Optional[int] = None) -> float:
     """Wall-clock OCR budget for one document.
 
-    This is separate from the per-engine timeout.  It prevents a long scanned
-    PDF from consuming one per-page timeout repeatedly and holding the request
-    for many minutes.  The default is 180 seconds and can be overridden with
-    LEXICORE_OCR_TOTAL_TIMEOUT_SECONDS.
+    If the operator explicitly sets ``LEXICORE_OCR_TOTAL_TIMEOUT_SECONDS`` we
+    respect it exactly (subject to the existing >=5s safety floor).  Otherwise
+    scan-heavy PDFs receive an adaptive bounded budget so later pages are not
+    starved by an arbitrary 180-second ceiling.
+
+    Default policy: max(180s, 60s + 8s * scan_pages), capped at 360s.
+    For the 37-page DKPP benchmark this yields 356s.
     """
-    raw = os.environ.get("LEXICORE_OCR_TOTAL_TIMEOUT_SECONDS", "180")
-    try:
-        return max(5.0, float(raw or 180))
-    except Exception:
-        return 180.0
+    raw = os.environ.get("LEXICORE_OCR_TOTAL_TIMEOUT_SECONDS")
+    if raw not in (None, ""):
+        try:
+            return max(5.0, float(raw))
+        except Exception:
+            return 180.0
+    pages = max(0, int(scan_pages or 0))
+    adaptive = 60.0 + (8.0 * pages)
+    return max(180.0, min(360.0, adaptive))
 
 
 def _set_ocr_budget(deadline: Optional[float]) -> None:
@@ -195,6 +299,58 @@ def _remaining_ocr_budget() -> Optional[float]:
     if deadline is None:
         return None
     return max(0.0, float(deadline) - time.monotonic())
+
+
+def _set_ocr_page_budget(seconds: Optional[float]) -> None:
+    if seconds is None:
+        _OCR_BUDGET_LOCAL.page_deadline = None
+        return
+    _OCR_BUDGET_LOCAL.page_deadline = time.monotonic() + max(0.25, float(seconds))
+
+
+def _remaining_ocr_page_budget() -> Optional[float]:
+    deadline = getattr(_OCR_BUDGET_LOCAL, "page_deadline", None)
+    if deadline is None:
+        return None
+    return max(0.0, float(deadline) - time.monotonic())
+
+
+def _page_time_slice(remaining_document: Optional[float], remaining_pages: int) -> Optional[float]:
+    """Return an adaptive *planning* slice for a still-unread page.
+
+    This is no longer a hard 2.5-6 second engine timeout.  The previous closure
+    made the planning slice a hard deadline, which caused RapidOCR to time out
+    around 1-2s and Tesseract around 5s on Windows.  Keep it only as telemetry /
+    budget guidance; engine timeouts have their own bounded adaptive policy.
+    """
+    if remaining_document is None:
+        return None
+    pages = max(1, int(remaining_pages or 1))
+    reserve = float(os.environ.get("LEXICORE_OCR_BUDGET_RESERVE_SECONDS", "8") or 8)
+    distributable = max(1.0, float(remaining_document) - min(reserve, float(remaining_document) * 0.10))
+    return max(1.0, distributable / pages)
+
+
+def _adaptive_engine_timeout(*, engine: str, remaining_document: Optional[float], remaining_pages: int) -> float:
+    """Bound one OCR engine attempt without starving the whole document.
+
+    RapidOCR defaults to 8-12s and Tesseract to 12-20s.  The fair-share budget
+    may reduce the upper bound near the document deadline, but never to the
+    pathological 1-5 second values that caused the regression.
+    """
+    pages = max(1, int(remaining_pages or 1))
+    if engine == "rapid":
+        floor = max(4.0, float(os.environ.get("LEXICORE_RAPIDOCR_MIN_TIMEOUT_SECONDS", "8") or 8))
+        ceiling = max(floor, float(os.environ.get("LEXICORE_RAPIDOCR_MAX_TIMEOUT_SECONDS", "12") or 12))
+        factor = 1.25
+    else:
+        floor = max(6.0, float(os.environ.get("LEXICORE_TESSERACT_MIN_TIMEOUT_SECONDS", "12") or 12))
+        ceiling = max(floor, float(os.environ.get("LEXICORE_TESSERACT_MAX_TIMEOUT_SECONDS", "20") or 20))
+        factor = 2.0
+    if remaining_document is None:
+        return ceiling
+    fair = max(floor, (max(0.0, remaining_document) / pages) * factor)
+    return max(0.5, min(ceiling, fair, max(0.5, remaining_document)))
 
 
 def _embedded_timeout_seconds() -> float:
@@ -242,23 +398,37 @@ def _ocr_embedded_core(image) -> Tuple[str, Optional[float]]:
 
 def _ocr_embedded(image, diagnostics: OCRDiagnostics) -> str:
     global _RAPID_CALL_INFLIGHT, _RAPID_CIRCUIT_OPEN, _RAPID_TIMEOUT_COUNT
+    global _RAPID_CONSECUTIVE_TIMEOUTS, _RAPID_CIRCUIT_OPENED_AT
 
-    # One stuck ONNX invocation is enough to disable embedded OCR until the
-    # process is restarted.  This deliberately fails closed to the local
-    # Tesseract fallback rather than letting every scanned page create another
-    # permanently blocked worker.
+    threshold = max(2, int(os.environ.get("LEXICORE_RAPIDOCR_CIRCUIT_FAILURES", "3") or 3))
+    cooldown = max(5.0, float(os.environ.get("LEXICORE_RAPIDOCR_CIRCUIT_COOLDOWN_SECONDS", "30") or 30))
+
     with _RAPID_STATE_LOCK:
+        # A circuit is temporary.  One timeout must never disable RapidOCR for
+        # the entire process.  After cooldown the engine is allowed to probe
+        # again; a successful page resets the consecutive failure counter.
         if _RAPID_CIRCUIT_OPEN:
-            diagnostics.warnings.append("Embedded OCR dilewati: circuit breaker aktif setelah timeout sebelumnya.")
-            return ""
+            opened = _RAPID_CIRCUIT_OPENED_AT or 0.0
+            if time.monotonic() - opened >= cooldown and not _RAPID_CALL_INFLIGHT:
+                _RAPID_CIRCUIT_OPEN = False
+                _RAPID_CONSECUTIVE_TIMEOUTS = 0
+                _RAPID_CIRCUIT_OPENED_AT = None
+            else:
+                diagnostics.warnings.append(
+                    f"Embedded OCR dilewati sementara: circuit breaker aktif setelah {_RAPID_CONSECUTIVE_TIMEOUTS} timeout beruntun."
+                )
+                _log_ocr_debug("CIRCUIT_SKIP", engine="rapid")
+                return ""
         if _RAPID_CALL_INFLIGHT:
-            diagnostics.warnings.append("Embedded OCR sedang digunakan request lain; memakai fallback lokal.")
+            diagnostics.warnings.append("Embedded OCR masih menyelesaikan halaman sebelumnya; memakai fallback lokal.")
+            _log_ocr_debug("RAPID_INFLIGHT_SKIP", engine="rapid")
             return ""
         _RAPID_CALL_INFLIGHT = True
 
     result_queue: queue.Queue = queue.Queue(maxsize=1)
 
     def _runner():
+        global _RAPID_CALL_INFLIGHT
         try:
             result_queue.put((True, _ocr_embedded_core(image)))
         except Exception as exc:
@@ -266,33 +436,44 @@ def _ocr_embedded(image, diagnostics: OCRDiagnostics) -> str:
                 result_queue.put((False, exc))
             except Exception:
                 pass
-
-    worker = threading.Thread(target=_runner, name="lexicore-rapidocr", daemon=True)
-    worker.start()
-    timeout = _embedded_timeout_seconds()
-    remaining = _remaining_ocr_budget()
-    if remaining is not None:
-        if remaining <= 0:
+        finally:
+            # Important: if the request thread timed out, keep the inflight flag
+            # until the actual ONNX call exits.  This prevents spawning many
+            # permanently blocked RapidOCR workers.
             with _RAPID_STATE_LOCK:
                 _RAPID_CALL_INFLIGHT = False
-            diagnostics.warnings.append("Embedded OCR dilewati: anggaran waktu OCR dokumen telah habis.")
-            return ""
-        timeout = min(timeout, remaining)
+
+    worker = threading.Thread(target=_runner, name="lexicore-rapidocr", daemon=True)
+    rapid_started = time.monotonic()
+    _log_ocr_debug("RAPID_START", engine="rapid")
+    worker.start()
+    remaining = _remaining_ocr_budget()
+    if remaining is not None and remaining <= 0:
+        diagnostics.warnings.append("Embedded OCR dilewati: anggaran waktu OCR dokumen telah habis.")
+        _log_ocr_debug("GLOBAL_BUDGET_EXHAUSTED", engine="rapid")
+        return ""
+    remaining_pages = max(1, int(getattr(_OCR_BUDGET_LOCAL, "remaining_pages", 1) or 1))
+    timeout = min(_embedded_timeout_seconds(), _adaptive_engine_timeout(
+        engine="rapid", remaining_document=remaining, remaining_pages=remaining_pages
+    ))
     worker.join(timeout)
 
     if worker.is_alive():
         with _RAPID_STATE_LOCK:
-            _RAPID_CALL_INFLIGHT = False
-            _RAPID_CIRCUIT_OPEN = True
             _RAPID_TIMEOUT_COUNT += 1
+            _RAPID_CONSECUTIVE_TIMEOUTS += 1
+            if _RAPID_CONSECUTIVE_TIMEOUTS >= threshold:
+                _RAPID_CIRCUIT_OPEN = True
+                _RAPID_CIRCUIT_OPENED_AT = time.monotonic()
         diagnostics.warnings.append(
             f"Embedded OCR timeout setelah {timeout:g} detik; beralih ke Tesseract fallback. "
-            "Embedded OCR dinonaktifkan sampai proses LexiCore direstart."
+            f"Circuit breaker baru aktif setelah {threshold} timeout beruntun."
+        )
+        _log_ocr_debug(
+            "RAPID_TIMEOUT", engine="rapid", elapsed=time.monotonic() - rapid_started,
+            extra={"timeout_seconds": round(timeout, 4), "circuit_threshold": threshold},
         )
         return ""
-
-    with _RAPID_STATE_LOCK:
-        _RAPID_CALL_INFLIGHT = False
 
     try:
         ok, payload = result_queue.get_nowait()
@@ -301,8 +482,16 @@ def _ocr_embedded(image, diagnostics: OCRDiagnostics) -> str:
         return ""
 
     if not ok:
+        with _RAPID_STATE_LOCK:
+            _RAPID_CONSECUTIVE_TIMEOUTS = 0
         diagnostics.warnings.append(f"Embedded OCR gagal: {payload}")
+        _log_ocr_debug("RAPID_ERROR", engine="rapid", elapsed=time.monotonic() - rapid_started, error=payload)
         return ""
+
+    with _RAPID_STATE_LOCK:
+        _RAPID_CONSECUTIVE_TIMEOUTS = 0
+        _RAPID_CIRCUIT_OPEN = False
+        _RAPID_CIRCUIT_OPENED_AT = None
 
     text, avg = payload
     diagnostics.available = True
@@ -312,6 +501,7 @@ def _ocr_embedded(image, diagnostics: OCRDiagnostics) -> str:
     diagnostics.portable = True
     if avg is not None:
         diagnostics.average_confidence = round(avg, 4)
+    _log_ocr_debug("RAPID_SUCCESS", engine="rapid", elapsed=time.monotonic() - rapid_started, text_len=len(text or ""))
     return text
 
 
@@ -353,14 +543,24 @@ def _ocr_tesseract_optional(image, diagnostics: OCRDiagnostics) -> str:
             lang = "+".join(langs) if langs else ("eng" if "eng" in installed else desired)
         except Exception:
             lang = desired
-        timeout = max(5.0, float(os.environ.get("LEXICORE_OCR_TIMEOUT_SECONDS", "45") or 45))
         remaining = _remaining_ocr_budget()
-        if remaining is not None:
-            if remaining <= 0:
-                diagnostics.warnings.append("Tesseract dilewati: anggaran waktu OCR dokumen telah habis.")
-                return ""
-            timeout = max(0.25, min(timeout, remaining))
+        if remaining is not None and remaining <= 0:
+            diagnostics.warnings.append("Tesseract dilewati: anggaran waktu OCR dokumen telah habis.")
+            _log_ocr_debug("GLOBAL_BUDGET_EXHAUSTED", engine="tesseract")
+            return ""
+        remaining_pages = max(1, int(getattr(_OCR_BUDGET_LOCAL, "remaining_pages", 1) or 1))
+        timeout = _adaptive_engine_timeout(
+            engine="tesseract", remaining_document=remaining, remaining_pages=remaining_pages
+        )
+        explicit = (os.environ.get("LEXICORE_TESSERACT_PAGE_TIMEOUT_SECONDS") or "").strip()
+        if explicit:
+            try:
+                timeout = min(timeout, max(1.0, float(explicit)))
+            except Exception:
+                pass
         config = os.environ.get("LEXICORE_OCR_CONFIG", "--oem 3 --psm 3 -c preserve_interword_spaces=1")
+        tess_started = time.monotonic()
+        _log_ocr_debug("TESSERACT_START", engine="tesseract", extra={"timeout_seconds": round(timeout, 4), "lang": lang})
         text = pytesseract.image_to_string(_prepare_image(image), lang=lang, config=config, timeout=timeout)
         if text.strip():
             diagnostics.engine = "tesseract_fallback"
@@ -369,22 +569,43 @@ def _ocr_tesseract_optional(image, diagnostics: OCRDiagnostics) -> str:
             diagnostics.language = lang
             diagnostics.available = True
             diagnostics.portable = False
-        return _clean_text(text)
+        cleaned = _clean_text(text)
+        _log_ocr_debug("TESSERACT_SUCCESS" if cleaned else "TESSERACT_EMPTY", engine="tesseract", elapsed=time.monotonic() - tess_started, text_len=len(cleaned))
+        return cleaned
     except Exception as exc:
         diagnostics.warnings.append(f"Tesseract fallback gagal: {exc}")
+        event = "TESSERACT_TIMEOUT" if "timeout" in str(exc).lower() else "TESSERACT_ERROR"
+        elapsed = time.monotonic() - tess_started if "tess_started" in locals() else None
+        _log_ocr_debug(event, engine="tesseract", elapsed=elapsed, error=exc)
         return ""
 
 
-def _ocr_pil_image(image, diagnostics: OCRDiagnostics) -> str:
-    """Primary embedded OCR, then optional legacy Tesseract fallback."""
+def _ocr_pil_image(image, diagnostics: OCRDiagnostics, *, allow_tesseract: bool = True) -> str:
+    """Primary embedded OCR with optional Tesseract fallback.
+
+    ``allow_tesseract=False`` is used by the first pass of scanned PDFs so all
+    pages receive a fair RapidOCR opportunity before slower fallback work is
+    attempted.  Image OCR and existing callers retain the original behavior.
+    """
     text = _ocr_embedded(image, diagnostics)
-    if text:
+    if text or not allow_tesseract:
         return text
     return _ocr_tesseract_optional(image, diagnostics)
 
 
-def extract_image_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
+def _notify_progress(callback, done: int, total: int, phase: str) -> None:
+    if not callback:
+        return
+    try:
+        callback(int(done), max(1, int(total or 1)), phase)
+    except Exception:
+        # Progress reporting is observational only and must never alter OCR.
+        return
+
+
+def extract_image_text(file_path: str, progress_callback=None) -> Tuple[str, Dict[str, Any]]:
     diagnostics = OCRDiagnostics(pages_total=1)
+    _notify_progress(progress_callback, 0, 1, 'document')
     try:
         from PIL import Image
         with Image.open(file_path) as image:
@@ -401,10 +622,76 @@ def extract_image_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
     else:
         diagnostics.pages_failed = 1
         diagnostics.mode = "OCR_UNAVAILABLE_OR_EMPTY"
+    _notify_progress(progress_callback, 1, 1, 'document')
     return text, diagnostics.to_dict()
 
 
-def extract_pdf_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
+
+def _ocr_file_fingerprint(file_path: str) -> Optional[str]:
+    try:
+        h = hashlib.sha256()
+        with open(file_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return None
+
+
+def _coverage_from_diag(diag: Dict[str, Any]) -> float:
+    total = max(0, int((diag or {}).get("pages_total") or 0))
+    if not total:
+        return 1.0
+    read = max(0, int((diag or {}).get("pages_native") or 0)) + max(0, int((diag or {}).get("pages_ocr") or 0))
+    return max(0.0, min(1.0, read / total))
+
+
+def _apply_monotonic_coverage_guard(file_path: str, text: str, diag: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    """Never promote a worse OCR extraction over a better extraction of the same bytes.
+
+    The cache is intentionally process-local and bounded; it protects repeated
+    Case Analysis runs without introducing database state or changing uploaded
+    files.  If no prior extraction exists and coverage is severely low, the
+    diagnostic is explicitly marked non-authoritative so the route can stop
+    aggressive downstream analysis.
+    """
+    fp = _ocr_file_fingerprint(file_path)
+    current = _coverage_from_diag(diag)
+    diag = copy.deepcopy(diag or {})
+    diag["attempt_coverage_ratio"] = round(current, 4)
+    severe = max(0.0, min(1.0, float(os.environ.get("LEXICORE_OCR_SEVERE_COVERAGE_FLOOR", "0.20") or 0.10)))
+    if not fp:
+        diag["coverage_guard_status"] = "OCR_CURRENT_RESULT_NO_FINGERPRINT"
+        diag["authoritative_for_analysis"] = bool(current >= severe)
+        return text, diag
+
+    with _OCR_BEST_CACHE_LOCK:
+        previous = _OCR_BEST_CACHE.get(fp)
+        previous_cov = _coverage_from_diag(previous[1]) if previous else -1.0
+        if previous and current + 1e-9 < previous_cov:
+            best_text, best_diag = previous
+            out = copy.deepcopy(best_diag)
+            out.setdefault("warnings", [])
+            out["warnings"].append(
+                f"OCR attempt terbaru regresi ({current:.1%}) dibanding hasil terbaik proses ini ({previous_cov:.1%}); "
+                "hasil terbaik dipertahankan sebagai authoritative analysis text."
+            )
+            out["attempt_coverage_ratio"] = round(current, 4)
+            out["previous_best_coverage_ratio"] = round(previous_cov, 4)
+            out["coverage_guard_status"] = "OCR_REGRESSED_PREVIOUS_BEST_RESTORED"
+            out["authoritative_for_analysis"] = True
+            return best_text, out
+
+        diag["previous_best_coverage_ratio"] = round(previous_cov, 4) if previous else None
+        diag["coverage_guard_status"] = "OCR_IMPROVED_OR_EQUAL" if previous else "OCR_FIRST_OBSERVATION"
+        diag["authoritative_for_analysis"] = bool(current >= severe)
+        _OCR_BEST_CACHE[fp] = (text, copy.deepcopy(diag))
+        # bounded FIFO-ish eviction; insertion ordering is deterministic in py3.7+
+        while len(_OCR_BEST_CACHE) > _OCR_BEST_CACHE_MAX:
+            _OCR_BEST_CACHE.pop(next(iter(_OCR_BEST_CACHE)))
+    return text, diag
+
+def extract_pdf_text(file_path: str, progress_callback=None) -> Tuple[str, Dict[str, Any]]:
     """Extract PDF text with page-level native-text → embedded OCR fallback."""
     import pypdf
 
@@ -421,6 +708,8 @@ def extract_pdf_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
                 raise ValueError("PDF terenkripsi/berpassword dan tidak dapat dibaca oleh LexiCore.") from exc
 
         diagnostics.pages_total = len(reader.pages)
+        _notify_progress(progress_callback, 0, diagnostics.pages_total, 'document')
+        _log_ocr_debug("DOCUMENT_START", page=None, extra={"file": os.path.basename(file_path), "pages_total": diagnostics.pages_total})
         native: List[str] = []
         needs_ocr: List[bool] = []
         for page in reader.pages:
@@ -438,6 +727,7 @@ def extract_pdf_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
     if not any(needs_ocr):
         diagnostics.mode = "NATIVE_TEXT"
         diagnostics.available = embedded_ocr_available()
+        _notify_progress(progress_callback, diagnostics.pages_total, diagnostics.pages_total, 'document')
         return "\n\n".join(native).strip(), diagnostics.to_dict()
 
     try:
@@ -448,68 +738,134 @@ def extract_pdf_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
         diagnostics.mode = "NATIVE_TEXT_PARTIAL"
         return "\n\n".join(native).strip(), diagnostics.to_dict()
 
-    dpi = max(144, min(300, int(os.environ.get("LEXICORE_OCR_DPI", "220") or 220)))
+    configured_dpi = max(144, min(300, int(os.environ.get("LEXICORE_OCR_DPI", "220") or 220)))
+    # Large scan-heavy documents use a faster render by default.  180 DPI is
+    # usually sufficient for pleadings while materially reducing Tesseract
+    # latency.  Users may raise LEXICORE_OCR_FAST_DPI when the source has very
+    # small print.
+    scan_pages=sum(1 for flag in needs_ocr if flag)
+    fast_dpi=max(144, min(configured_dpi, int(os.environ.get("LEXICORE_OCR_FAST_DPI", "170") or 180)))
+    dpi = fast_dpi if scan_pages >= 12 else configured_dpi
     zoom = dpi / 72.0
     matrix = pymupdf.Matrix(zoom, zoom)
-    total_timeout = _ocr_total_timeout_seconds()
+    total_timeout = _ocr_total_timeout_seconds(scan_pages)
     diagnostics.total_timeout_seconds = total_timeout
     ocr_started = time.monotonic()
     deadline = ocr_started + total_timeout
     _set_ocr_budget(deadline)
     doc = pymupdf.open(file_path)
     timeout_warning_added = False
+    # Keep page ordering deterministic and allow second-pass replacement.
+    page_texts = list(native)
+    pending_fallback: List[int] = []
     try:
+        # PASS 1 — fairness first: every scanned page gets a RapidOCR chance.
         for idx in range(diagnostics.pages_total):
+            _OCR_BUDGET_LOCAL.current_page = idx + 1
             if not needs_ocr[idx]:
-                page_texts.append(native[idx])
+                _log_ocr_debug("PAGE_NATIVE", page=idx + 1, engine="native", text_len=len(native[idx] or ""))
+                _notify_progress(progress_callback, idx + 1, diagnostics.pages_total, 'rapid')
                 continue
 
+            _log_ocr_debug("PAGE_START", page=idx + 1, extra={"needs_ocr": True, "pass": "rapid"})
             remaining = _remaining_ocr_budget()
             if remaining is not None and remaining <= 0:
                 diagnostics.total_timeout_exceeded = True
-                diagnostics.pages_failed += 1
-                page_texts.append(native[idx])
-                if not timeout_warning_added:
-                    diagnostics.warnings.append(
-                        f"Anggaran waktu total OCR dokumen {total_timeout:g} detik telah habis; "
-                        "halaman scan tersisa dilewati agar request tetap responsif."
-                    )
-                    timeout_warning_added = True
+                pending_fallback.append(idx)
+                _log_ocr_debug("GLOBAL_BUDGET_EXHAUSTED", page=idx + 1, extra={"stage": "rapid_pass_before_render"})
+                _notify_progress(progress_callback, idx + 1, diagnostics.pages_total, 'rapid')
                 continue
 
             try:
+                remaining_pages = sum(1 for j in range(idx, diagnostics.pages_total) if needs_ocr[j])
+                _OCR_BUDGET_LOCAL.remaining_pages = remaining_pages
+                _set_ocr_page_budget(_page_time_slice(remaining, remaining_pages))
+                render_started = time.monotonic()
                 pix = doc.load_page(idx).get_pixmap(matrix=matrix, alpha=False)
-                # Rendering itself is local, but re-check the document budget
-                # before starting either OCR engine.
+                _log_ocr_debug("RENDER_DONE", page=idx + 1, engine="render", elapsed=time.monotonic() - render_started, extra={"width": pix.width, "height": pix.height, "dpi": dpi, "pass": "rapid"})
                 remaining = _remaining_ocr_budget()
                 if remaining is not None and remaining <= 0:
                     diagnostics.total_timeout_exceeded = True
-                    diagnostics.pages_failed += 1
-                    page_texts.append(native[idx])
-                    if not timeout_warning_added:
-                        diagnostics.warnings.append(
-                            f"Anggaran waktu total OCR dokumen {total_timeout:g} detik telah habis; "
-                            "halaman scan tersisa dilewati agar request tetap responsif."
-                        )
-                        timeout_warning_added = True
+                    pending_fallback.append(idx)
+                    _log_ocr_debug("GLOBAL_BUDGET_EXHAUSTED", page=idx + 1, extra={"stage": "rapid_pass_after_render"})
+                    _notify_progress(progress_callback, idx + 1, diagnostics.pages_total, 'rapid')
                     continue
                 image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                ocr_text = _ocr_pil_image(image, diagnostics)
+                ocr_text = _ocr_pil_image(image, diagnostics, allow_tesseract=False)
                 if ocr_text:
                     diagnostics.pages_ocr += 1
                     diagnostics.characters_ocr += len(ocr_text)
-                    page_texts.append(ocr_text)
+                    page_texts[idx] = ocr_text
+                    _log_ocr_debug("PAGE_DONE", page=idx + 1, text_len=len(ocr_text), extra={"status": "ocr_success", "pass": "rapid"})
                 else:
-                    diagnostics.pages_failed += 1
-                    page_texts.append(native[idx])
+                    pending_fallback.append(idx)
+                    _log_ocr_debug("PAGE_PENDING_FALLBACK", page=idx + 1, extra={"pass": "rapid"})
             except Exception as exc:
-                diagnostics.pages_failed += 1
-                diagnostics.warnings.append(f"Halaman {idx+1}: {exc}")
-                page_texts.append(native[idx])
+                pending_fallback.append(idx)
+                diagnostics.warnings.append(f"Halaman {idx+1} RapidOCR: {exc}")
+                _log_ocr_debug("PAGE_ERROR", page=idx + 1, error=exc, extra={"pass": "rapid"})
+            finally:
+                _notify_progress(progress_callback, idx + 1, diagnostics.pages_total, 'rapid')
+
+        # PASS 2 — Tesseract only for unresolved pages while budget remains.
+        unresolved: List[int] = []
+        for pos, idx in enumerate(pending_fallback):
+            _OCR_BUDGET_LOCAL.current_page = idx + 1
+            remaining = _remaining_ocr_budget()
+            remaining_pages = max(1, len(pending_fallback) - pos)
+            _OCR_BUDGET_LOCAL.remaining_pages = remaining_pages
+            if remaining is not None and remaining <= 0:
+                diagnostics.total_timeout_exceeded = True
+                unresolved.extend(pending_fallback[pos:])
+                _log_ocr_debug("GLOBAL_BUDGET_EXHAUSTED", page=idx + 1, extra={"stage": "tesseract_pass_before_render", "remaining_unresolved": remaining_pages})
+                break
+            try:
+                _log_ocr_debug("PAGE_FALLBACK_START", page=idx + 1, extra={"pass": "tesseract"})
+                render_started = time.monotonic()
+                pix = doc.load_page(idx).get_pixmap(matrix=matrix, alpha=False)
+                _log_ocr_debug("RENDER_DONE", page=idx + 1, engine="render", elapsed=time.monotonic() - render_started, extra={"width": pix.width, "height": pix.height, "dpi": dpi, "pass": "tesseract"})
+                image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                ocr_text = _ocr_tesseract_optional(image, diagnostics)
+                if ocr_text:
+                    diagnostics.pages_ocr += 1
+                    diagnostics.characters_ocr += len(ocr_text)
+                    page_texts[idx] = ocr_text
+                    _log_ocr_debug("PAGE_DONE", page=idx + 1, text_len=len(ocr_text), extra={"status": "ocr_success", "pass": "tesseract"})
+                else:
+                    unresolved.append(idx)
+                    _log_ocr_debug("PAGE_FAILED", page=idx + 1, text_len=0, extra={"status": "no_ocr_text", "pass": "tesseract"})
+            except Exception as exc:
+                unresolved.append(idx)
+                diagnostics.warnings.append(f"Halaman {idx+1} Tesseract: {exc}")
+                _log_ocr_debug("PAGE_ERROR", page=idx + 1, error=exc, extra={"pass": "tesseract"})
+            finally:
+                _notify_progress(progress_callback, pos + 1, len(pending_fallback), 'tesseract')
+
+        diagnostics.pages_failed = len(set(unresolved))
+        if diagnostics.total_timeout_exceeded and not timeout_warning_added:
+            diagnostics.warnings.append(
+                f"Anggaran waktu total OCR dokumen {total_timeout:g} detik telah habis; "
+                "halaman scan tersisa dipertahankan sebagai belum terbaca agar request tetap bounded."
+            )
+            timeout_warning_added = True
     finally:
         diagnostics.elapsed_ocr_seconds = round(time.monotonic() - ocr_started, 3)
+        _set_ocr_page_budget(None)
         _set_ocr_budget(None)
         doc.close()
+        try:
+            delattr(_OCR_BUDGET_LOCAL, "current_page")
+        except Exception:
+            pass
+
+    _log_ocr_debug("DOCUMENT_DONE", page=None, elapsed=diagnostics.elapsed_ocr_seconds, extra={
+        "pages_total": diagnostics.pages_total,
+        "pages_native": diagnostics.pages_native,
+        "pages_ocr": diagnostics.pages_ocr,
+        "pages_failed": diagnostics.pages_failed,
+        "characters_ocr": diagnostics.characters_ocr,
+        "total_timeout_exceeded": diagnostics.total_timeout_exceeded,
+    })
 
     if diagnostics.pages_ocr and diagnostics.pages_native:
         diagnostics.mode = "HYBRID_NATIVE_OCR"
@@ -519,7 +875,10 @@ def extract_pdf_text(file_path: str) -> Tuple[str, Dict[str, Any]]:
         diagnostics.mode = "NATIVE_TEXT_PARTIAL"
     else:
         diagnostics.mode = "OCR_UNAVAILABLE_OR_EMPTY"
-    return "\n\n".join(page_texts).strip(), diagnostics.to_dict()
+    final_text = "\n\n".join(page_texts).strip()
+    final_diag = diagnostics.to_dict()
+    _notify_progress(progress_callback, diagnostics.pages_total, diagnostics.pages_total, 'complete')
+    return _apply_monotonic_coverage_guard(file_path, final_text, final_diag)
 
 
 def ocr_runtime_status(load_engine: bool = False) -> Dict[str, Any]:

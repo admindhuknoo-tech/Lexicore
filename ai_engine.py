@@ -441,6 +441,9 @@ PRINSIP WAJIB:
 16. Jangan melakukan silent correction atas nomor/tahun undang-undang yang tampak salah. Tampilkan sebagai POTENTIAL_TYPO_OR_OCR dan minta verifikasi terhadap dokumen asli/sumber resmi.
 17. Pada eksepsi, bedakan kompetensi/forum dari merits. Dalil bahwa peristiwa lebih tepat dikualifikasikan sebagai tindak pidana lain tidak otomatis berarti pengadilan yang memeriksa dakwaan tidak berwenang.
 18. Bedakan error in persona (salah identitas subjek) dari tidak terbuktinya atribusi perbuatan atau adanya pihak lain yang lebih bertanggung jawab.
+19. Field "legal_analysis" WAJIB berupa prosa naratif biasa tanpa heading -- DILARANG menulis heading/judul bagian sendiri atau penomoran romawi/angka/abjad sendiri (dilarang menulis "I.", "II.", "1.", "A." dsb sebagai judul bagian) -- sistem LexiCore sudah menomori bagian secara otomatis di lapisan render, dan penomoran ganda dari teks Anda akan tampil bertumpuk/rusak. Tulis sebagai paragraf mengalir yang secara eksplisit menyebut nama pihak, tanggal, jumlah uang, dan objek konkret dari fakta yang sudah diekstraksi di atas (bukan kerangka doktrinal generik yang bisa berlaku untuk kasus apa pun) -- setiap kalimat kesimpulan harus bisa ditelusuri balik ke satu fakta atau pasal spesifik dalam data yang diberikan, bukan pernyataan umum seperti "harus diuji lebih lanjut" tanpa merujuk fakta mana yang dimaksud.
+20. Sebelum menulis "legal_analysis", klasifikasikan dalam pikiran Anda setiap potongan informasi ke salah satu dari 3 kategori: (A) FAKTA TEKSTUAL -- tertulis eksplisit di sumber; (B) DALIL/KLAIM SEPIHAK -- baru pengakuan/tuduhan satu pihak, belum tentu benar; (C) ANOMALI -- kontradiksi antar-pernyataan atau antara tindakan aktor dengan klaimnya. Jangan pernah menaikkan (B) menjadi (A) hanya karena konsisten dengan teori kasus Anda. Sebutkan ANOMALI secara eksplisit di narasi ("A." vs "B" bertentangan karena ...) bila ditemukan -- ini justru memperkuat, bukan melemahkan, kredibilitas analisis.
+21. KUTIPAN WAJIB: setiap kali "legal_analysis" menyimpulkan adanya hak, kewajiban, pelanggaran, unsur delik, atau risiko konkret, sertakan tag kutipan singkat dalam kurung siku persis dari sumber: [FAKTA: "kutipan singkat kata demi kata dari narasi/dokumen sumber"]. Jika tidak ada kalimat sumber yang mendukung klaim tersebut, jangan menuliskannya sebagai kesimpulan pasti -- tulis [KLAIM KOSONG: alasan singkat kenapa belum ada dasar tekstual] dan turunkan klaim itu ke tingkat hipotesis/pertanyaan yang perlu diverifikasi, bukan kesimpulan. Tag ini WAJIB berbentuk frasa pendek dalam kurung siku, BUKAN heading/judul baris baru (lihat aturan 19).
 
 FEW-SHOT BATAS DEMARKASI DOMAIN:
 {FEW_SHOT_BOUNDARY}
@@ -461,7 +464,7 @@ JSON murni dengan skema:
  "mitigating_facts":["..."],
  "legal_issues":["..."],
  "applicable_law":[{{"domain":"...","source":"...","status":"PERLU VERIFIKASI SUMBER RESMI","confidence":"HIGH|MEDIUM|LOW"}}],
- "legal_analysis":"analisis terstruktur dan mendalam",
+ "legal_analysis":"prosa naratif (bukan heading/penomoran sendiri) yang secara eksplisit merujuk nama pihak, tanggal, jumlah, dan objek konkret dari fakta di atas, dengan tag [FAKTA: "kutipan"] atau [KLAIM KOSONG: alasan] pada tiap kesimpulan hak/kewajiban/pelanggaran/risiko",
  "element_matrix":[{{"element":"...","prosecution_support":"...","defense_focus":"...","status":"SUPPORTED|DISPUTED|NOT_ESTABLISHED|NEEDS_EVIDENCE"}}],
  "mens_rea_analysis":"...",
  "actual_loss_analysis":"...",
@@ -497,6 +500,53 @@ def _validate_evidence_payload(data: Any) -> tuple[bool, str]:
     if all(not data.get(k) for k in expected):
         return False, 'EMPTY_EVIDENCE_PAYLOAD'
     return True, 'ACCEPTED'
+
+
+_LEADING_NUMBERED_HEADING = re.compile(r'^\s*(?:[IVXLCDM]{1,6}|[0-9]{1,3}|[A-Z])[.)]\s+')
+
+_SELF_NUMBERED_NARRATIVE_FIELDS = ('legal_analysis', 'mens_rea_analysis', 'actual_loss_analysis',
+                                    'causation_analysis', 'personal_responsibility_analysis',
+                                    'temporal_law_analysis')
+
+
+def _strip_self_numbered_headings(text: str) -> str:
+    """Defensive text sanitizer, applied at the source.
+
+    LexiCore's export layer (PDF/DOCX working paper) adds its OWN Roman-numeral
+    section numbering around every narrative field it renders. If the model
+    additionally invents its own top-level numbered heading inside a free-text
+    field (e.g. starting a paragraph with "I. CORE LEGAL THESIS" despite the
+    prompt instructing it not to), that self-assigned number visually stacks
+    with whichever numbering the exporter adds on top of it downstream (e.g.
+    "II. I. CORE LEGAL THESIS"). Rather than guessing which of several export
+    code paths is active for a given run, this strips only a LEADING
+    numbered-heading-style prefix from short heading-shaped lines, at the
+    moment the AI response is received -- so every downstream renderer is
+    protected uniformly. It never removes body content, only a numbering
+    prefix -- substantive prose (including a numbered clause inline within a
+    normal sentence) is left untouched.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return text
+    cleaned_lines = []
+    for line in text.split('\n'):
+        stripped = line.strip()
+        # Only touch short, heading-shaped lines (a numbered label on its own
+        # line), never a numbered item inside a normal sentence/paragraph.
+        if stripped and len(stripped) < 120 and _LEADING_NUMBERED_HEADING.match(stripped):
+            line = _LEADING_NUMBERED_HEADING.sub('', line, count=1)
+        cleaned_lines.append(line)
+    return '\n'.join(cleaned_lines)
+
+
+def _strip_self_numbered_headings_in_synthesis(synthesis: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply _strip_self_numbered_headings to every known free-text narrative
+    field of a synthesis payload. Never touches structured list/dict fields."""
+    for key in _SELF_NUMBERED_NARRATIVE_FIELDS:
+        val = synthesis.get(key)
+        if isinstance(val, str) and val.strip():
+            synthesis[key] = _strip_self_numbered_headings(val)
+    return synthesis
 
 
 def _validate_synthesis_payload(data: Any) -> tuple[bool, str]:
@@ -587,6 +637,7 @@ def analyze_full_document(text: str, title: str, fallback: Dict[str, Any], offic
         ok, reason = _validate_synthesis_payload(synthesis)
         if not ok:
             raise RuntimeError(reason)
+        synthesis = _strip_self_numbered_headings_in_synthesis(synthesis)
     except Exception as exc:
         diagnostics['status'] = 'SYNTHESIS_REJECTED'
         diagnostics['synthesis_reason'] = str(exc)[:300]
@@ -598,3 +649,23 @@ def analyze_full_document(text: str, title: str, fallback: Dict[str, Any], offic
     synthesis['document_reading'] = diagnostics
     synthesis['analytical_method'] = 'EVIDENCE_TO_ACTION_REGULATORY_NORM_V1_3_1_1'
     return synthesis
+
+
+def run_grounded_json_prompt(prompt: str) -> Dict[str, Any] | None:
+    """Additive, single-purpose entrypoint: one grounded structured (JSON)
+    completion from the configured provider, without the Full-Document
+    multi-pass chunking/synthesis machinery `analyze_full_document` uses.
+
+    Fail-closed by design: returns None (never raises) when AI is
+    unavailable or the call fails for any reason. Callers MUST treat None
+    as "not available" and degrade to a clearly-labeled placeholder rather
+    than fabricate content. Does not change the behavior of any existing
+    function in this module — it only reuses the already-private HTTP
+    call/retry helper.
+    """
+    if not is_available():
+        return None
+    try:
+        return _gemini_json_retry(prompt)
+    except Exception:
+        return None
